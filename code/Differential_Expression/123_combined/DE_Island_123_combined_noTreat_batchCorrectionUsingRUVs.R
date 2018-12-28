@@ -1,135 +1,13 @@
 # script created by KSB, 08.08.18
-# Perform DE analysing relationship between islands
+# Perform DE analysing relationship between islands using RUVs as batch correction method
 
-# load dependencies: libraries, human count data, plasmodium data, and data preprocessing
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_RegulatoryVariation/code/Differential_Expression/123_combined/countData_123_combined.R")
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_RegulatoryVariation/code/Differential_Expression/123_combined/dataPreprocessing_123_combined.R")
+# load dependencies: libraries, human count data and data preprocessing
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/countData_123_combined.R")
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/dataPreprocessing_123_combined.R")
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/RUVs_Setup.R")
 
 # set working directory
 setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Island/RUVs")
-
-# load extra libraries
-library(NineteenEightyR)
-library(ReactomePA)
-
-# DE analysis using RUVs  ----------------------------------------------------------------------------------------------------
-
-# set up colors
-colors <- electronic_night(n=5)
-lightcolors=c("thistle", "darkblue")
-
-# RUVSeq works with a genes-by-samples numeric matrix or a SeqExpressionSet object containing read counts. Let's set up a SeqExpressionSet with our counts matrix
-set <- newSeqExpressionSet(as.matrix(y$counts), phenoData = data.frame(Island, row.names=colnames(y)))
-
-# exploratory analyis of results before normalisation
-pdf("no_Normalisation.pdf")
-plotRLE(set, outline=FALSE, ylim=c(-4, 4), col=colors[batch])
-plotPCA(set, col=colors[batch], cex=1.2, pch=as.numeric(batch) + 14, labels=F)
-legend(legend=unique(y$samples$batch), "topright", pch=unique(y$samples$batch) + 14, title="Batch", cex=0.6, border=F, bty="n", col=unique(colors[batch]))
-dev.off()
-
-# Normalisation can be performed using "median","upper", or "full", however when passing to edgeR's normalisation method (below), the only options are "TMM","RLE", and "upperquartile". In order to keep consistency, we'll go ahead and choose the "upper" method, since it's in both.
-set <- betweenLaneNormalization(set, which="upper")
-
-# identify which samples are replicated
-allreplicated=as.factor(samplenames %in% allreps)
-
-# exploratory analysis after normalisation
-pdf("upperQuartileNOrmalisation.pdf")
-plotRLE(set, outline=FALSE, ylim=c(-4, 4), col=colors[batch])
-plotPCA(set, col=colors[batch], cex=1.2, pch=as.numeric(batch) + 14, labels=F, main="Batch")
-# plot PCA to see how closely replicates sit
-plotPCA(set, col=lightcolors[allreplicated], cex=1.2, main="replicates")
-legend(legend=unique(y$samples$batch), "topright", pch=unique(y$samples$batch) + 14, title="Batch", cex=0.6, border=F, bty="n", col=unique(colors[batch]))
-legend(legend=unique(allreplicated), pch=16, x="bottomright", col=unique(colors[allreplicated]), cex=0.6, title="replicate", border=F, bty="n")
-dev.off()
-
-# First, construct a matrix specifying the replicates. 
-# create matrix filled with -1s 
-replicates=matrix(-1, nrow=length(allreps), ncol=3)
-rownames(replicates)=unique(samplenames[samplenames %in% allreps])
-for (i in 1:nrow(replicates)){
-    replicates[i,1:length(grep(rownames(replicates)[i], samplenames))] = grep(rownames(replicates)[i], samplenames)
-}
-
-# set up genes used for RUVs
-genes <- rownames(y)
-
-# set RUVs. We'll first set this to 5 and see how it looks
-pdf("RUVsNormalisation_choosingK.pdf")
-for (i in c(1,2,3,4,5,10)){
-    set1 <- RUVs(set, genes, k=i, replicates)
-    plotRLE(set1, main=paste("Housekeeping Controls",i, sep="\n"), col=as.numeric(batch), outline=FALSE)
-    # plot PCA to see how closely replicates sit
-    plotPCA(set1, col=lightcolors[allreplicated], cex=1.2, main=paste(i, "replicates", sep="\n"))
-    # plot pca to see if batch effect is eliminated/minimized
-    plotPCA(set1, col=as.numeric(batch), cex=1.2, main="Batch")
-}
-dev.off()
-
-
-# Set up list of housekeeping genes as controls (from Eisenberg and Levanon, 2003) for volcano plots
-housekeeping=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/BatchEffects/Housekeeping_ControlGenes.txt", as.is=T, header=F)
-# if this is broken, use host = "uswest.ensembl.org"
-ensembl.mart.90 <- useMart(biomart='ENSEMBL_MART_ENSEMBL', dataset='hsapiens_gene_ensembl', host = 'www.ensembl.org', ensemblRedirect = FALSE)
-biomart.results.table <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name'), mart = ensembl.mart.90,values=housekeeping, filters="hgnc_symbol")
-hkGenes=as.vector(biomart.results.table[,1])
-hkControls=hkGenes[which(hkGenes %in% rownames(y$counts))]
-
-# look at the p-value distributions and choose the best k
-deGenes=vector()
-k=vector()
-for (j in 1:3){
-    counter=0
-    pdf(paste0("pvalueDist_choosingK_RUVs_",j,".pdf"))
-    for (i in c(1:6)){
-        counter=counter+1
-        set1 <- RUVs(set, genes, k=i, replicates)
-        design <- cbind(model.matrix(~0 + Island), pData(set1)[2:(i+1)])
-        colnames(design)=gsub("Island", "", colnames(design))
-        colnames(design)[3]="Mappi"
-        z <- DGEList(counts=counts(set1), group=Island)
-        # here, we use uppserquarile normalisation since "upper" is used for between lane normalisation of our 'set' object
-        z <- calcNormFactors(z, method="upperquartile")
-        contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
-        v <- voom(z, design, plot=FALSE, normalize.method = "quantile")
-        vfit <- lmFit(v, design)
-        vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-        efit <- eBayes(vfit)
-        topTable <- topTable(efit, coef=j, p.value=0.01, lfc=1, n=Inf)
-        deGenes[counter]=nrow(topTable)
-        k[counter]=i
-        # get p-value distribution from raw pvalues
-        hist(efit$p.value[,j], main=paste(colnames(efit)[j],i,sep="\n"), ylim=c(0,max(table(round(efit$p.value[,j], 1)))+1000), xlab="p-value")
-        # get volcano plots
-        plot(efit$coef[,j], -log10(as.matrix(efit$p.value)[,j]), pch=20, main=paste(colnames(efit)[j],i,sep="\n"), xlab="log2FoldChange", ylab="-log10(pvalue)")
-        points(efit$coef[,j][which(names(efit$coef[,j]) %in% hkControls)], -log10(as.matrix(efit$p.value)[,j][which(names(efit$coef[,j]) %in% hkControls)]) , pch=20, col=4, xlab="log2FoldChange", ylab="-log10(pvalue)")
-        legend("topleft", c("genes", "hk genes"),fill=c("black",4))
-        abline(v=c(-1,1), lty=2)
-    }
-    dev.off()
-    pdf(paste("numberDeGenes_choosingK_RUVs_",colnames(efit)[j],".pdf"))
-    plot(k, deGenes, main=colnames(efit)[j])
-    dev.off()
-}
-
-# we'll set k to 5 for now
-set1 <- RUVs(set, genes, k=5, replicates)
-
-# make a matrix for labels of replicates
-xcord=c(-0.14,-0.03, 0.02, 0.02, 0.05)
-ycord=c(0.1,-0.09,0.0,0.087,0.03)
-textcords=cbind(xcord,ycord)
-
-# now plot all of the covariates and see how the batch correction worked
-for (name in c(covariate.names[c(1:10,18)], "allreplicated")){
-    pdf(paste0("batchCorrectedPCA_RUVs_",name,".pdf"))
-    plotPCA(set1, labels=F, pch=as.numeric(batch) + 14, col=as.numeric(get(name)), main=name)
-    # text(textcords, c("SMB-WNG-021", "MPI-381", "SMB-ANK-016", "SMB-ANK-027", "MTW-013"), cex=0.8)
-    legend(legend=unique(get(name)), pch=16, x="bottomright", col=unique(as.numeric(get(name))), cex=0.6, title=name, border=F, bty="n")
-    legend(legend=unique(y$samples$batch), "topright", pch=unique(as.numeric(batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
-    dev.off()
-}
 
 # perform DE using a Limma pipeline --------------------------------------------------------------------------------------------------
 
@@ -143,6 +21,54 @@ genes <- select(Homo.sapiens, keys=geneid, columns=c("SYMBOL", "TXCHROM"), keyty
 genes <- genes[!duplicated(genes$ENSEMBL),]
 z$genes <- genes
 z <- calcNormFactors(z, method="upperquartile")
+
+# look at performance of normalisation
+# Duplicate data, set normalisation back to 1, and plot difference between normalised and non-normalised data
+pdf("NormalisedGeneExpressionDistribution_IndoRNA.pdf", height=15, width=15)
+par(oma=c(2,0,0,0), mfrow=c(2,1))
+z2 <- z
+z2$samples$norm.factors <- 1
+lcpm <- cpm(z2, log=TRUE)
+boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+title(main="A. Unnormalised data",ylab="Log-cpm")
+z2 <- calcNormFactors(z2, method="upperquartile")
+lcpm <- cpm(z2, log=TRUE)
+boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+title(main="B. Normalised data, UpperQuartile",ylab="Log-cpm")
+dev.off()
+
+# get density plot after normalisation
+pdf("densityPlot_NormalisedGeneExpressionDistribution_IndoRNA.pdf")
+plot(density(lcpm[,1]), col=z$samples$batch, lwd=2, ylim=c(0,max(density(lcpm)$y)+.2), las=2, main="", xlab="")
+title(main="Filtered data \n Post-Normalisation", xlab="Log-cpm")
+abline(v=0, lty=3)
+for (i in 2:nsamples){
+    den <- density(lcpm[,i])
+    lines(den$x, den$y, col=as.numeric(batch)[i], lwd=2)
+}
+legend("topright", legend=c("First Batch","Second Batch", "Third Batch"), ncol=1, cex=0.8, text.col=unique(as.numeric(batch)), bty="n")
+dev.off()
+
+# We can view how UQ normalisation performed using MD plots. This visualizes the library size-adjusted log-fold change between
+# two libraries (the difference) against the average log-expression across those libraries (themean). MD plots are generated by comparing sample 1 against an artificial
+# library constructed from the average of all other samples. Ideally, the bulk of genes should be centred at a log-fold change of zero.  This indicates
+# that any composition bias between libraries has been successfully removed
+
+pdf("MDPlots_UQNormalisation_Outliers.pdf", height=15, width=15)
+par(mfrow=c(4,4))
+for (i in 1:ncol(z)){
+  plotMD(cpm(z, log=TRUE), column=i)
+  abline(h=0, col="red", lty=2, lwd=2)
+}
+dev.off()
+
+# Estimate dispersion. The trend in NB dispersions should decrease smoothly with increasing abundance.  
+# This is because the expression of high-abundance genes is expected to be more stable than that of low-abundance genes. 
+# Any substantial increase at high abundances may be indicative of batch effects or trended biases.
+z <- estimateDisp(z, design, robust=TRUE)
+pdf("plotBCV_NBDispersion.pdf")
+plotBCV(z)
+dev.off()
 
 # set up contrast matrix
 contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
@@ -169,7 +95,7 @@ for (i in 1:ncol(efit)){
     x <- efit$Amean
     m <- efit$coefficients[,i]
     t=which(names(efit$coefficients[,i]) %in% names(which(abs(dt[,i])==1)))
-    G <- y$genes[names(which(dt[,i]==1)),]$SYMBOL
+    G <- z$genes[names(which(dt[,i]==1)),]$SYMBOL
     plotMD(efit, column=i, status=dt[,i], main=colnames(efit)[i], hl.col=c("blue","red"), values=c(-1,1))
     abline(h=c(1,-1), lty=2)
     legend(legend=paste(names(summary(dt)[,i]), summary(dt)[,i], sep="="), x="bottomright", border=F, bty="n")
@@ -259,7 +185,7 @@ pdf("TopGenes_ggboxplot_Island.pdf", height=8, width=10)
 counter=0
 for(ensembl in topEnsembl){
     counter=counter+1
-    gene.df <- data.frame(cpm(y$counts[which(y$genes$ENSEMBL==ensembl),],log=T),Island)
+    gene.df <- data.frame(cpm(z$counts[which(z$genes$ENSEMBL==ensembl),],log=T),Island)
     colnames(gene.df)=c("CPM", "Island")
     annotation_df <- data.frame(start=c("Sumba","Sumba", "Mentawai"), end=c("Mentawai","West Papua","West Papua"), y=c(max(gene.df[,1]+4),max(gene.df[,1]+5),max(gene.df[,1]+6)), label=paste("limma p-value =",topGenes.pvalue[ensembl,],sep=" "))
     print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=topGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))

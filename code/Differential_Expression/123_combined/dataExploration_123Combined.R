@@ -1,29 +1,23 @@
 # script created by KSB, 06.06.18
 # data exploration (MDS, PCA, and sample outlier analysis) of Indonesia RNA-seq data (both batches)
 
-# load dependencies: libraries, human count data, plasmodium data, and data preprocessing
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_RegulatoryVariation/code/Differential_Expression/123_combined/countData_123_combined.R")
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_RegulatoryVariation/code/Differential_Expression/123_combined/dataPreprocessing_123_combined.R")
+# load dependencies: human count data and data preprocessing
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/countData_123_combined.R")
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/dataPreprocessing_123_combined.R")
 
 # set working directory
 setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataExploration")
 
-# add in additional ibraries
-library(ComplexHeatmap)
-library(circlize)
-library(viridis)
-library(NineteenEightyR)
-library(vioplot)
-
-# set up colour palette for batch
-batch.col=electronic_night(n=3)
-
 # MDS
-pdf("indoRNA_MDS_123Combined_allCovariates.pdf", height=10, width=10)
-for (name in covariate.names[c(1:10,17:19)]) {
+pdf("indoRNA_MDS_123Combined_allCovariates.pdf", height=30, width=25)
+par(mfrow=c(5,4))
+for (name in covariate.names[c(1:10,17:18)]) {
     plotMDS(lcpm, labels=get(name), col=as.numeric(get(name)))
     title(main=name)
 }
+# plot blood separately
+plotMDS(lcpm, labels=batch, col=batch.col[as.numeric(batch)])
+title(main="batch")
 for (name in covariate.names[c(11:16)]) {
     # assign gradient colours for blood cell types
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
@@ -76,7 +70,7 @@ pc.assoc <- function(pca.data){
 all.covars.df <- y$samples[,c(3,5:22)] 
 
 # Plot PCA
-for (name in covariate.names[c(1:10,17:19)]){
+for (name in covariate.names[c(1:10,17:18)]){
   if (nlevels(get(name)) < 26){
     pdf(paste0("pcaresults_",name,".pdf"))
     pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=y$samples$batch + 14,sampleNames=get(name))
@@ -87,6 +81,12 @@ for (name in covariate.names[c(1:10,17:19)]){
     dev.off()
   }
 }
+
+# plot batch
+pdf(paste0("pcaresults_batch.pdf"))
+pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=batch.col[as.numeric(batch)],namesPch=y$samples$batch + 14,sampleNames=get(name))
+dev.off()
+  
 # plot blood
 for (name in covariate.names[c(11:16)]){
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
@@ -96,13 +96,6 @@ for (name in covariate.names[c(11:16)]){
     dev.off()
 }
 
-# Get centroids and save df
-df.pca.x <- as.data.frame(pcaresults$x)
-for (name in covariate.names){
-    df.pca.x$groups <- get(name)
-    pca.centroids <- aggregate(df.pca.x[,1:62], list(Type = df.pca.x$groups), mean)
-    write.table(pca.centroids, file=paste0("pcaCentroids_",name,".txt"), col.names=T, row.names=F, quote=F, sep="\t")
-}
 
 # Get PCA associations
 all.pcs <- pc.assoc(pcaresults)
@@ -138,7 +131,7 @@ colnames(lcpm)=make.unique(samplenames)
 
 # Dissimilarity matrix with euclidean distances
 pdf("SampleDistances.pdf", height=10, width=15)
-par(mar=c(6.1,4.1,4.1,2.1))
+par(mar=c(6.1,4.1,4.1,2.1), mfrow=c(2,1))
 eucl.distance <- dist(t(lcpm), method = "euclidean")
 eucl.cluster <- hclust(eucl.distance, method = "complete")
 dend.eucl=as.dendrogram(eucl.cluster)
@@ -169,47 +162,29 @@ ha2 = rowAnnotation(df = df2, col= list(batch=c("1" = batch.col[1], "2" = batch.
 
 # lcpm distances
 pdf("lcpmCorrelationHeatmaps.pdf", height=10, width=15)
-Heatmap(cor(lcpm,method="spearman"), col=magma(100), column_title = "Spearman Correlation \n log2-CPM", name="Corr Coeff", top_annotation = ha1, show_row_names = FALSE, column_names_gp=gpar(fontsize = 8)) + ha2
+Heatmap(cor(lcpm,method="pearson"), col=magma(100), column_title = "Pearson Correlation \n log2-CPM", name="Corr Coeff", top_annotation = ha1, show_row_names = FALSE, column_names_gp=gpar(fontsize = 8)) + ha2
 dev.off()
 
 # analyse sample variation
+island=c("MTW", "SMB","MPI")
 village=c("MPI", "MDB", "TLL", "ANK", "WNG")
-island=c("MPI","MTW","SMB")
 
 for (method in c("spearman", "pearson")){
-    variation=list()
     correlation=cor(lcpm,method=method)
     # samples from same village
     withinVillage=list()
-    pdf(paste0("withinVillageVariation_",method,".pdf"),height=10, width=15)
     for (sample in village){
         corLcpm=correlation[grepl(sample,rownames(correlation)),grepl(sample,colnames(correlation))]
         diag(corLcpm)=NA
         allCPM=melt(corLcpm)
         allCPM$value[duplicated(allCPM$value)]=NA
         withinVillage[[sample]]=allCPM[,3]
-        sampVar=allCPM[which(abs(scale(allCPM[,3])) > 3),]
-        if (nrow(sampVar) > 0) {
-            if (sample != "MPI"){
-                variation[[sample]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
-        } else {
-                variation[[sample]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 2), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
-            }
-        }
     }
-    boxplot(withinVillage, main=paste("Within Village Variation",method,sep="\n"))
-    stripchart(withinVillage, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=1:5)
-    if(length(variation) == 5){
-        sapply(1:5, function(x) text(x=x, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
-        } else {
-            sapply(1:4, function(x) text(x=x+1, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
-        }
-    dev.off()
-
-    # samples from same Island
+    pdf(paste0("IslandVariation_",method,".pdf"),height=15, width=15)
+    par(mai=rep(0.5, 4))
+    layout(matrix(c(1,2,3,3), ncol = 2, byrow = TRUE))
     withinIsland=list()
     variation=list()
-    pdf(paste0("withinIslandVariation_",method,".pdf"),height=10, width=15)
     for (sample in island){
         corLcpm=correlation[grepl(sample,rownames(correlation)),grepl(sample,colnames(correlation))]
         diag(corLcpm)=NA
@@ -221,15 +196,13 @@ for (method in c("spearman", "pearson")){
             variation[[sample]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
         }
     }
-    boxplot(withinIsland, main=paste("Within Island Variation",method,sep="\n"))
-    stripchart(withinIsland, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=1:3)
-    sapply(1:2, function(x) text(x=x+1, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
-    dev.off()
-            
+    boxplot(withinIsland, main=paste("Within-Island Variation",method,sep="\n"))
+    stripchart(withinIsland, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=c(1,2,3))
+    sapply(1:2, function(x) text(x=x, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
+        
     # Inter island
     interIsland <- list()
     variation=list()
-    pdf(paste0("withinIslandVariation_",method,".pdf"), height=10, width=15)
     island2 <- island
     for (i1 in island) {
         island2 <- island2[-1]
@@ -241,53 +214,52 @@ for (method in c("spearman", "pearson")){
             interIsland[[paste(i1,"vs",i2,sep="_")]]=allCPM[,3]
             sampVar=allCPM[which(abs(scale(allCPM[,3])) > 3),]
             if (nrow(sampVar) > 0) {
-                if (i1=="MPI"){
-                    variation[[paste(i1,"vs",i2,sep="_")]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 2), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
+                if (i2=="MPI"){
+                    variation[[paste(i1,"vs",i2,sep="_")]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 2), sep="vs"))
                 } else {
                     variation[[paste(i1,"vs",i2,sep="_")]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
         }
         }
         }
     }
-    boxplot(interIsland, main=paste("Inter Island Variation",method,sep="\n"))
-    stripchart(interIsland, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=1:3)
+    boxplot(interIsland, main=paste("Inter-Island Variation",method,sep="\n"))
+    stripchart(interIsland, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=c(4,5,7))
     sapply(1:3, function(x) text(x=x, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
-    dev.off()
 
    # melt all three dataframes
-    withinVillage.melt=melt(withinVillage)[,1]
     withinIsland.melt=melt(withinIsland)[,1]
     interIsland.melt=melt(interIsland)[,1]
 
     meta=list(withinVillage.melt, withinIsland.melt, interIsland.melt)
     names(meta)=c("withinVillage", "withinIsland", "interIsland")
-    pdf(paste0("SampleVariation_interVsIntra_",method,".pdf"), height=10, width=15)
     boxplot(meta, main=paste("Sample Correlation",method,sep="\n"))
     dev.off()
 }
 
 # look for sample outliers from PCA
-samples=c()
-pca.dim=c()
-pca.val=c()
+pca.outliers.final=matrix(nrow=0, ncol=3)
 
 for (i in 1:ncol(pcaresults$x)){
-    if (length(which(abs(scale(pcaresults$x[,i])) > 3)) > 0){
-        nsamples=length(names(pcaresults$x[,i][which(scale(pcaresults$x[,i]) > 3)]))
-        samples=c(samples, names(pcaresults$x[,i][which(scale(pcaresults$x[,i]) > 3)]))
-        pca.val=c(pca.val, unname(pcaresults$x[,i][which(scale(pcaresults$x[,i]) > 3)]))
-        pca.dim=c(pca.dim, rep(i, nsamples))
+    pca.dim=c()
+    outlier.sample=c()
+    outlier.zscore=c()
+    zscore=scale(pcaresults$x[,i])
+    outliers=which(abs(zscore) >= 3)
+    if (length(outliers) > 0){
+        pca.dim=c(pca.dim, i)
+        outlier.sample=c(outlier.sample, names(pcaresults$x[,i][outliers]))
+        outlier.zscore=c(outlier.zscore, zscore[outliers])
+        pca.outliers=matrix(c(rep(pca.dim,length(outlier.sample)), outlier.sample, outlier.zscore), nrow=length(outlier.sample), ncol=3)
+        pca.outliers.final=rbind(pca.outliers.final, pca.outliers)
     }
 }
-
-pca.outliers=matrix(c(samples, pca.dim, pca.val), nrow=length(samples), ncol=3)
-colnames(pca.outliers)=c("samples", "Pca.dim", "Z.score")
-write.table(pca.outliers, file="sample_outliersInPCA.txt")
+colnames(pca.outliers.final)=c("Pca.dim", "Samples", "Z.score")
+write.table(pca.outliers.final, file="sample_outliersInPCA.txt")
 
 # Analyse what might be driving variation
 pdf("CovariateOutliers_SamplingSite.pdf", height=10, width=15)
 for (covariate in colnames(y$samples)[c(3,10,13,16:21)]){
-    Boxplot(get(covariate)~Sampling.Site,data=y$samples, main=covariate, col=1:5)
+    Boxplot(get(covariate)~Island,data=y$samples, main=covariate, col=1:5)
 }
 dev.off()
 
@@ -305,24 +277,18 @@ for (sample in island){
 }
 dev.off()
 
-# also plot boxplots and get top gene outliers
-pdf("geneVaraince_topGenes_boxplot.pdf")
-boxplot(rv)
-sapply(1:3, function(x) text(x=x, y=sort(rv[[x]], decreasing=T)[1:5], labels=names(sort(rv[[x]], decreasing=T)[1:5]), cex=0.8, pos=1))
-dev.off()
-
 # let's look at the correlation of gene variance by all population pairs
+pdf("geneVariance_correlationbyIsland_Pearson.pdf")
 upper.panel<-function(x, y){
   points(x,y, pch=19)
-  r <- round(cor(x, y, method="spearman"), digits=2)
+  r <- round(cor(x, y, method="pearson"), digits=2)
   txt <- paste0("R = ", r)
   usr <- par("usr"); on.exit(par(usr))
   par(usr = c(0, 1, 0, 1))
   text(0.5, 0.9, txt)
 }
 
-pdf("geneVariance_correlationbyIsland.pdf")
-pairs(rv, lower.panel = NULL, upper.panel = upper.panel)
+pairs(rv, lower.panel = NULL, upper.panel = upper.panel, main="Gene Variance")
 dev.off()
 
 

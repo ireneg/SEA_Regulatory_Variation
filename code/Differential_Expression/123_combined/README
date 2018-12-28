@@ -1,0 +1,10 @@
+Order of file execution:
+
+1. Count Data: countData_123_combined.R
+2. Data Preprocessing: dataPreprocessing_123_combined.R
+3. Data exploration: dataExploration_123Combined.R
+4. RUVs: RUVs_Setup.R
+5. DE: DE_Island_123_combined_noTreat_batchCorrectionUsingRUVs.R
+
+Output: 
+
