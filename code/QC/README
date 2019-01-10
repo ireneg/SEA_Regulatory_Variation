@@ -1,0 +1,30 @@
+# Quality control steps
+
+This folder contains scripts for perfomring some basic quality control steps on the raw RNA-seq data, located on Spartan under /data/cephfs/punim0586/shared/raw_data (indoRNA for batch 1, indoRNA_second_batch for batch 2, indoRNA_third_batch for batch 3, and indoRNA_no_globin for the globin samples). 
+
+## md5sums
+
+In order to check if MD5 sums were the same between our downloaded files and Macrogen's file, MD% sums were checked as follows:
+
+# cd into raw data folder, execute md5sums on all files, then save as text file
+md5sum * >> /vlsci/SG0008/kbobowik/Sumba/ReferenceFiles/indoPapua/md5sums/md5sums_indoRNA.txt
+sort md5sums_indoRNA.txt > md5sums_indoRNA_sorted.txt
+
+# sort md5sum file from Macrogen and get total number of matching lines between our own MD5 sum file and Macrogen's MD5 sum file
+sort md5sums_Macrogen_sorted.txt > md5sums_Macrogen_sorted.txt
+awk 'FNR==NR { a[$1]; next } $1 in a { c++ } END { print c }' md5sums_indoRNA_sorted.txt md5sums_Macrogen_sorted.txt
+
+## FastQC
+
+For the first quality control step, FastQC was run in order to ensure there were no major problems in the data that might affect downstream analyses. 
+FastQC v0.11.5 for Linux was downlaoded from Babraham Bioninformatics: https://www.bioinformatics.babraham.ac.uk/projects/download.html#fastqc. FastQC quality check was performed on both globin-depleted (primary data) and globin samples (free, test data).
+
+On all samples, FastQC is run twice: once for an initial sample QC check and a second time after trimming. In this script, a summary file is also made from the FastQC output, however MultiQC is also used for summary information. 
+
+## Trimmomatic
+
+Trimmomatic, version 0.36, was downlaoded from binary at http://www.usadellab.org/cms/?page=trimmomatic. All information on parameters can be found in the Trimmomatic manual: http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/TrimmomaticManual_V0.32.pdf
+
+Leading and trailing bases are removed if below a quality of 20 and the minimum length is kept at 90 bp (i.e., in the Trimmomatic terminology: LEADING:20 TRAILING:20 MINLEN:90). 
+
+This script was run for all samples as an array script using sbatch. All shell scripts can be found on Spartan under the path '/data/cephfs/punim0586/kbobowik/Sumba/scripts/shell_scripts' with 'FastQC' and 'Trimmomatic' prefix.

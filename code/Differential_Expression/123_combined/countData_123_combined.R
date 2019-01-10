@@ -53,7 +53,7 @@ batch.col=electronic_night(n=3)
 # Set working directory
 setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/countData")
 
-# read in count files from featureCounts
+# read in count files from featureCounts. Here, I'm loading in files for all three batches.
 files=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba", pattern="Filter", full.names=T)
 files.secondbatch=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/second_batch", pattern="Filter", full.names=T)
 files.thirdbatch=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/third_batch", pattern="Filter", full.names=T)

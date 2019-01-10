@@ -22,16 +22,18 @@ for (name in covariate.names[1:17]){
 }
 # make sequencing pool into a factor instead of numeric
 y$samples$Sequencing.pool=as.factor(y$samples$Sequencing.pool)
-# cut Age, RIN, and library size and assign to variables
+
+## Covariate assignment: below, we want to assign all of our covariates to variables.
+# Age, RIN, and library size need to be broken up into chunks for easier visualisation of trends (for instance in Age, we want to see high age vs low age rather than the effect of every single age variable)
 Age <- cut(as.numeric(as.character(y$samples$Age)), c(14,24,34,44,54,64,74,84), labels=c("15-24","25-34", "35-44", "45-54", "55-64", "65-74", "75-84"))
 RIN <- cut(as.numeric(as.character(y$samples$RIN)), c(4.9,5.9,6.9,7.9,8.9), labels=c("5.0-5.9", "6.0-6.9", "7.0-7.9", "8.0-8.9"))
 lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,20000000,24000000), labels=c("8e+06-1.2e+07","1.2e+07-1.6e+07", "1.6e+07-2e+07", "2e+07-4.4e+07"))
-# add info for blood types
+# assign blood type information to variables
 for (name in covariate.names[c(11:16)]){
 assign(name, as.numeric(as.character(y$samples[[paste0(name)]])))
 }
 
-# get which samples are not numeric in y$samples and assign values to variables
+# Now do the rest- get which samples are not numeric in y$samples and assign values to variables
 nums=unlist(lapply(y$samples, is.numeric))
 # this looks confusing, but here we're getting variables that aren't numeric and subtracting the first two variables, which are files and group (which we don't need)
 covar.variables=c(colnames(y$samples[,!nums])[3:ncol(y$samples[,!nums])], "batch")
@@ -187,7 +189,38 @@ dev.off()
 # normalise gene-expression distribution -------------------------------------------------
 
 # eliminate composition bias between libraries by upper quartile normalisation (this will be used in the 'data exploration' step)
-y <- calcNormFactors(y, method="upperquartile")
+y <- calcNormFactors(y, method="TMM")
+
+# look at performance of normalisation
+# First, compare all three methods
+pdf("NormalisedGeneExpressionDistribution_IndoRNA_all3Methods.pdf", height=15, width=15)
+par(oma=c(2,0,0,0), mfrow=c(4,1))
+y2 <- y
+y2$samples$norm.factors <- 1
+lcpm <- cpm(y2, log=TRUE)
+boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+title(main="Unnormalised data",ylab="Log-cpm")
+for (method in c("upperquartile", "TMM", "RLE")) {
+  y2 <- calcNormFactors(y2, method="upperquartile")
+  lcpm <- cpm(y2, log=TRUE)
+  boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+  title(main=paste0("Normalised data ", method),ylab="Log-cpm")
+}
+dev.off()
+
+# now just plot how well TMM normalisation worked (since wqe like that one the best)
+pdf("NormalisedGeneExpressionDistribution_IndoRNA_TMM.pdf", height=15, width=15)
+par(oma=c(2,0,0,0), mfrow=c(2,1))
+y2 <- y
+y2$samples$norm.factors <- 1
+lcpm <- cpm(y2, log=TRUE)
+boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+title(main="A. Unnormalised data",ylab="Log-cpm")
+y2 <- calcNormFactors(y2, method="TMM")
+lcpm <- cpm(y2, log=TRUE)
+boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+title(main="B. Normalised data, TMM",ylab="Log-cpm")
+dev.off()
 
 # recalculate lcpm
 lcpm=cpm(y, log=T)

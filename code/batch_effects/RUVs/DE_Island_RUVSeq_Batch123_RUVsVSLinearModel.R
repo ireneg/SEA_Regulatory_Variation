@@ -164,7 +164,6 @@ for (i in 1:ncol(efit)){
 }
 dev.off()
 
-# let's get the genes in common at a 5% and 1% threshold
 
 
 

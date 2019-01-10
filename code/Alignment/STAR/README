@@ -1,0 +1,24 @@
+# Mapping Reads using STAR
+
+The scripts in this folder were made in order to map reads (post QC/trimming) to the human and plasmodium genome using the genome aligner STAR.
+
+Star version 2.5.3a was downloaded from github: https://github.com/alexdobin/STAR/releases. The STAR manual can be found here: http://labshare.cshl.edu/shares/gingeraslab/www-data/dobin/STAR/STAR.posix/doc/STARmanual.pdf
+
+Two-pass mapping parameters were followed as in GATK protocol for Calling Variants in RNASeq (https://software.broadinstitute.org/gatk/documentation/article.php?id=3891) as well as STAR manual: http://labshare.cshl.edu/shares/gingeraslab/www-data/dobin/STAR/STAR.posix/doc/STARmanual.pdf.
+
+## Human genome
+The human genome GrCh38, Ensembl release 90, was used for this analysis. The primary assembly was used, which contains all toplevel sequence regions excluding haplotypes and patches. 
+
+After generating the genome, an array table is made for all samples for the first pass. Here, we're aligning all trimmed reads from the trimmomatic output (see script QC_Pipeline_indoPapuanSamples.sh) to the human genome fasta file. 
+
+For the second pass, all of the SJ.out.tab files are combined from from all files created in first pass into one file (Followed as in google groups: https://groups.google.com/forum/#!msg/rna-star/9C3W_BMfGXM/-rg7C6HURHsJ)
+
+For the output, the bam file is filtered so that only uniquely mapped reads remain. This is used by removing all the bitwise flags of 0x100 (not uniquely mapped).
+
+## Plasmodium genome
+
+The plasmodium falciparum genome 3d7 (along with the GFF file GFF files) was downloaded from Plasmo DB: http://plasmodb.org/common/downloads/Current_Release/Pfalciparum3D7/fasta/data/PlasmoDB-36_Pfalciparum3D7_Genome.fasta
+
+The plasmodium vivax genome (P01) was also downloaded from Plasmos DBL http://plasmodb.org/common/downloads/Current_Release/PvivaxP01/fasta/data/PlasmoDB-36_PvivaxP01_Genome.fasta
+
+All scripts are run with sbatch and shell scripts for running this script on the server can be found on Spartan under '/data/cephfs/punim0586/kbobowik/Sumba/scripts/shell_scripts'.

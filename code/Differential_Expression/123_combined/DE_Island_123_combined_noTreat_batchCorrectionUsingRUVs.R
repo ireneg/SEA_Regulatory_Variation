@@ -9,18 +9,21 @@ source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scri
 # set working directory
 setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Island/RUVs")
 
-# perform DE using a Limma pipeline --------------------------------------------------------------------------------------------------
+# setup DGE list object --------------------------------------------------------------------------------------------------
 
 design <- model.matrix(~0 + Island + W_1 + W_2 + W_3 + W_4 + W_5, data=pData(set1))
 colnames(design)=gsub("Island", "", colnames(design))
 colnames(design)[3]="Mappi"
 z <- DGEList(counts=counts(set1), group=Island)
+# normalise data with UQ normalisation (as per previous method on seqExpressionSet object)
+z <- calcNormFactors(z, method="upperquartile")
 # add in genes to the DGEList for downstream use
 geneid <- rownames(z)
 genes <- select(Homo.sapiens, keys=geneid, columns=c("SYMBOL", "TXCHROM"), keytype="ENSEMBL")
 genes <- genes[!duplicated(genes$ENSEMBL),]
 z$genes <- genes
-z <- calcNormFactors(z, method="upperquartile")
+
+# stuff I'm not sure if I need --------------------------------------------------------------
 
 # look at performance of normalisation
 # Duplicate data, set normalisation back to 1, and plot difference between normalised and non-normalised data
@@ -70,13 +73,16 @@ pdf("plotBCV_NBDispersion.pdf")
 plotBCV(z)
 dev.off()
 
+# Linear modelling --------------------------------------------------------------------------
+
 # set up contrast matrix
 contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
 
-# now perform voom and see how it performs
+# now run voom and see how it performs
 pdf("Limma_voom_upperquartilenormalisation.pdf", height=8, width=15)
 par(mfrow = c(1,2))
 v <- voom(z, design, plot=TRUE)
+# fit linear models
 vfit <- lmFit(v, design)
 vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
 efit <- eBayes(vfit)
@@ -87,7 +93,7 @@ dev.off()
 dt <- decideTests(efit, p.value=0.01, lfc=1)
 write.table(summary(dt), file="numberSigDEgenes_RUVs_voom.txt")
 
-# for all contrasts, get names of significant genes.
+# for all contrasts, get names of significant genes
 pdf("MDPlot_housekeeping_TopGenes_FDRpval01_LFC01_.pdf", height=15,width=10)
 par(mfrow = c(3,1))
 for (i in 1:ncol(efit)){
@@ -95,7 +101,7 @@ for (i in 1:ncol(efit)){
     x <- efit$Amean
     m <- efit$coefficients[,i]
     t=which(names(efit$coefficients[,i]) %in% names(which(abs(dt[,i])==1)))
-    G <- z$genes[names(which(dt[,i]==1)),]$SYMBOL
+    G <- z$genes[names(which(abs(dt[,i]))==1),]$SYMBOL
     plotMD(efit, column=i, status=dt[,i], main=colnames(efit)[i], hl.col=c("blue","red"), values=c(-1,1))
     abline(h=c(1,-1), lty=2)
     legend(legend=paste(names(summary(dt)[,i]), summary(dt)[,i], sep="="), x="bottomright", border=F, bty="n")
@@ -155,7 +161,6 @@ de.common.MPI <- which(dt[,2]!=0 & dt[,3]!=0)
 # find out what these genes are doing
 commonGenes.MPI <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.MPI), filters="ensembl_gene_id")
 write.table(commonGenes.MPI, file="allCommonGenes_MPI.txt")
-
 
 # Let's see how the expression levels of each of our significant genes are distributed within each island. First, assign our top genes and ensembl IDs to variables
 topGenes=c("MARCO", "SIGLEC6", "SIGLEC7","SIGLEC14", "KLRF1", "IFI27", "RNF182", "MDGA1", "UTS2", "MYOM2", "LOC102724159")
