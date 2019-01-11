@@ -120,6 +120,3 @@ write.table(summary(vp2), file="summary_RUVs_VariancePartition.txt")
 #values = pvcaObj$dat
 #new_values = round(values , 3)
 #text(bp,pvcaObj$dat,labels = new_values, pos=3, cex = 0.8)
-
-
-# now with -------------------------------

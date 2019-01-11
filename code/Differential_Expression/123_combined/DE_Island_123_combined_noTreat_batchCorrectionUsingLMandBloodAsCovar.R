@@ -68,9 +68,7 @@ for (i in 1:ncol(efit)){
 }
 dev.off()
 
-# verify that my control genes are not significantly DE
-
-# Set up list of housekeeping genes as controls (from Eisenberg and Levanon, 2003)
+# Verify that control housekeeping genes are not significantly DE. Set up list of housekeeping genes as controls (from Eisenberg and Levanon, 2003)
 housekeeping=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/BatchEffects/Housekeeping_ControlGenes.txt", as.is=T, header=F)
 # if this is broken, use host = "uswest.ensembl.org"
 ensembl.mart.90 <- useMart(biomart='ENSEMBL_MART_ENSEMBL', dataset='hsapiens_gene_ensembl', host = 'www.ensembl.org', ensemblRedirect = FALSE)
@@ -78,14 +76,12 @@ biomart.results.table <- getBM(attributes = c('ensembl_gene_id', 'external_gene_
 hkGenes=as.vector(biomart.results.table[,1])
 hkControls=hkGenes[which(hkGenes %in% rownames(y$counts))]
 
-# volcano plot with points of housekeeping genes and male-specific, y chromsome genes
+# Volcano plot with points of housekeeping genes
 pdf("VolcanoPlots.pdf", height=15, width=10)
 par(mfrow=c(3,1))
 for (i in 1:ncol(efit)){
     plot(efit$coef[,i], -log10(as.matrix(efit$p.value)[,i]), pch=20, main=colnames(efit)[i], xlab="log2FoldChange", ylab="-log10(pvalue)")
     points(efit$coef[,i][which(names(efit$coef[,i]) %in% hkControls)], -log10(as.matrix(efit$p.value)[,i][which(names(efit$coef[,i]) %in% hkControls)]) , pch=20, col=4, xlab="log2FoldChange", ylab="-log10(pvalue)")
-    # text(efit$coef[,i][which(names(efit$coefficients[,i]) %in% names(which(abs(dt[,i])==1)))], -log10(as.matrix(efit$p.value)[,i][which(names(efit$coefficients[,i]) %in% names(which(abs(dt[,i])==1)))]), labels=names(which(abs(dt[,i])==1)))
-    # points(efit$coef[,i][which(names(efit$coef[,i]) %in% Ycontrols)], -log10(as.matrix(efit$p.value)[,i][which(names(efit$coef[,i]) %in% Ycontrols)]) , pch=20, col=2, xlab="log2FoldChange", ylab="-log10(pvalue)")
     legend("topleft", "genes", "hk genes",fill=4)
     abline(v=c(-1,1))
 }
@@ -93,13 +89,13 @@ dev.off()
 
 # PCA visualisation after correction and association with covariates ------------------------------------------------------------
 
-# let's also visualise how our PCAs look after limma correction by using removeBatcheffect. Help on design of removeBatcheffects given by John Blischak.
+# let's also visualise how our PCAs look after limma correction by using removeBatcheffect. Help on design of removeBatcheffects was given by the lovely John Blischak.
 design <- model.matrix(~0 + Island)
 colnames(design)=gsub("Island", "", colnames(design))
 colnames(design)[(3)]=c("Mappi")
 batch.corrected.lcpm <- removeBatchEffect(lcpm, batch=batch, covariates = cbind(y$samples$Age, y$samples$RIN, y$sample$CD8T, y$sample$CD4T, y$sample$NK, y$sample$Bcell, y$sample$Monoy$sample$Gran),design=design)
 
-# rename column names of lcpm
+# rename column names of lcpm to sample names (so that they are shorter and easier to read)
 colnames(lcpm)=samplenames
 
 # get which samples are replicates
@@ -157,13 +153,13 @@ for (name in covariate.names[c(1:10,17:18)]){
   }
 }
 
-# plot batch
+# plot batch (this has to be done separately since it ha sa different colour scheme)
 pdf(paste0("batchCorrected_pcaresults_batch.pdf"))
 name="batch"
 pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=batch.col[as.numeric(batch)],namesPch=as.numeric(y$samples$batch) + 14,sampleNames=batch)
 dev.off()
   
-# plot blood
+# plot blood - this one also has a differnet gradient colour scheme
 for (name in covariate.names[c(11:16)]){
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
@@ -176,7 +172,7 @@ for (name in covariate.names[c(11:16)]){
 all.pcs <- pc.assoc(pcaresults)
 all.pcs$Variance <- pcaresults$sdev^2/sum(pcaresults$sdev^2)
 
-# plot pca covariates association matrix to illustrate any potential confounding and evidence for batches
+# plot pca covariates association matrix to illustrate any remaining confounding/batch
 pdf("significantCovariates_AnovaHeatmap.pdf")
 pheatmap(all.pcs[1:5,c(3:20)], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
 dev.off()
@@ -221,14 +217,6 @@ for (i in 2:ncol(efit)){
 legend(x="topright", bty="n", col=1:ncol(efit), legend=colnames(efit), lty=1, lwd=2)
 dev.off()
 
-# Get top ten DE genes through topTable (FDR 0.01) with log fold change of one and save gene information to file
-for (i in 1:ncol(efit)){
-    # note 'p.value' is the cutoff value for adjusted p-values
-    topTable <- topTable(efit, coef=i, p.value=0.01, n=10, lfc=1, sort.by="p")
-    topGenes <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', 'go_id', 'name_1006'), mart = ensembl.mart.90,values=topTable$ENSEMBL, filters="ensembl_gene_id")
-    write.table(topGenes, file=paste0("top10_genes_",colnames(efit)[i],".txt"), quote=F, row.names=F)
-}
-
 # We can also look at the top ten DE genes with a heatmap of logCPM values for the top 100 genes. Each gene (or row) is scaled so that mean expression is zero and the standard deviation is one (we're using 'E' from the voom object which is a numeric matrix of normalized expression values on the log2 scale). Samples with relatively high expression of a given gene are marked in red and samples with relatively low expression are marked in blue. Lighter shades and white represent genes with intermediate expression levels. Samples and genes are reordered by the method of hierarchical clustering
 mycol <- colorpanel(1000,"blue","white","red")
 colors=c("steelblue","goldenrod1","red2")
@@ -240,9 +228,17 @@ for (i in 1:ncol(efit)){
         index <- which(v$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
         heatmap.2(v$E[index,], scale="row",labRow=v$genes$SYMBOL[index], labCol="", col=mycol, trace="none", density.info="none", margin=c(10,10), lhei=c(2,10), dendrogram="column", ColSideColors=cc, keysize=1, cexRow=1.5, main=colnames(efit)[i])
     }
-    # write out topTable genes for the whole gene list
-    write.table(topTable, file=paste0("topTable_",colnames(efit)[i],".txt"))
     dev.off()
+}
+
+
+# Get top DE genes through topTable (FDR 0.01) with log fold change of one and save gene information to file
+for (i in 1:ncol(efit)){
+    # note 'p.value' is the cutoff value for adjusted p-values
+    topTable <- topTable(efit, coef=i, p.value=0.01, n=Inf, lfc=1, sort.by="p")
+    topGenes <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', 'go_id', 'name_1006', "interpro","interpro_description"), mart = ensembl.mart.90,values=topTable$ENSEMBL, filters="ensembl_gene_id")
+    write.table(topGenes, file=paste0("top_genes_",colnames(efit)[i],".txt"), quote=F, row.names=F)
+    write.table(topTable, file=paste0("top_Table_",colnames(efit)[i],".txt"), quote=F, row.names=F)
 }
 
 # show the number of DE genes between all islands
@@ -250,31 +246,19 @@ pdf("vennDiagram_allSigDEGenes_pval01_FDR1.pdf", height=15, width=15)
 vennDiagram(dt[,1:3], circle.col=c("red", "blue", "green"))
 dev.off()
 
-# get DE genes in common with all islands
-de.common <- which(dt[,1]!=0 & dt[,2]!=0 & dt[,3]!=0)
+# get DE genes in common with populations compared to Mappi, i.e., SMBvsMPI and MTWvsMPI (since we think this is an interesting island comparison)
 de.common.MPI = which(dt[,2]!=0 & dt[,3]!=0)
+# get what these genes are doing and save them to a file
 commonGenes.MPI <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.MPI), filters="ensembl_gene_id")
 write.table(de.common.MPI, file="allCommonGenes_MPI.txt")
-common.genes=efit$genes[names(de.common.MPI),]
+# save the common gene names 
+de.common.MPI=efit$genes[names(de.common.MPI),]
 
 # top ranked genes -----------------------------------------------------------------------------------------
 
-# since populations compared to Mappi are the only populations with DE genes over a logFC of 1, we'll apply topTreat to get our top-ranked genes
-SMBvsMTW <- topTable(efit, coef=1, p.value=0.01, lfc=1, n=Inf)
-SMBvsMPI <- topTable(efit, coef=2, p.value=0.01, lfc=1, n=Inf)
-MTWvsMPI <- topTable(efit, coef=3, p.value=0.01, lfc=1, n=Inf)
-
-# Let's find out what these genes are doing
-SMBvsMTW.topGenes = getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', 'go_id', 'name_1006', "interpro","interpro_description"), mart = ensembl.mart.90,values=SMBvsMTW$ENSEMBL, filters="ensembl_gene_id")
-write.table(SMBvsMTW.topGenes, file="SMBvsMPI_topGenes.txt")
-SMBvsMPI.topGenes <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', 'go_id', 'name_1006', "interpro","interpro_description"), mart = ensembl.mart.90,values=SMBvsMPI$ENSEMBL, filters="ensembl_gene_id")
-write.table(SMBvsMPI.topGenes, file="SMBvsMPI_topGenes.txt")
-MTWvsMPI.topGenes <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', 'go_id', 'name_1006', "interpro","interpro_description"), mart = ensembl.mart.90,values=MTWvsMPI$ENSEMBL, filters="ensembl_gene_id")
-write.table(MTWvsMPI.topGenes, file="MTWvsMPI_topGenes.txt")
-
-# Let's see how the expression levels of some of our favourite/most significant genes are distributed within each island. First, assign our top genes and ensembl IDs to variables
-topGenes=common.genes[,2]
-topEnsembl=common.genes[,1]
+# Let's see how the expression levels of all of the significantly DE genes in population comparisons with Mappi are distributed within each island. First, assign our top genes and ensembl IDs to variables
+topGenes=de.common.MPI[,2]
+topEnsembl=de.common.MPI[,1]
 
 # To visualise distributions, we'll be making violin plots using ggpubr which needs p-value labels. Let's go ahead and make a matrix to input this into ggpubr
 # first set up matrix
@@ -295,7 +279,7 @@ topGenes.pvalue=formatC(topGenes.pvalue, format="e", digits=2, drop0trailing=T)
 # convert e notation to base 10 notation
 topGenes.pvalue=sub("e", "x10^", topGenes.pvalue)
 
-# finally, let's make the violin plots using fancy ggpubr
+# We can make the violin plots using ggpubr
 pdf("TopGenes_ggboxplot_Island.pdf", height=8, width=10)
 counter=0
 for(ensembl in topEnsembl){
@@ -306,6 +290,40 @@ for(ensembl in topEnsembl){
     print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=topGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
 }
 dev.off()
+
+# after analysing the distributions and reading up on some of the genes, my three favourite genes are Siglec6, Siglec7, and MARCO. Lets plot out the distribution solely for these three genes
+favGenes=c("SIGLEC6","SIGLEC7","MARCO")
+favEnsembl=de.common.MPI[,1][sapply(1:3, function(x)grep(favGenes[x],de.common.MPI[,2]))]
+
+# set up pvalue matrix
+topGenes.pvalue=matrix(nrow=length(favEnsembl), ncol=ncol(efit))
+rownames(topGenes.pvalue)=favEnsembl
+colnames(topGenes.pvalue)=colnames(efit)
+for (i in 1:ncol(efit)){
+    # get significant genes over a logFC of 1 for all Island comparisons
+    topTable <- topTable(efit, coef=i, n=Inf)
+    for(j in favEnsembl){
+        # input the adjusted p.value for each gene
+        topGenes.pvalue[j,i]=topTable[j,"adj.P.Val"]
+    }
+}
+
+# make pvalues into scientific notation with max 3 digits
+topGenes.pvalue=formatC(topGenes.pvalue, format="e", digits=2, drop0trailing=T)
+# convert e notation to base 10 notation
+topGenes.pvalue=sub("e", "x10^", topGenes.pvalue)
+
+# We can make the violin plots using ggpubr
+counter=0
+for(ensembl in favEnsembl){
+    counter=counter+1
+    pdf(paste0("FavouriteGenes_ggboxplot_",favGenes[counter],".pdf"), height=8, width=10)
+    gene.df <- data.frame(cpm(y$counts[which(y$genes$ENSEMBL==ensembl),],log=T),Island)
+    colnames(gene.df)=c("CPM", "Island")
+    annotation_df <- data.frame(start=c("Sumba","Sumba", "Mentawai"), end=c("Mentawai","West Papua","West Papua"), y=c(max(gene.df[,1]+4),max(gene.df[,1]+5),max(gene.df[,1]+6)), label=paste("limma p-value =",topGenes.pvalue[ensembl,],sep=" "))
+    print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=favGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
+    dev.off()
+}
 
 
 # Enrichment analysis for Gene Ontology ----------------------------------------------------------------------------------------------------
@@ -377,15 +395,35 @@ for(pop in 1:ncol(efit)){
 
 # Enrichment Visualisation ----------------------------------------------------------------------------------------------------
 
-
 # Having played around with many visualisation options, it seems as though using Revigo is the best and most user-friendly. Using the output from the GoSeq enriched Go results (FDR <0.05), we can plug our GO IDs into Revigo (http://revigo.irb.hr/) and then output this as an R script.
 # First save  output (remember that SMBvsMTW has no significantly enriched GO pathways so we'll only do this for SMBvsMPI and MTWvsMPI)  
 
+# Revigo for MTW vs MPI (pval of 0.05 FDR)
+# scatterplot
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/REVIGO/Limma/REVIGO-MTWvsMPI.r")
+# treemap
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/REVIGO/Limma/REVIGO_treemap-MTWvsMPI.r")
+
 # Revigo for SMB vs MPI (pval of 0.05 FDR)
-# source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/REVIGO/123_combined/REVIGO-SMBvsMPI.r")
+# scatterplot
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/REVIGO/Limma/REVIGO-SMBvsMPI.r")
+# treemap
+source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/REVIGO/Limma/REVIGO_treemap-SMBvsMPI.r")
 
-# Revigo for SMB vs MPI
-# source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/REVIGO/123_combined/REVIGO-MTWvsMPI.r")
+# Reactome ---------------------------------------------------------------------
 
-# writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
+# get what the top genes are doing from Reactome
+for (i in 1:ncol(efit)){
+    topTable <- topTable(efit, coef=i, p.value=0.01, lfc=1, n=Inf)
+    entrez=getBM(filters= "ensembl_gene_id", attributes= c("ensembl_gene_id", "entrezgene"),values= rownames(topTable),mart=ensembl.mart.90)
+    de <- entrez[,2]
+    x <- enrichPathway(gene=de,pvalueCutoff=0.05, readable=T)
+    if(nrow(x) > 0){
+        pdf(paste0("enriched_pathways_reactome_",colnames(efit)[i],"PopComparisons.pdf"), height=5, width=10)
+        print(barplot(x, showCategory=nrow(x), font.size = 8, title = colnames(efit)[i]))
+        dev.off()
+    }
+}
+
+writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
 
