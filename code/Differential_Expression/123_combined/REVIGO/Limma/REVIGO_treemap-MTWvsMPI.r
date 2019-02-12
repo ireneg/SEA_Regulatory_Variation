@@ -46,8 +46,8 @@ tmPlot(
 	vSize = "abslog10pvalue",
 	type = "categorical",
 	vColor = "representative",
-	title = "REVIGO Gene Ontology treemap",
-	inflate.labels = FALSE,      # set this to TRUE for space-filling group labels - good for posters
+	title = "Mentawai vs Mappi",
+	inflate.labels = F,      # set this to TRUE for space-filling group labels - good for posters
 	lowerbound.cex.labels = 0,   # try to draw as many labels as possible (still, some small squares may not get a label)
 	bg.labels = "#CCCCCCAA",     # define background color of group labels
 												       # "#CCCCCC00" is fully transparent, "#CCCCCCAA" is semi-transparent grey, NA is opaque

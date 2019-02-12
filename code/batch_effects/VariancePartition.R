@@ -9,12 +9,10 @@ library(pvca)
 cl <- makeCluster(4)
 registerDoParallel(cl)
 
-setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval/lmRUVcomparison")
+setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval/RUVvsLinearModel")
 
-# First, we need to test the regular linear model method implementing known covariates -----------------------------------
-
-# Perform TMM normalization
-y <- calcNormFactors(y, method="TMM")
+# Variance partition per variable ---------------------------------
+# First, using Limma implementing known covariates 
 
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
 y$samples$Age[which(is.na(y$samples$Age) == T)]=45
@@ -44,7 +42,7 @@ varPart1 <- fitExtractVarPartModel(v, form1, y$samples)
 vp1 <- sortCols(varPart1)
 
 # violin plot of contribution of each variable to total variance
-fig=plotVarPart(vp1)
+fig=plotVarPart(vp1, main="Limma")
 ggsave(file="totalVarianceContribution_lmModel_allVariables.pdf", fig)
 
 write.table(summary(vp1), file="summary_lmModel_VariancePartition.txt")
@@ -95,28 +93,32 @@ varPart2 <- fitExtractVarPartModel(v.ruv, form2, pData(set1))
 vp2 <- sortCols(varPart2)
 
 # violin plot of contribution of each variable to total variance
-fig2=plotVarPart(vp2)
+fig2=plotVarPart(vp2, main="RUVs")
 ggsave(file="totalVarianceContribution_RUVs_allVariables.pdf", fig2)
-
 write.table(summary(vp2), file="summary_RUVs_VariancePartition.txt")
 
+# Merge both and plot
+pdf(file="VarianceExplained_LMvsRUVs.pdf", height=10, width=15)
+ggarrange(fig, fig2, labels=c("A","B"))
+dev.off()
+
 # Now estimate the total variablity due to batch effects using PVCA -----------------------------------------------------
-# batch.dataframe=y$samples[,c(5,6,10,13,16:21)]
-# batch.dataframe[,3:10] <- lapply(batch.dataframe[,3:10], factor)
 
-# a=AnnotatedDataFrame(batch.dataframe)
-# b=new("ExpressionSet", exprs=lcpm, phenoData=a)
-# batch.factors <- colnames(a)
-# pct_threshold <- 0.6
-# pvcaObj <- pvcaBatchAssess(b, batch.factors, pct_threshold) 
+#data.lm=AnnotatedDataFrame(y$samples[,c(5,6,10,13,16:21)])
+#eset.X.lm=new("ExpressionSet", exprs=lcpm, phenoData=data.lm)
+#pvcaObj.lm <- pvcaBatchAssess(eset.X.lm, colnames(data.lm), 0.1)
 
-# note numeric doesn't work, must do as.factor
+#data.RUV=AnnotatedDataFrame(pData(set1))
+#eset.X.RUV=new("ExpressionSet", exprs=normCounts(set1), phenoData=data.RUV)
+#pvcaObj.RUVs <- pvcaBatchAssess(eset.X.RUV, c("Island", "W_1"), 0.6)
 
-# bp <- barplot(pvcaObj$dat,  xlab = "Effects",
+
+#bp <- barplot(pvcaObj.before$dat,  xlab = "Effects",
 #         ylab = "Weighted average proportion variance",
 #         ylim= c(0,1.1),col = c("blue"), las=2,
 #         main="LM Variance Estimation")
-#axis(1, at = bp, labels = pvcaObj$label, xlab = "Effects", cex.axis = 0.5, las=2)
+##axis(1, at = bp, labels = pvcaObj.before$label, xlab = "Effects", cex.axis = 0.5, las=2)
 #values = pvcaObj$dat
 #new_values = round(values , 3)
 #text(bp,pvcaObj$dat,labels = new_values, pos=3, cex = 0.8)
+

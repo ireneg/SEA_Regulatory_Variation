@@ -17,7 +17,12 @@ lightcolors=c("thistle", "darkblue")
 # identify which samples are replicated
 allreplicated=as.factor(samplenames %in% allreps)
 
-# this is the hacked code of the plotPCA package in RUVseq. We'll need this tpo make various PCA plots
+# exploratory analysis -----------------------------------------------------------------
+
+# RUVSeq works with a genes-by-samples numeric matrix or a SeqExpressionSet object containing read counts. Let's set up a SeqExpressionSet with our counts matrix
+set <- newSeqExpressionSet(as.matrix(y$counts), phenoData = data.frame(Island, row.names=colnames(y)))
+
+# Set up PCA function. This is the hacked code of the plotPCA package in RUVseq. We'll need this to make various PCA plots
 hackedPCA=function(object,pc1,pc2,pch,color){
     logTransform <- apply(log(object+1), 1, function(y) scale(y, center=TRUE, scale=FALSE))
     s <- svd(logTransform)
@@ -29,11 +34,6 @@ hackedPCA=function(object,pc1,pc2,pch,color){
     points(s$u[,pc1][which(allreplicated==T)], s$u[,pc2][which(allreplicated==T)], col="black", pch=8, cex=1)
     text(s$u[,pc1][which(allreplicated==T)], s$u[,pc2][which(allreplicated==T)], labels=samplenames[which(allreplicated==T)], pos=1, cex=0.8)
 }
-
-# exploratory analysis -----------------------------------------------------------------
-
-# RUVSeq works with a genes-by-samples numeric matrix or a SeqExpressionSet object containing read counts. Let's set up a SeqExpressionSet with our counts matrix
-set <- newSeqExpressionSet(as.matrix(y$counts), phenoData = data.frame(Island, row.names=colnames(y)))
 
 # Normalisation can be performed using "median","upper", or "full", however when passing to edgeR's normalisation method (below), the only options are "TMM","RLE", and "upperquartile". In order to keep consistency, we'll go ahead and choose the "upper" method, since it's in both.
 # check normalisation before and after performing upper qiuartile normalisation

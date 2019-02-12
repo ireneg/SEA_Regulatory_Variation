@@ -101,7 +101,7 @@ for (i in 1:ncol(efit)){
     x <- efit$Amean
     m <- efit$coefficients[,i]
     t=which(names(efit$coefficients[,i]) %in% names(which(abs(dt[,i])==1)))
-    G <- z$genes[names(which(abs(dt[,i]))==1),]$SYMBOL
+    G <- z$genes[which(abs(dt[,i])==1),]$SYMBOL
     plotMD(efit, column=i, status=dt[,i], main=colnames(efit)[i], hl.col=c("blue","red"), values=c(-1,1))
     abline(h=c(1,-1), lty=2)
     legend(legend=paste(names(summary(dt)[,i]), summary(dt)[,i], sep="="), x="bottomright", border=F, bty="n")

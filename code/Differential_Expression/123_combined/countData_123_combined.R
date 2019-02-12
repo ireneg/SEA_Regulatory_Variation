@@ -120,3 +120,6 @@ par(oma=c(2,0,0,0))
 barplot(apply(y$counts, 2, function(c)sum(c!=0)),main="Number of Genes \n pre-Filtering", ylab="n Genes", cex.names=0.75, col=batch.col[y$samples$batch], names=samplenames, las=3, ylim=c(0,max(apply(y$counts, 2, function(c)sum(c!=0)))+3000))
 legend(x="topright", col=batch.col[unique(y$samples$batch)], legend=c("first batch", "second batch", "third batch"), pch=15, cex=0.8)
 dev.off()
+
+# save unfiltered counts file
+saveRDS(y$counts, file = "unfiltered_counts.rds")

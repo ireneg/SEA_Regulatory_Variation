@@ -57,6 +57,7 @@ one.x_range = max(one.data$plot_X) - min(one.data$plot_X);
 one.y_range = max(one.data$plot_Y) - min(one.data$plot_Y);
 p1 <- p1 + xlim(min(one.data$plot_X)-one.x_range/10,max(one.data$plot_X)+one.x_range/10);
 p1 <- p1 + ylim(min(one.data$plot_Y)-one.y_range/10,max(one.data$plot_Y)+one.y_range/10);
+p1 <- p1 + ggtitle("Mentawai vs Mappi")
 
 
 

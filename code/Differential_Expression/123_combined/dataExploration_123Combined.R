@@ -171,74 +171,80 @@ dev.off()
 
 # analyse sample variation
 island=c("MTW", "SMB","MPI")
-village=c("MPI", "MDB", "TLL", "ANK", "WNG")
+village=c("MPI", "MDB", "TLL", "ANK", "WNG","OTHR")
 
-#for (method in c("spearman", "pearson")){
-#    correlation=cor(lcpm,method=method)
-#    # samples from same village
-#    withinVillage=list()
-#    for (sample in village){
-#        corLcpm=correlation[grepl(sample,rownames(correlation)),grepl(sample,colnames(correlation))]
-#        diag(corLcpm)=NA
-#        allCPM=melt(corLcpm)
-#        allCPM$value[duplicated(allCPM$value)]=NA
-#        withinVillage[[sample]]=allCPM[,3]
-#    }
-#    pdf(paste0("IslandVariation_",method,".pdf"),height=15, width=15)
-#    par(mai=rep(0.5, 4))
-#    layout(matrix(c(1,2,3,3), ncol = 2, byrow = TRUE))
-#    withinIsland=list()
-#    variation=list()
-#    for (sample in island){
-#        corLcpm=correlation[grepl(sample,rownames(correlation)),grepl(sample,colnames(correlation))]
-#        diag(corLcpm)=NA
-#        allCPM=melt(corLcpm)
-#        allCPM$value[duplicated(allCPM$value)]=NA
-#        withinIsland[[sample]]=allCPM[,3]
-#        sampVar=allCPM[which(abs(scale(allCPM[,3])) > 3),]
-#        if (nrow(sampVar) > 0) {
-#            variation[[sample]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
-#        }
-#    }
-#    boxplot(withinIsland, main=paste("Within-Island Variation",method,sep="\n"))
-#    stripchart(withinIsland, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=c(1,2,3))
-#    sapply(1:2, function(x) text(x=x, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
-#        
-#    # Inter island
-#    interIsland <- list()
-#    variation=list()
-#    island2 <- island
-#    for (i1 in island) {
-#        island2 <- island2[-1]
-#        for (i2 in island2) {
-#            corLcpm=correlation[grepl(i1,rownames(correlation)),grepl(i2,colnames(correlation))]
-#            diag(corLcpm)=NA
-#            allCPM=melt(corLcpm)
-#            allCPM$value[duplicated(allCPM$value)]=NA
-#            interIsland[[paste(i1,"vs",i2,sep="_")]]=allCPM[,3]
-#            sampVar=allCPM[which(abs(scale(allCPM[,3])) > 3),]
-#            if (nrow(sampVar) > 0) {
-#                if (i2=="MPI"){
-#                    variation[[paste(i1,"vs",i2,sep="_")]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 2), sep="vs"))
-#                } else {
-#                    variation[[paste(i1,"vs",i2,sep="_")]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
-#        }
-#        }
-#        }
-#    }
-#    boxplot(interIsland, main=paste("Inter-Island Variation",method,sep="\n"))
-#    stripchart(interIsland, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=c(4,5,7))
-#    sapply(1:3, function(x) text(x=x, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
-##
-#   # melt all three dataframes
-#    withinIsland.melt=melt(withinIsland)[,1]
-#    interIsland.melt=melt(interIsland)[,1]
+for (method in c("spearman", "pearson")){
+    correlation=cor(lcpm,method=method)
+    other=c("BKB", "HPM","PDT", "PTB", "RIN", "WHB")
+    colnames(correlation)=gsub(paste(other, collapse="|"), "OTHR", colnames(correlation))
+    rownames(correlation)=gsub(paste(other, collapse="|"), "OTHR", rownames(correlation))
+    # samples from same village
+    withinVillage=list()
+    for (sample in village){
+        corLcpm=correlation[grepl(sample,rownames(correlation)),grepl(sample,colnames(correlation))]
+        diag(corLcpm)=NA
+        allCPM=melt(corLcpm)
+        allCPM$value[duplicated(allCPM$value)]=NA
+        withinVillage[[sample]]=allCPM[,3]
+    }
+    pdf(paste0("IslandVariation_",method,".pdf"),height=15, width=15)
+    par(mai=rep(0.5, 4))
+    layout(matrix(c(1,2,3,3), ncol = 2, byrow = TRUE))
+    withinIsland=list()
+    variation=list()
+    for (sample in island){
+        corLcpm=correlation[grepl(sample,rownames(correlation)),grepl(sample,colnames(correlation))]
+        diag(corLcpm)=NA
+        allCPM=melt(corLcpm)
+        allCPM$value[duplicated(allCPM$value)]=NA
+        withinIsland[[sample]]=allCPM[,3]
+        sampVar=allCPM[which(abs(scale(allCPM[,3])) > 3),]
+        if (nrow(sampVar) > 0) {
+            variation[[sample]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
+        }
+    }
+    boxplot(withinIsland, main=paste("Within-Island Variation",method,sep="\n"))
+    stripchart(withinIsland, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=c(1,2,3))
+    # sapply(1:2, function(x) text(x=x, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
+        
+    # Inter island
+    interIsland <- list()
+    variation=list()
+    island2 <- island
+    for (i1 in island) {
+        island2 <- island2[-1]
+        for (i2 in island2) {
+            corLcpm=correlation[grepl(i1,rownames(correlation)),grepl(i2,colnames(correlation))]
+            diag(corLcpm)=NA
+            allCPM=melt(corLcpm)
+            allCPM$value[duplicated(allCPM$value)]=NA
+            interIsland[[paste(i1,"vs",i2,sep="_")]]=allCPM[,3]
+            sampVar=allCPM[which(abs(scale(allCPM[,3])) > 3),]
+            if (nrow(sampVar) > 0) {
+                if (i2=="MPI"){
+                    variation[[paste(i1,"vs",i2,sep="_")]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 2), sep="vs"))
+                } else {
+                    variation[[paste(i1,"vs",i2,sep="_")]]=transform(sampVar, names=paste(sapply(strsplit(as.character(sampVar[,1]),"[-.]"), `[`, 3), sapply(strsplit(as.character(sampVar[,2]),"[-.]"), `[`, 3), sep="vs"))
+                }
+            }
+        }
+    }
+    boxplot(interIsland, main=paste("Inter-Island Variation",method,sep="\n"))
+    stripchart(interIsland, vertical=T, method = "jitter", add = TRUE, pch = 20, cex=2, col=c(4,5,7))
+    #sapply(1:3, function(x) text(x=x, y=variation[[x]][,3], labels=as.character(variation[[x]][1:nrow(variation[[x]]),4]), cex=0.8, pos=1))
 
-#    meta=list(withinVillage.melt, withinIsland.melt, interIsland.melt)
-#    names(meta)=c("withinVillage", "withinIsland", "interIsland")
-#    boxplot(meta, main=paste("Sample Correlation",method,sep="\n"))
-#    dev.off()
-#}
+   # melt all three dataframes
+    withinIsland.melt=melt(withinIsland)[,1]
+    interIsland.melt=melt(interIsland)[,1]
+    withinVillage.melt=melt(withinVillage)[,1]
+
+    meta=list(withinVillage.melt, withinIsland.melt, interIsland.melt)
+    names(meta)=c("withinVillage", "withinIsland", "interIsland")
+    boxplot(meta, main=paste("Sample Correlation",method,sep="\n"))
+    dev.off()
+}
+
+# object 'withinVillage.melt' not found
 
 # look for sample outliers from PCA
 pca.outliers.final=matrix(nrow=0, ncol=3)
