@@ -11,18 +11,27 @@ setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Outpu
 # MDS
 pdf("indoRNA_MDS_123Combined_allCovariates.pdf", height=30, width=25)
 par(mfrow=c(5,4))
-for (name in covariate.names[c(1:10,17:18)]) {
+for (name in colnames(Filter(is.factor,y$samples))[-c(1,2)]) {
     plotMDS(lcpm, labels=get(name), col=as.numeric(get(name)))
     title(main=name)
 }
-# plot blood separately
+# plot batch separately (this has its own colouring scheme)
 plotMDS(lcpm, labels=batch, col=batch.col[as.numeric(batch)])
 title(main="batch")
+# plot blood (this is a gradient colouring scheme)
 for (name in covariate.names[c(11:16)]) {
     # assign gradient colours for blood cell types
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
     plotMDS(lcpm, labels=get(name), col=bloodCol)
+    title(main=name)
+}
+# plot PF and VX load info
+for (name in covariate.names[grep("reads", covariate.names)]){
+    # assign gradient colours for load intensity
+    initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
+    plasmoCol <- colorRampPalette(c("blue", "red"))(79)[initial]
+    plotMDS(lcpm, labels=get(name), col=plasmoCol)
     title(main=name)
 }
 dev.off()
@@ -43,8 +52,8 @@ plot.pca <- function(dataToPca, speciesCol, namesPch, sampleNames){
         plot(pca$x[,pca_axis1], pca$x[,pca_axis2], col=speciesCol, pch=namesPch, cex=2, xlab=paste0("PC", pca_axis1, " (", round(pca.var[pca_axis1]*100, digits=2), "% of variance)"), ylab=paste0("PC", pca_axis2, " (", round(pca.var[pca_axis2]*100, digits=2), "% of variance)", sep=""), main=name)
         points(pca$x[,pca_axis1][which(allreplicated==T)], pca$x[,pca_axis2][which(allreplicated==T)], col="black", pch=8, cex=2)
         text(pca$x[,pca_axis1][which(allreplicated==T)], pca$x[,pca_axis2][which(allreplicated==T)], labels=samplenames[which(allreplicated==T)], pos=3)
-        legend(legend=unique(sampleNames), pch=16, x="bottomright", col=unique(speciesCol), cex=0.6, title=name, border=F, bty="n")
-        legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
+        #legend(legend=unique(sampleNames), pch=16, x="bottomright", col=unique(speciesCol), cex=0.6, title=name, border=F, bty="n")
+        #legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
     }
 
     return(pca)
@@ -70,10 +79,10 @@ pc.assoc <- function(pca.data){
 }
 
 # Prepare covariate matrix
-all.covars.df <- y$samples[,c(3,5:22)] 
+all.covars.df <- y$samples[,c(3,5:ncol(y$samples))] 
 
 # Plot PCA
-for (name in covariate.names[c(1:10,17:18)]){
+for (name in colnames(Filter(is.factor,y$samples))[-c(1,2)]){
   if (nlevels(get(name)) < 26){
     pdf(paste0("pcaresults_",name,".pdf"))
     pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
@@ -97,9 +106,21 @@ for (name in covariate.names[c(11:16)]){
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
     pdf(paste0("pcaresults_",name,".pdf"))
     pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=bloodCol,namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
+    legend(legend=c("High","Low"), pch=16, x="bottomright", col=c(bloodCol[which.max(get(name))], bloodCol[which.min(get(name))]), cex=0.6, title=name, border=F, bty="n")
+    legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
     dev.off()
 }
 
+# plot VX and PF load
+for (name in covariate.names[grep("reads", covariate.names)]){
+    initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
+    plasmoCol <- colorRampPalette(c("blue", "red"))(79)[initial]
+    pdf(paste0("pcaresults_",name,".pdf"))
+    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=plasmoCol,namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
+    legend(legend=c("High","Low"), pch=16, x="bottomright", col=c(plasmoCol[which.max(get(name))], plasmoCol[which.min(get(name))]), cex=0.6, title=name, border=F, bty="n")
+    legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
+    dev.off()
+}
 
 # Get PCA associations
 all.pcs <- pc.assoc(pcaresults)
@@ -107,23 +128,14 @@ all.pcs$Variance <- pcaresults$sdev^2/sum(pcaresults$sdev^2)
 
 # plot pca covariates association matrix to illustrate any potential confounding and evidence for batches
 pdf("significantCovariates_AnovaHeatmap.pdf")
-pheatmap(all.pcs[1:5,c(3:20)], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
+pheatmap(all.pcs[1:5,c(3:ncol(all.pcs)-1)], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
 dev.off()
 
 # Write out the covariates:
-write.table(all.pcs, file="pca_covariates_blood.txt", col.names=T, row.names=F, quote=F, sep="\t")
-
-# Getting the loadings and top genes:
-geneLoadings <- as.data.frame(pcaresults$rotation)
-# get loadings for PCAs 1:10
-for (i in 1:10){
-    absLoadings=geneLoadings[order(-abs(geneLoadings[i])),][1:100,]
-    assign(paste0("topGenes_",i), rownames(absLoadings))
-    write.table(absLoadings, file=paste0("Top_100_absolute_loadings_PCA",i,".txt"), quote=F, row.names=T, col.names=T)
-}
+write.table(all.pcs, file="pca_covariates_significanceLevels.txt", col.names=T, row.names=F, quote=F, sep="\t")
 
 # Get relationship of all covariates
-new_cov=apply(covariates[2:11], 2, FUN=function(x){x=as.numeric(as.factor(x))})
+new_cov=apply(covariates[2:ncol(covariates)], 2, FUN=function(x){x=as.numeric(as.factor(x))})
 pdf("covariateHeatmap.pdf", height=10, width=15)
 pheatmap(t(new_cov),cluster_col=FALSE,cluster_rows=FALSE, labels_col=covariates[,1], colorRampPalette(rev(brewer.pal(n=10,name="Spectral")))(100),cex=1.1, main="Covariates")
 dev.off()
@@ -134,37 +146,23 @@ samplenames[104:123]=sapply(samplenames[104:123],function(x)sub("([[:digit:]]{3,
 colnames(lcpm)=make.unique(samplenames)
 
 # Dissimilarity matrix with euclidean distances
-pdf("SampleDistances.pdf", height=10, width=15)
-par(mar=c(6.1,4.1,4.1,2.1), mfrow=c(2,1))
+pdf("SampleDistances_Euclidean.pdf", height=8, width=15)
+par(mar=c(6.1,4.1,4.1,2.1))
 eucl.distance <- dist(t(lcpm), method = "euclidean")
 eucl.cluster <- hclust(eucl.distance, method = "complete")
 dend.eucl=as.dendrogram(eucl.cluster)
 labels_colors(dend.eucl)=as.numeric(Island)[order.dendrogram(dend.eucl)]
 plot(dend.eucl, main="log2-CPM \n Euclidean Distances")
-
-# Manhattan distance
-par(mar=c(6.1,4.1,4.1,2.1))
-manht.distance <- dist(t(lcpm), method = "manhattan")
-manht.cluster <- hclust(manht.distance, method = "complete" )
-dend.manht=as.dendrogram(manht.cluster)
-labels_colors(dend.manht)=as.numeric(Island)[order.dendrogram(dend.manht)]
-plot(dend.manht, main="log2-CPM \n Manhattan Distances")
 dev.off()
 
-## Heatmap annotation
-
-# old annotation
-# df=data.frame(island = as.character(Island), batch = as.numeric(batch))
-# ha = HeatmapAnnotation(df = df, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3), batch = c("1" = 5, "2" = 6, "3" = 7)))
-# Heatmap(cor(lcpm,method="spearman"), col=viridis(100), column_title = "Spearman Correlation \n log2-CPM", name="Corr Coefficient", top_annotation = ha)
-
+# Heatmap of lcpm distances
 # set up annotation
 df1=data.frame(island = as.character(Island))
 df2=data.frame(batch = as.numeric(batch))
 ha1 = HeatmapAnnotation(df = df1, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3)))
 ha2 = rowAnnotation(df = df2, col= list(batch=c("1" = batch.col[1], "2" = batch.col[2], "3" = batch.col[3])))
 
-# lcpm distances
+# plot
 pdf("lcpmCorrelationHeatmaps.pdf", height=10, width=15)
 Heatmap(cor(lcpm,method="pearson"), col=magma(100), column_title = "Pearson Correlation \n log2-CPM", name="Corr Coeff", top_annotation = ha1, show_row_names = FALSE, column_names_gp=gpar(fontsize = 8)) + ha2
 dev.off()
@@ -244,8 +242,6 @@ for (method in c("spearman", "pearson")){
     dev.off()
 }
 
-# object 'withinVillage.melt' not found
-
 # look for sample outliers from PCA
 pca.outliers.final=matrix(nrow=0, ncol=3)
 
@@ -277,15 +273,11 @@ dev.off()
 island=c("MPI","MTW","SMB")
 rv=list()
 i=0
-pdf("geneVariance.pdf")
-plot(0,0,type="n",xlim=c(0.5,3.5), ylim=c(0,20),  xaxt = 'n', xlab ="", ylab = "log2-CPM",  main ="Gene Varaince by Island")
 for (sample in island){
     i=i+1
     rv[[sample]]=rowVars(lcpm[,grepl(sample, colnames(lcpm))])
     names(rv[[sample]])=rownames(lcpm)
-    vioplot(rv[[sample]], at=i, add=T, col = c(1:3)[i])
 }
-dev.off()
 
 # let's look at the correlation of gene variance by all population pairs
 pdf("geneVariance_correlationbyIsland_Pearson.pdf")

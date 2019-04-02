@@ -12,34 +12,39 @@ setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Outpu
 
 # reorder covariates by sequencing batch
 covariates=covariates[order(covariates$Sequencing.Batch),]
+# make sure all names in files are within the covariate matrix
 all(samplenames == covariates[,1])
 # TRUE
 
+# add in sick sample information. We can first read in the sick metadata which was generated in the script "indoRNA_DEAnalysis_STAR_HealthyvsSickMappi.R".
+malaria.metadata=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Sick/Malaria_summary_table.txt", sep="\t", header=T)
+# add in malaria information
+covariates$microscopy.pos=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"microscopy"]
+covariates$PCR.pos=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"PCR"]
+covariates$high.pf.reads=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"all.reads.pf"]
+covariates$high.vx.reads=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"all.reads.vx"]
+covariates$high.pf.reads.unmapped=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"unmapped.reads.pf"]
+covariates$high.vx.reads.unmapped=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"unmapped.reads.vx"]
+
 # Assign covariates to DGE list
-covariate.names = c(colnames(covariates)[c(2,3,5:12,14:20)], "lib.size", "batch")
-for (name in covariate.names[1:17]){
+# subtract variables we don't need
+subtract=c("Sample.ID", "Kabisu.Ethnicity","Sequencing.Batch")
+# get index of unwanted variables
+subtract=which(colnames(covariates) %in% subtract)
+# subtract unwanted variables and add in library size and batch variables
+covariate.names = c(colnames(covariates)[-subtract], "lib.size", "batch")
+# assign covariates to DGE list. Library size and batch are already assigned so subtract these from the loop.
+for (name in head(covariate.names, -2)){
   y$samples[[paste0(name)]]<- covariates[,name]
 }
-# make sequencing pool into a factor instead of numeric
-y$samples$Sequencing.pool=as.factor(y$samples$Sequencing.pool)
 
-## Covariate assignment: below, we want to assign all of our covariates to variables.
-# Age, RIN, and library size need to be broken up into chunks for easier visualisation of trends (for instance in Age, we want to see high age vs low age rather than the effect of every single age variable)
-Age <- cut(as.numeric(as.character(y$samples$Age)), c(14,24,34,44,54,64,74,84), labels=c("15-24","25-34", "35-44", "45-54", "55-64", "65-74", "75-84"))
-RIN <- cut(as.numeric(as.character(y$samples$RIN)), c(4.9,5.9,6.9,7.9,8.9), labels=c("5.0-5.9", "6.0-6.9", "7.0-7.9", "8.0-8.9"))
-lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,20000000,24000000), labels=c("8e+06-1.2e+07","1.2e+07-1.6e+07", "1.6e+07-2e+07", "2e+07-4.4e+07"))
-# assign blood type information to variables
-for (name in covariate.names[c(11:16)]){
-assign(name, as.numeric(as.character(y$samples[[paste0(name)]])))
-}
-
-# Now do the rest- get which samples are not numeric in y$samples and assign values to variables
-nums=unlist(lapply(y$samples, is.numeric))
-# this looks confusing, but here we're getting variables that aren't numeric and subtracting the first two variables, which are files and group (which we don't need)
-covar.variables=c(colnames(y$samples[,!nums])[3:ncol(y$samples[,!nums])], "batch")
+# Make sure all covariates in y$samples are the appropriate structure. This is important, as it affects the linear model and ANOVA tests
+# Get variables that aren't numeric and transform them into factors. Batch is considered numeric (which we want to change), so we'll also add this into our make.factor vector
+which.numeric=unlist(lapply(y$samples, is.numeric))
+make.factor=c(colnames(y$samples[,!which.numeric])[3:ncol(y$samples[,!which.numeric])], "batch")
         
-# assign values to other covariate names
-for (name in covar.variables){
+# assign variables and make y-samples metadata into appropriate structure
+for (name in make.factor){
   if(sum(is.na(y$samples[[name]])) > 0){
     y$samples[[paste0(name)]]=assign(name, as.factor(addNA(y$samples[[paste0(name)]])))
   }
@@ -48,9 +53,25 @@ for (name in covar.variables){
   }
 }
 
+## Covariate assignment: below, we want to assign all of our covariates to variables.
+# Age, RIN, and library size need to be broken up into chunks for easier visualisation of trends (for instance in Age, we want to see high age vs low age rather than the effect of every single age variable)
+Age <- cut(as.numeric(as.character(y$samples$Age)), c(14,24,34,44,54,64,74,84), labels=c("15-24","25-34", "35-44", "45-54", "55-64", "65-74", "75-84"))
+RIN <- cut(as.numeric(as.character(y$samples$RIN)), c(4.9,5.9,6.9,7.9,8.9), labels=c("5.0-5.9", "6.0-6.9", "7.0-7.9", "8.0-8.9"))
+lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,20000000,24000000), labels=c("8e+06-1.2e+07","1.2e+07-1.6e+07", "1.6e+07-2e+07", "2e+07-4.4e+07"))
+
+# assign blood type information to variables
+for (name in covariate.names[c(11:16)]){
+assign(name, as.numeric(as.character(y$samples[[paste0(name)]])))
+}
+
+# assign PF and VX load information
+for (name in covariate.names[grep("reads", covariate.names)]){
+  assign(name, as.numeric(as.character(y$samples[[paste0(name)]])))
+}
+
 # Perform rarefaction curves for number of expressed genes vs. proportion of pool mRNA (as in Ramskold D, Wang ET, Burge CB, Sandberg R. 2009. An abundance of ubiquitously expressed genes revealed by tissue transcriptome sequence data. PLoS Comput Biol 5:e1000598)
 pdf("rarefactionCurves_indoRNA_123Combined.pdf")
-for (name in covariate.names[c(1:10,17,18)]) {
+for (name in colnames(Filter(is.factor,y$samples))[-c(1,2)]) {
   plot(1:length(y$counts[,1]), cumsum(sort(y$counts[,1], decreasing=T)/sum(y$counts[,1])), log="x", type="n", xlab="Number of genes", ylab="Fraction of reads pool", ylim=c(0,1), main=name) ## initialize the plot area
   counter=0
   for (sample in colnames(y)){
@@ -61,7 +82,7 @@ for (name in covariate.names[c(1:10,17,18)]) {
   levels[which(is.na(levels))] = "NA"
   legend(x="bottomright", bty="n", col=1:length(levels(get(name))), legend=levels, lty=1, lwd=2)
 }
-# add in batch
+# add in batch (we do this separately since it has a different colour)
 plot(1:length(y$counts[,1]), cumsum(sort(y$counts[,1], decreasing=T)/sum(y$counts[,1])), log="x", type="n", xlab="Number of genes", ylab="Fraction of reads pool", ylim=c(0,1), main="batch") ## initialize the plot area
 counter=0
 for (sample in colnames(y)){
@@ -80,10 +101,6 @@ cpm <- cpm(y)
 lcpm <- cpm(y, log=TRUE)
 
 # replicate analysis -----------------------------------------------------------------------------------
-
-# reset samplenames 
-samplenames=sapply(strsplit(colnames(y),"[_.]"), `[`, 1)
-samplenames[104:123]=sapply(samplenames[104:123],function(x)sub("([[:digit:]]{3,3})$", "-\\1", x))
 
 # set replicate names and rename lcpm columns
 allreps=covariates[,1][which(covariates$replicate)]
@@ -117,9 +134,30 @@ dev.off()
 
 # Removal of lowly-expressed genes -------------------------------------------------------------------------------
 
-# a gene is only retained if it is expressed at log-CPM > 1 in at least half of the libraries
-keep.exprs <- rowSums(lcpm>1) >= (nrow(y$samples)*0.5)
-y <- y[keep.exprs,, keep.lib.sizes=FALSE]
+# get histogram of number of genes expressed at log2 cpm > 0.5 and 1 (before filtering)
+pdf("lcpm_preFiltering_Histogram.pdf_cpm1.pdf", height=10, width=15)
+par(mfrow=c(1,2))
+hist(rowSums(lcpm>0.5), main= "Genes expressed at log2 cpm over 0.5 \n pre-filtering", xlab="samples", col=4, ylim=c(0,16000))
+hist(rowSums(lcpm>1), main= "Genes expressed at log2 cpm over 1 \n pre-filtering", xlab="samples", col=5, ylim=c(0,16000))
+dev.off()
+
+# a gene is only retained if it is expressed at a CPM > 1 in at least half of the group (i.e., in half of MPI, half of SMB, or half of MTW)
+
+# Extract CPM information for each village
+cpm_SMB <- cpm[,grep("SMB",colnames(cpm))]
+cpm_MPI <- cpm[,grep("SMB",colnames(cpm))]
+cpm_MTW <- cpm[,grep("MTW",colnames(cpm))]
+
+# set keep threshold to only retain genes that are expressed at or over a CPPM of one in at least half of the group
+keep.SMB <- rowSums(cpm_SMB>1) >= (length(grep("SMB",rownames(y$samples)))*0.5)
+keep.MPI <- rowSums(cpm_MPI>1) >= (length(grep("MPI",rownames(y$samples)))*0.5)
+keep.MTW <- rowSums(cpm_MTW>1) >= (length(grep("MTW",rownames(y$samples)))*0.5)
+
+# Keep genes that have a CPM >= 1 in at least half of the samples within one of the comparison groups
+keep <- keep.SMB | keep.MPI | keep.MTW
+y <- y[keep,, keep.lib.sizes=FALSE]
+dim(y)
+# [1] 12975   123
 
 # Visualise library size after filtering with barplots
 pdf("librarySize_indoRNA_postFiltering_123Combined.pdf", height=10, width=15)
@@ -158,7 +196,14 @@ for (i in 2:nsamples){
 legend("topright", legend=c("First Batch","Second Batch", "Third Batch"), ncol=1, cex=0.8, text.col=batch.col[unique(y$samples$batch)], bty="n")
 dev.off()
 
-# replicate analysis after removal of lowl-expressed genes ----------------------------------------------------------------
+# get histogram of lcpm
+pdf("lcpm_postFiltering_Histogram.pdf", height=10, width=15)
+par(mfrow=c(1,2))
+hist(rowSums(lcpm>0.5), main= "Genes expressed at log2 cpm over 0.5 \n post-filtering", xlab="samples", col=4)
+hist(rowSums(lcpm>1), main= "Genes expressed at log2 cpm over 1 \n post-filtering", xlab="samples", col=5)
+dev.off()
+
+# replicate analysis after removal of lowly-expressed genes ----------------------------------------------------------------
 
 # get correlation of technical replicates after filtering for lowly expressed genes
 pdf("replicate_comparisons_postFiltering_123Combined.pdf", height=10, width=10)

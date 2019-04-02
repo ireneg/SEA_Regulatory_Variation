@@ -70,6 +70,7 @@ y$genes <- genes
 # Trim file names into shorter sample names and apply to column names
 colnames(y)[grep("second_batch",colnames(y))] <- paste(sapply(strsplit(colnames(y)[grep("second_batch",colnames(y))],"[_.]"), `[`, 11), "secondBatch", sep="_")
 colnames(y)[grep("third_batch",colnames(y))] <- paste(sapply(strsplit(colnames(y)[grep("third_batch",colnames(y))],"[_.]"), `[`, 9), "thirdBatch", sep="_")
+# make sure to run in this order, as grepping by 'trimmed output' only works after applying the first two commands
 colnames(y)[grep("trimmedOutput",colnames(y))] <- paste(sapply(strsplit(colnames(y)[grep("trimmedOutput",colnames(y))],"[_.]"), `[`, 10), "firstBatch", sep="_")
 
 # sample MPI-336 from batch three is actually sample MPI-381. Let's make sure to change this
@@ -87,11 +88,12 @@ y$samples$batch <- c(rep(1, length(grep("firstBatch",colnames(y)))), rep(2, leng
 covariates = read.xlsx("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/metadata_RNA_Batch123.xlsx",sheet=1, detectDates=T)
 
 # add in blood
-blood=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/indonesian_cell_counts_rough_estimate.txt", sep="\t", as.is=T, header=T)
-blood[,9]=gsub("_", "-", blood[,9])
-blood[,9]=gsub("-new", "", blood[,9])
-# note, all replicate information is just duplicated
-covariates[,14:19]=blood[match(covariates$Sample.ID, blood$Sample.ID),2:7]
+blood=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval/predictedCellCounts_DeconCell.txt", sep="\t", as.is=T, header=T)
+colnames(blood)=c("Gran","Bcell","CD4T","CD8T","NK","Mono")
+blood$ID=sapply(strsplit(rownames(blood),"[_.]"), `[`, 1)
+blood$ID[104:123]=sapply(blood$ID[104:123],function(x)sub("([[:digit:]]{3,3})$", "-\\1", x))
+
+covariates[,14:19]=blood[match(covariates$Sample.ID, blood$ID),1:6]
 
 # add in replicate information
 covariates$replicate=duplicated(covariates[,1])

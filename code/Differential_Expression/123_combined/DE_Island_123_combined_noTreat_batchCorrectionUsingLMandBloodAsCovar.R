@@ -13,7 +13,7 @@ setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Outpu
 # First, set up design matrix
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
 y$samples$Age[which(is.na(y$samples$Age) == T)]=45
-design <- model.matrix(~0 + Island + y$samples$Age + batch + y$samples$RIN + y$sample$CD8T + y$sample$CD4T + y$sample$NK + y$sample$Bcell + y$sample$Mono + y$sample$Gran)
+design <- model.matrix(~0 + Island + y$samples$Age + batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
 colnames(design)=gsub("Island", "", colnames(design))
 #rename columns to exclude spaces and unrecognised characters
 colnames(design)[c(3,4,7:13)]=c("Mappi","Age","RIN", "CD8T", "CD4T", "NK", "Bcell", "Mono", "Gran")
@@ -214,6 +214,19 @@ write.table(all.pcs, file="pca_covariates_blood.txt", col.names=T, row.names=F, 
 
 # Summary and visualisation of gene trends ---------------------------------------------------------------------------
 
+# first see which logFC threshold is best
+logFC.df=matrix(nrow=3,ncol=3)
+colnames(logFC.df)=colnames(efit)
+counter=0
+for (number in c(0,0.5,1)){
+    counter=counter+1
+    dt <- decideTests(efit, p.value=0.01, lfc=number)
+    values=c(sum(abs(dt[,1])), sum(abs(dt[,2])), sum(abs(dt[,3])))
+    logFC.df[counter,]=values
+}
+logFC.df=cbind(logFC = c(0,0.5,1), logFC.df)
+write.table(logFC.df, file="logFC_thresholds.txt")
+
 dt <- decideTests(efit, p.value=0.01, lfc=1)
 # get summary of decide tests statistics
 write.table(summary(dt), file="numberSigDEgenes_voom_efit.txt")
@@ -240,16 +253,23 @@ dev.off()
 pdf("log2FC_IslandComparisons_pval01.pdf")
 # note 'p.value' is the cutoff value for adjusted p-values
 topTable <- topTable(efit, coef=1, n=Inf, p.value=0.01)
-plot(density(topTable$logFC), col=1, xlim=c(-2,2), main="LogFC Density", xlab="LogFC", ylab="Density")
+plot(density(topTable$logFC), col=9, xlim=c(-2,2), main="LogFC Density", xlab="LogFC", ylab="Density")
 abline(v=c(-1,-0.5,0.5,1), lty=3)
+counter=0
 for (i in 2:ncol(efit)){
+	counter=counter+1
     topTable <- topTable(efit, coef=i, n=Inf, p.value=0.01)
-    lines(density(topTable$logFC), col=i, xlim=c(-2,2))
+    lines(density(topTable$logFC), col=9+counter, xlim=c(-2,2))
 }
-legend(x="topright", bty="n", col=1:ncol(efit), legend=colnames(efit), lty=1, lwd=2)
+legend(x="topright", bty="n", col=9:11, legend=colnames(efit), lty=1, lwd=2)
 dev.off()
 
 # We can also look at the top ten DE genes with a heatmap of logCPM values for the top 100 genes. Each gene (or row) is scaled so that mean expression is zero and the standard deviation is one (we're using 'E' from the voom object which is a numeric matrix of normalized expression values on the log2 scale). Samples with relatively high expression of a given gene are marked in red and samples with relatively low expression are marked in blue. Lighter shades and white represent genes with intermediate expression levels. Samples and genes are reordered by the method of hierarchical clustering
+# first, make a heatmap of all top genes in one pdf
+
+# reset ensemble row names to gene symbols
+rownames(v$E)=v$genes$SYMBOL
+
 # set up annotation
 col_fun = colorRamp2(c(-4, 0, 4), c("blue", "white", "red"))
 
@@ -283,6 +303,26 @@ grid.draw(pd)
 upViewport()
 dev.off()
 
+# We can also make individual pdfs of the top genes
+island1=c("Sumba","Mentawai","West Papua")
+island2=c("Sumba","Mentawai","West Papua")
+
+counter=0
+
+for (i1 in island1){
+    island2=island2[-1]
+    for (i2 in island2){
+        counter=counter+1
+        topTable <- topTable(efit, coef=counter, p.value=0.01, lfc=1, n=Inf, sort.by="p")
+        index <- which(v$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
+        df=data.frame(island = as.character(Island[grep(paste(i1,i2,sep="|"), Island)]))
+        ha =  HeatmapAnnotation(df = df, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3)))
+        pdf(paste("HeatmapTopeGenes",i1,i2,".pdf",sep="_"), height=10, width=15)
+        draw(Heatmap(t(scale(t(v$E[index,])))[,grep(paste(i1,i2,sep="|"), Island)], col=col_fun, column_title = colnames(efit)[counter], top_annotation = ha, show_row_names = T, show_heatmap_legend = T, show_column_names = F, name = "Z-Score"),show_annotation_legend = TRUE,newpage=F)
+        dev.off()
+    }
+}
+
 # Get top DE genes through topTable (FDR 0.01) with log fold change of one and save gene information to file
 for (i in 1:ncol(efit)){
     # note 'p.value' is the cutoff value for adjusted p-values
@@ -294,7 +334,7 @@ for (i in 1:ncol(efit)){
 
 # show the number of DE genes between all islands
 pdf("vennDiagram_allSigDEGenes_pval01_FDR1.pdf", height=15, width=15)
-vennDiagram(dt[,1:3], circle.col=c(1, 2, 3))
+vennDiagram(dt[,1:3], circle.col=c(9,10,11))
 dev.off()
 
 # get DE genes in common with populations compared to Mappi, i.e., SMBvsMPI and MTWvsMPI (since we think this is an interesting island comparison)
@@ -304,6 +344,15 @@ commonGenes.MPI <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name',
 write.table(de.common.MPI, file="allCommonGenes_MPI.txt")
 # save the common gene names 
 de.common.MPI=efit$genes[names(de.common.MPI),]
+
+# now plot the common genes to see if they're being regulated in the same direction
+tt.SMBvsMPI=topTable(efit, coef=2, p.value=0.01, n=Inf, lfc=1, sort.by="p")
+tt.MTWvsMPI=topTable(efit, coef=3, p.value=0.01, n=Inf, lfc=1, sort.by="p")
+pdf("logFC_commonMPIgenes.pdf")
+plot(tt.SMBvsMPI[rownames(de.common.MPI),"logFC"], tt.MTWvsMPI[rownames(de.common.MPI),"logFC"], xlab="logFC SMBvsMPI", ylab="logFC MTWvsMPI", pch=20, main="Common DE Genes", xlim=c(-5,5), ylim=c(-6,6))
+text(tt.SMBvsMPI[rownames(de.common.MPI),"logFC"], tt.MTWvsMPI[rownames(de.common.MPI),"logFC"], labels=tt.SMBvsMPI[rownames(de.common.MPI),"SYMBOL"], pos=3)
+abline(h=0,v=0, lty=2)
+dev.off()
 
 # top ranked genes -----------------------------------------------------------------------------------------
 
@@ -379,3 +428,5 @@ for(ensembl in favEnsembl){
 pdf("favouriteTopGenes_distribution_Island.pdf", height=12, width=15)
 ggarrange(SIGLEC6,SIGLEC7,MARCO,AIM2,TNFSF4,RSAD2)
 dev.off()
+
+
