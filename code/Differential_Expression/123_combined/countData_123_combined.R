@@ -5,7 +5,7 @@
 ### IGR edit read ins, clean package loading list and get rid of hardcoding of paths and indexes 
 
 # load packages
-library(Rsubread)
+# library(Rsubread) #not needed
 library(RColorBrewer)
 library(edgeR)
 library(plyr)

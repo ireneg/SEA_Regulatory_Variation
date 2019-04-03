@@ -1,29 +1,92 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-# load dependencies: libraries, human count data, plasmodium data, and data preprocessing
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/countData_123_combined.R")
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/dataPreprocessing_123_combined.R")
+### Last edit: IGR 03.04.2019
+### Clean up paths, remove hardcoding, test for stand-alone
 
-# set working directory
-setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Island/LM_allCovarPlusBlood")
+# first load dependencies and set input paths(i.e., count data)
+### IGR: should ditch the source command and instead load saved output from object and re-reading covariate matrices etc. Right now a lot of variables from the first script get invisibly recreated in this one if they are run separately - explicitly restating paths here: 
+
+# Set paths:
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA_testing/dataPreprocessing" #output from previous script. 
+# covariatedir <- "~/"
+# blooddir <- "/data/cephfs/punim0586/kbobowik/Sumba/Output/DE_Analysis/123_combined/batchRemoval/"
+#repodir <- "~/repos/SEA_Regulatory_Variation/"
+#source(paste0(repodir, "code/Differential_Expression/123_combined/countData_123_combined.R"))
+
+# Set output directory and create it if it does not exist:
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA_testing/DE_testing"
+
+if (file.exists(outputdir) == FALSE){
+    dir.create(outputdir)
+}
+
+# Load colour schemes:
+KAT TO INSERT THEM HERE # This line purposefully throws and error.
+
+
+# Load all packages here:
+library(RColorBrewer)
+library(edgeR)
+library(plyr)
+# library(readr)
+# library(openxlsx)
+# library(pheatmap)
+# library(devtools)
+library(ggbiplot)
+library(biomaRt)
+# library(biomartr)
+library(gplots)
+# library(sva) # not needed
+library(magrittr)
+library(dendextend)
+library(qvalue)
+library(rowr)
+library(reshape2)
+library(RUVSeq)
+# library(doParallel)
+library(car)
+library(ggpubr)
+# library(GO.db)
+library(goseq)
+library(ggplot2)
+library(ggsignif)
+# library(wesanderson) # not needed
+library(treemap)
+library(NineteenEightyR)
+# library(ComplexHeatmap)
+library(circlize)
+library(viridis)
+library(vioplot)
+library(ReactomePA)
+
+
+### BEGIN ANALYSIS
+
+# Load log CPM matrix and y object:
+load(paste0(inputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
+load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
+
 
 # Removing heteroscedascity with voom and fitting linear models -----------------------------------------------------------------------
 
 # First, set up design matrix
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
 y$samples$Age[which(is.na(y$samples$Age) == T)]=45
-design <- model.matrix(~0 + Island + y$samples$Age + batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
+design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
 colnames(design)=gsub("Island", "", colnames(design))
 #rename columns to exclude spaces and unrecognised characters
-colnames(design)[c(3,4,7:13)]=c("Mappi","Age","RIN", "CD8T", "CD4T", "NK", "Bcell", "Mono", "Gran")
+colnames(design)[c(1:13)]=c("Mentawai", "Sumba", "Mappi", "Age", "batch2", "batch3", "RIN", "CD8T", "CD4T", "NK", "Bcell", "Mono", "Gran")
 
 # set up contrast matrix
 contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
 
 # plot mean-variance trend for different normalisation methods. This is helpfule for understandimg what should be done with estimating the dispersion: https://support.bioconductor.org/p/77664/
-pdf("EstimatingDispersion_allNormalisationMethods.pdf", height=15, width=15)
+pdf(paste0(outputdir, "EstimatingDispersion_allNormalisationMethods.pdf"), height=15, width=15)
 par(mfrow=c(4,3))
+
+# Fails below for statistical reasons, but runs to here as a stand-alone using the load commands!
+
 # first perform voom on unnormalised data
 y$samples$norm.factors <- 1
 estimateDisp <- estimateDisp(y, design, robust=TRUE)

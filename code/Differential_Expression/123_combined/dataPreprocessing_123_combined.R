@@ -290,4 +290,4 @@ dev.off()
 lcpm=cpm(y, log=T)
 
 save(lcpm, file=paste0(outputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
-
+save(y, file=paste0(outputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
