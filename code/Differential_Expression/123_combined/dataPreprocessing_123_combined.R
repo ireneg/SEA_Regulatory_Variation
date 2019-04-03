@@ -1,11 +1,29 @@
 # script created by KSB, 26.07.18
 # perform data pre-processing on both batches of indonesian RNA-seq data- third batch
 
-# first laod dependencies (i.e., count data)
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/countData_123_combined.R")
+### Last edit: IGR 03.04.2019
+### Clean up paths
 
-# Set working directory
-setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing")
+
+# first load dependencies and set input paths(i.e., count data)
+### IGR: should ditch the source command and instead load saved output from object and re-reading covariate matrices etc. Right now a lot of variables from the first script get invisibly recreated in this one if they are run separately - explicitly restating paths here: 
+
+# Set paths:
+inputdir <- "/data/cephfs/punim0586/kbobowik/Sumba/"
+covariatedir <- "~/"
+blooddir <- "/data/cephfs/punim0586/kbobowik/Sumba/Output/DE_Analysis/123_combined/batchRemoval/"
+repodir <- "~/repos/SEA_Regulatory_Variation/"
+source(paste0(repodir, "code/Differential_Expression/123_combined/countData_123_combined.R"))
+
+# Set output directory and create it if it does not exist:
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA_testing/dataPreprocessing"
+
+if (file.exists(outputdir) == FALSE){
+    dir.create(outputdir)
+}
+
+# Load any additional packages here:
+
 
 
 # covariate setup ------------------------------------------------------
@@ -17,7 +35,7 @@ all(samplenames == covariates[,1])
 # TRUE
 
 # add in sick sample information. We can first read in the sick metadata which was generated in the script "indoRNA_DEAnalysis_STAR_HealthyvsSickMappi.R".
-malaria.metadata=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Sick/Malaria_summary_table.txt", sep="\t", header=T)
+malaria.metadata=read.table(paste0(inputdir, "Output/DE_Analysis/123_combined/DE_Sick/Malaria_summary_table.txt"), sep="\t", header=T)
 # add in malaria information
 covariates$microscopy.pos=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"microscopy"]
 covariates$PCR.pos=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"PCR"]
@@ -39,12 +57,12 @@ for (name in head(covariate.names, -2)){
 }
 
 # Make sure all covariates in y$samples are the appropriate structure. This is important, as it affects the linear model and ANOVA tests
-# Get variables that aren't numeric and transform them into factors. Batch is considered numeric (which we want to change), so we'll also add this into our make.factor vector
-which.numeric=unlist(lapply(y$samples, is.numeric))
-make.factor=c(colnames(y$samples[,!which.numeric])[3:ncol(y$samples[,!which.numeric])], "batch")
+# Get variables that aren't numeric and transform them into factors. Batch is considered numeric (which we want to change), so we'll also add this into our convert.factors vector
+covar.numeric=unlist(lapply(y$samples, is.numeric))
+convert.factors=c(colnames(y$samples[,!covar.numeric])[3:ncol(y$samples[,!covar.numeric])], "batch")
         
 # assign variables and make y-samples metadata into appropriate structure
-for (name in make.factor){
+for (name in convert.factors){
   if(sum(is.na(y$samples[[name]])) > 0){
     y$samples[[paste0(name)]]=assign(name, as.factor(addNA(y$samples[[paste0(name)]])))
   }
@@ -61,7 +79,7 @@ lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,2000
 
 # assign blood type information to variables
 for (name in covariate.names[c(11:16)]){
-assign(name, as.numeric(as.character(y$samples[[paste0(name)]])))
+  assign(name, as.numeric(as.character(y$samples[[paste0(name)]])))
 }
 
 # assign PF and VX load information
@@ -70,7 +88,7 @@ for (name in covariate.names[grep("reads", covariate.names)]){
 }
 
 # Perform rarefaction curves for number of expressed genes vs. proportion of pool mRNA (as in Ramskold D, Wang ET, Burge CB, Sandberg R. 2009. An abundance of ubiquitously expressed genes revealed by tissue transcriptome sequence data. PLoS Comput Biol 5:e1000598)
-pdf("rarefactionCurves_indoRNA_123Combined.pdf")
+pdf(paste0(outputdir, "rarefactionCurves_indoRNA_123Combined.pdf"))
 for (name in colnames(Filter(is.factor,y$samples))[-c(1,2)]) {
   plot(1:length(y$counts[,1]), cumsum(sort(y$counts[,1], decreasing=T)/sum(y$counts[,1])), log="x", type="n", xlab="Number of genes", ylab="Fraction of reads pool", ylim=c(0,1), main=name) ## initialize the plot area
   counter=0
@@ -107,7 +125,7 @@ allreps=covariates[,1][which(covariates$replicate)]
 allreps=unique(allreps)
 
 # look at how well replicate performed
-pdf("replicate_comparisons_noFiltering_123Combined.pdf", height=10, width=10)
+pdf(psate0(outputdir, "replicate_comparisons_noFiltering_123Combined.pdf"), height=10, width=10)
 par(mfrow=c(3,3))
 # Since SMB-ANK-027 had two replicates, we need to plot one vs three and two vs three. First, one vs three
 smoothScatter(lcpm[,which(samplenames %in% "SMB-ANK-027")[1]], lcpm[,which(samplenames %in% "SMB-ANK-027")[3]], ylab=colnames(lcpm)[which(samplenames %in% allreps[1])[3]], xlab=colnames(lcpm)[which(samplenames %in% allreps[1])[1]], xlim=c(-5,15), ylim=c(-5,15), main="Technical replicate SMB-ANK-027")
@@ -135,7 +153,7 @@ dev.off()
 # Removal of lowly-expressed genes -------------------------------------------------------------------------------
 
 # get histogram of number of genes expressed at log2 cpm > 0.5 and 1 (before filtering)
-pdf("lcpm_preFiltering_Histogram.pdf_cpm1.pdf", height=10, width=15)
+pdf(paste0(outputdir, "lcpm_preFiltering_Histogram.pdf_cpm1.pdf"), height=10, width=15)
 par(mfrow=c(1,2))
 hist(rowSums(lcpm>0.5), main= "Genes expressed at log2 cpm over 0.5 \n pre-filtering", xlab="samples", col=4, ylim=c(0,16000))
 hist(rowSums(lcpm>1), main= "Genes expressed at log2 cpm over 1 \n pre-filtering", xlab="samples", col=5, ylim=c(0,16000))
@@ -160,75 +178,76 @@ dim(y)
 # [1] 12975   123
 
 # Visualise library size after filtering with barplots
-pdf("librarySize_indoRNA_postFiltering_123Combined.pdf", height=10, width=15)
-par(oma=c(2,0,0,0))
-barplot(y$samples$lib.size*1e-6, ylab="Library size (millions)", cex.names=0.75, col=batch.col[y$samples$batch], names=samplenames, las=3, ylim=c(0,max(y$samples$lib.size*1e-6)+10), main="Library Size \n Post-filtering")
-# abline(h=10, col="red")
-legend(x="topright", col=batch.col[unique(y$samples$batch)], legend=c("first batch", "second batch", "third batch"), pch=15, cex=0.8)
+pdf(paste0(outputdir, "librarySize_indoRNA_postFiltering_123Combined.pdf"), height=10, width=15)
+  par(oma=c(2,0,0,0))
+  barplot(y$samples$lib.size*1e-6, ylab="Library size (millions)", cex.names=0.75, col=batch.col[y$samples$batch], names=samplenames, las=3, ylim=c(0,max(y$samples$lib.size*1e-6)+10), main="Library Size \n Post-filtering")
+  # abline(h=10, col="red")
+  legend(x="topright", col=batch.col[unique(y$samples$batch)], legend=c("first batch", "second batch", "third batch"), pch=15, cex=0.8)
 dev.off()
-pdf("nGenes_indoRNA_postFiltering_123Combined.pdf", height=10, width=15)
-par(oma=c(2,0,0,0))
-barplot(apply(y$counts, 2, function(c)sum(c!=0)),main="Number of Genes \n Post-Filtering", ylab="n Genes", cex.names=0.75, col=batch.col[y$samples$batch], names=samplenames, las=3, ylim=c(0,max(apply(y$counts, 2, function(c)sum(c!=0)))+3000))
-legend(x="topright", col=batch.col[unique(y$samples$batch)], legend=c("first batch", "second batch", "third batch"), pch=15, cex=0.8)
+
+pdf(paste0(outputdir, "nGenes_indoRNA_postFiltering_123Combined.pdf"), height=10, width=15)
+  par(oma=c(2,0,0,0))
+  barplot(apply(y$counts, 2, function(c)sum(c!=0)),main="Number of Genes \n Post-Filtering", ylab="n Genes", cex.names=0.75, col=batch.col[y$samples$batch], names=samplenames, las=3, ylim=c(0,max(apply(y$counts, 2, function(c)sum(c!=0)))+3000))
+  legend(x="topright", col=batch.col[unique(y$samples$batch)], legend=c("first batch", "second batch", "third batch"), pch=15, cex=0.8)
 dev.off()
 
 # Compare library size density before and after removing lowly-expressed genes
-pdf("libraryDensity_afterFiltering_afterNormalization_indoRNA.pdf", height=8, width=15)
-nsamples <- ncol(y)
-par(mfrow=c(1,2))
-plot(density(lcpm[,1]), col=batch.col[y$samples$batch][1], lwd=2, ylim=c(0,max(density(lcpm)$y)+.1), las=2, main="", xlab="")
-title(main="A. All genes", xlab="Log-cpm")
-abline(v=0, lty=3)
-for (i in 2:nsamples){
-    den <- density(lcpm[,i])
-    lines(den$x, den$y, col=batch.col[y$samples$batch][i], lwd=2)
-}
-legend("topright", legend=c("First Batch","Second Batch", "Third Batch"), ncol=1, cex=0.8, text.col=batch.col[unique(y$samples$batch)], bty="n")
+pdf(paste0(outputdir, "libraryDensity_afterFiltering_afterNormalization_indoRNA.pdf"), height=8, width=15)
+  nsamples <- ncol(y)
+  par(mfrow=c(1,2))
+  plot(density(lcpm[,1]), col=batch.col[y$samples$batch][1], lwd=2, ylim=c(0,max(density(lcpm)$y)+.1), las=2, main="", xlab="")
+  title(main="A. All genes", xlab="Log-cpm")
+  abline(v=0, lty=3)
+  for (i in 2:nsamples){
+      den <- density(lcpm[,i])
+      lines(den$x, den$y, col=batch.col[y$samples$batch][i], lwd=2)
+  }
+  legend("topright", legend=c("First Batch","Second Batch", "Third Batch"), ncol=1, cex=0.8, text.col=batch.col[unique(y$samples$batch)], bty="n")
 
-lcpm <- cpm(y, log=TRUE)
-plot(density(lcpm[,1]), col=batch.col[y$samples$batch][1], lwd=2, ylim=c(0,max(density(lcpm)$y)+.2), las=2, main="", xlab="")
-title(main="B. Filtered genes", xlab="Log-cpm")
-abline(v=0, lty=3)
-for (i in 2:nsamples){
-    den <- density(lcpm[,i])
-    lines(den$x, den$y, col=batch.col[y$samples$batch][i], lwd=2)
-}
-legend("topright", legend=c("First Batch","Second Batch", "Third Batch"), ncol=1, cex=0.8, text.col=batch.col[unique(y$samples$batch)], bty="n")
+  lcpm <- cpm(y, log=TRUE) # why are you defining this again in the middle of the plotting function?
+  plot(density(lcpm[,1]), col=batch.col[y$samples$batch][1], lwd=2, ylim=c(0,max(density(lcpm)$y)+.2), las=2, main="", xlab="")
+  title(main="B. Filtered genes", xlab="Log-cpm")
+  abline(v=0, lty=3)
+  for (i in 2:nsamples){
+      den <- density(lcpm[,i])
+      lines(den$x, den$y, col=batch.col[y$samples$batch][i], lwd=2)
+  }
+  legend("topright", legend=c("First Batch","Second Batch", "Third Batch"), ncol=1, cex=0.8, text.col=batch.col[unique(y$samples$batch)], bty="n")
 dev.off()
 
 # get histogram of lcpm
-pdf("lcpm_postFiltering_Histogram.pdf", height=10, width=15)
-par(mfrow=c(1,2))
-hist(rowSums(lcpm>0.5), main= "Genes expressed at log2 cpm over 0.5 \n post-filtering", xlab="samples", col=4)
-hist(rowSums(lcpm>1), main= "Genes expressed at log2 cpm over 1 \n post-filtering", xlab="samples", col=5)
+pdf(paste0(outputdir, "lcpm_postFiltering_Histogram.pdf"), height=10, width=15)
+  par(mfrow=c(1,2))
+  hist(rowSums(lcpm>0.5), main= "Genes expressed at log2 cpm over 0.5 \n post-filtering", xlab="samples", col=4)
+  hist(rowSums(lcpm>1), main= "Genes expressed at log2 cpm over 1 \n post-filtering", xlab="samples", col=5)
 dev.off()
 
 # replicate analysis after removal of lowly-expressed genes ----------------------------------------------------------------
 
 # get correlation of technical replicates after filtering for lowly expressed genes
-pdf("replicate_comparisons_postFiltering_123Combined.pdf", height=10, width=10)
-par(mfrow=c(3,3))
-# Since SMB-ANK-027 had two replicates, we need to plot one vs three and two vs three. First, one vs three
-smoothScatter(lcpm[,which(samplenames %in% "SMB-ANK-027")[1]], lcpm[,which(samplenames %in% "SMB-ANK-027")[3]], ylab=colnames(lcpm)[which(samplenames %in% allreps[1])[3]], xlab=colnames(lcpm)[which(samplenames %in% allreps[1])[1]], xlim=c(-5,15), ylim=c(-5,15), main=paste("Technical replicate SMB-ANK-027", "\n", "r2 =",round(summary(lm(lcpm[,which(samplenames %in% "SMB-ANK-027")[3]]~lcpm[,which(samplenames %in% "SMB-ANK-027")[1]]))$r.squared, digits=2)))
-# best fit/regression line
-abline(lm(lcpm[,which(samplenames %in% "SMB-ANK-027")[3]]~lcpm[,which(samplenames %in% "SMB-ANK-027")[1]]), col="green")
-# diagonal line
-abline(a=0,b=1,col="red")
-
-# Now, replicates two vs three
-smoothScatter(lcpm[,which(samplenames %in% "SMB-ANK-027")[2]], lcpm[,which(samplenames %in% "SMB-ANK-027")[3]], ylab=colnames(lcpm)[which(samplenames %in% allreps[1])[3]], xlab=colnames(lcpm)[which(samplenames %in% allreps[1])[2]], xlim=c(-5,15), ylim=c(-5,15), main=paste("Technical replicate SMB-ANK-027", "\n", "r2 =",round(summary(lm(lcpm[,which(samplenames %in% "SMB-ANK-027")[3]]~lcpm[,which(samplenames %in% "SMB-ANK-027")[2]]))$r.squared, digits=2)))
-# best fit/regression line
-abline(lm(lcpm[,which(samplenames %in% "SMB-ANK-027")[3]]~lcpm[,which(samplenames %in% "SMB-ANK-027")[2]]), col="green")
-# diagonal line
-abline(a=0,b=1,col="red")
-
-for (i in 1:length(allreps)){
-  smoothScatter(lcpm[,which(samplenames %in% allreps[i])[1]], lcpm[,which(samplenames %in% allreps[i])[2]], ylab=colnames(lcpm)[which(samplenames %in% allreps[i])[2]], xlab=colnames(lcpm)[which(samplenames %in% allreps[i])[1]], xlim=c(-5,15), ylim=c(-5,15), main=paste("Technical replicate ", allreps[i], "\n", "r2 =",round(summary(lm(lcpm[,which(samplenames %in% allreps[i])[2]]~lcpm[,which(samplenames %in% allreps[i])[1]]))$r.squared, digits=2)))
+pdf(paste0(outputdir, "replicate_comparisons_postFiltering_123Combined.pdf"), height=10, width=10)
+  par(mfrow=c(3,3))
+  # Since SMB-ANK-027 had two replicates, we need to plot one vs three and two vs three. First, one vs three
+  smoothScatter(lcpm[,which(samplenames %in% "SMB-ANK-027")[1]], lcpm[,which(samplenames %in% "SMB-ANK-027")[3]], ylab=colnames(lcpm)[which(samplenames %in% allreps[1])[3]], xlab=colnames(lcpm)[which(samplenames %in% allreps[1])[1]], xlim=c(-5,15), ylim=c(-5,15), main=paste("Technical replicate SMB-ANK-027", "\n", "r2 =",round(summary(lm(lcpm[,which(samplenames %in% "SMB-ANK-027")[3]]~lcpm[,which(samplenames %in% "SMB-ANK-027")[1]]))$r.squared, digits=2)))
   # best fit/regression line
-  abline(lm(lcpm[,which(samplenames %in% allreps[i])[2]]~lcpm[,which(samplenames %in% allreps[i])[1]]), col="green")
+  abline(lm(lcpm[,which(samplenames %in% "SMB-ANK-027")[3]]~lcpm[,which(samplenames %in% "SMB-ANK-027")[1]]), col="green")
   # diagonal line
   abline(a=0,b=1,col="red")
-}
+
+  # Now, replicates two vs three
+  smoothScatter(lcpm[,which(samplenames %in% "SMB-ANK-027")[2]], lcpm[,which(samplenames %in% "SMB-ANK-027")[3]], ylab=colnames(lcpm)[which(samplenames %in% allreps[1])[3]], xlab=colnames(lcpm)[which(samplenames %in% allreps[1])[2]], xlim=c(-5,15), ylim=c(-5,15), main=paste("Technical replicate SMB-ANK-027", "\n", "r2 =",round(summary(lm(lcpm[,which(samplenames %in% "SMB-ANK-027")[3]]~lcpm[,which(samplenames %in% "SMB-ANK-027")[2]]))$r.squared, digits=2)))
+  # best fit/regression line
+  abline(lm(lcpm[,which(samplenames %in% "SMB-ANK-027")[3]]~lcpm[,which(samplenames %in% "SMB-ANK-027")[2]]), col="green")
+  # diagonal line
+  abline(a=0,b=1,col="red")
+
+  for (i in 1:length(allreps)){
+    smoothScatter(lcpm[,which(samplenames %in% allreps[i])[1]], lcpm[,which(samplenames %in% allreps[i])[2]], ylab=colnames(lcpm)[which(samplenames %in% allreps[i])[2]], xlab=colnames(lcpm)[which(samplenames %in% allreps[i])[1]], xlim=c(-5,15), ylim=c(-5,15), main=paste("Technical replicate ", allreps[i], "\n", "r2 =",round(summary(lm(lcpm[,which(samplenames %in% allreps[i])[2]]~lcpm[,which(samplenames %in% allreps[i])[1]]))$r.squared, digits=2)))
+    # best fit/regression line
+    abline(lm(lcpm[,which(samplenames %in% allreps[i])[2]]~lcpm[,which(samplenames %in% allreps[i])[1]]), col="green")
+    # diagonal line
+    abline(a=0,b=1,col="red")
+  }
 dev.off()
 
 # normalise gene-expression distribution -------------------------------------------------
@@ -238,37 +257,37 @@ y <- calcNormFactors(y, method="TMM")
 
 # look at performance of normalisation
 # First, compare all three methods
-pdf("NormalisedGeneExpressionDistribution_IndoRNA_all3Methods.pdf", height=15, width=15)
-par(oma=c(2,0,0,0), mfrow=c(4,1))
-y2 <- y
-y2$samples$norm.factors <- 1
-lcpm <- cpm(y2, log=TRUE)
-boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
-title(main="Unnormalised data",ylab="Log-cpm")
-for (method in c("upperquartile", "TMM", "RLE")) {
-  y2 <- calcNormFactors(y2, method="upperquartile")
+pdf(paste0(outputdir, "NormalisedGeneExpressionDistribution_IndoRNA_all3Methods.pdf"), height=15, width=15)
+  par(oma=c(2,0,0,0), mfrow=c(4,1))
+  y2 <- y
+  y2$samples$norm.factors <- 1
   lcpm <- cpm(y2, log=TRUE)
   boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
-  title(main=paste0("Normalised data ", method),ylab="Log-cpm")
-}
+  title(main="Unnormalised data",ylab="Log-cpm")
+  for (method in c("upperquartile", "TMM", "RLE")) {
+    y2 <- calcNormFactors(y2, method="upperquartile")
+    lcpm <- cpm(y2, log=TRUE)
+    boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+    title(main=paste0("Normalised data ", method),ylab="Log-cpm")
+  }
 dev.off()
 
 # now just plot how well TMM normalisation worked (since wqe like that one the best)
-pdf("NormalisedGeneExpressionDistribution_IndoRNA_TMM.pdf", height=15, width=15)
-par(oma=c(2,0,0,0), mfrow=c(2,1))
-y2 <- y
-y2$samples$norm.factors <- 1
-lcpm <- cpm(y2, log=TRUE)
-boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
-title(main="A. Unnormalised data",ylab="Log-cpm")
-y2 <- calcNormFactors(y2, method="TMM")
-lcpm <- cpm(y2, log=TRUE)
-boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
-title(main="B. Normalised data, TMM",ylab="Log-cpm")
+pdf(paste0(outputdir, "NormalisedGeneExpressionDistribution_IndoRNA_TMM.pdf"), height=15, width=15)
+  par(oma=c(2,0,0,0), mfrow=c(2,1))
+  y2 <- y
+  y2$samples$norm.factors <- 1
+  lcpm <- cpm(y2, log=TRUE)
+  boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+  title(main="A. Unnormalised data",ylab="Log-cpm")
+  y2 <- calcNormFactors(y2, method="TMM")
+  lcpm <- cpm(y2, log=TRUE)
+  boxplot(lcpm, las=2, col=batch.col[as.numeric(batch)], main="", cex.axis=0.75, names=samplenames)
+  title(main="B. Normalised data, TMM",ylab="Log-cpm")
 dev.off()
 
 # recalculate lcpm
 lcpm=cpm(y, log=T)
 
-
+save(lcpm, file=paste0(outputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
 

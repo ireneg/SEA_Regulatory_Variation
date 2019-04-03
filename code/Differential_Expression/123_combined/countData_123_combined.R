@@ -60,7 +60,7 @@ blooddir <- "/data/cephfs/punim0586/kbobowik/Sumba/Output/DE_Analysis/123_combin
 # Set output directory and create it if it does not exist:
 outputdir <- "/data/cephfs/punim0586/igallego/indoRNA_testing/"
 
-if (file.exists(outputdir == FALSE)){
+if (file.exists(outputdir) == FALSE){
     dir.create(outputdir)
 }
 
