@@ -1,42 +1,45 @@
 # Load in FeatureCounts data, set up covariate matrices, and get initial statistics from first and second batch of RNASeq Indonesian DE analysis
 # Code developed by Katalina Bobowik, 06.06.2018
 
+### Last edit: 02.04.2019
+### IGR edit read ins, clean package loading list and get rid of hardcoding of paths and indexes 
 
 # load packages
 library(Rsubread)
 library(RColorBrewer)
 library(edgeR)
-library(Homo.sapiens)
-library(limma)
-library(ensembldb)
-library(EnsDb.Hsapiens.v75)
-library(AnnotationDbi)
+library(plyr)
+# library(Homo.sapiens) # not needed
+# library(limma) (loaded through edgeR)
+# library(ensembldb) # not needed
+# library(EnsDb.Hsapiens.v75) # not needed
+# library(AnnotationDbi) # not needed
 library(readr)
 library(openxlsx)
-library(pheatmap)
-library(devtools)
+# library(pheatmap)
+# library(devtools)
 library(ggbiplot)
 library(biomaRt)
-library(biomartr)
+# library(biomartr)
 library(gplots)
-library(sva)
+# library(sva) # not needed
 library(magrittr)
 library(dendextend)
 library(qvalue)
 library(rowr)
 library(reshape2)
 library(RUVSeq)
-library(doParallel)
+# library(doParallel)
 library(car)
 library(ggpubr)
-library(GO.db)
+# library(GO.db)
 library(goseq)
 library(ggplot2)
 library(ggsignif)
-library(wesanderson)
+# library(wesanderson) # not needed
 library(treemap)
 library(NineteenEightyR)
-library(ComplexHeatmap)
+# library(ComplexHeatmap)
 library(circlize)
 library(viridis)
 library(vioplot)
@@ -46,52 +49,63 @@ library(ReactomePA)
 # set up colour palette. The "wes" palette will be used for island and other statistical information, whereas NineteenEightyR will be used for batch information
 wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
 palette(c(wes, brewer.pal(8,"Dark2")))
-dev.off()
 # set up colour palette for batch
 batch.col=electronic_night(n=3)
 
-# Set working directory
-setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/countData")
+# Set paths:
+inputdir <- "/data/cephfs/punim0586/kbobowik/Sumba/"
+covariatedir <- "~/"
+blooddir <- "/data/cephfs/punim0586/kbobowik/Sumba/Output/DE_Analysis/123_combined/batchRemoval/"
+
+# Set output directory and create it if it does not exist:
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA_testing/"
+
+if (file.exists(outputdir == FALSE)){
+    dir.create(outputdir)
+}
+
+# BEGIN ANALYSIS
 
 # read in count files from featureCounts. Here, I'm loading in files for all three batches.
-files=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba", pattern="Filter", full.names=T)
-files.secondbatch=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/second_batch", pattern="Filter", full.names=T)
-files.thirdbatch=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/third_batch", pattern="Filter", full.names=T)
+files=list.files(path=paste0(inputdir, "FeatureCounts/indoRNA/sample_counts"), pattern="Filter", full.names=T)
+files.secondbatch=list.files(path=paste0(inputdir, "FeatureCounts/indoRNA_second_batch/sample_counts"), pattern="Filter", full.names=T)
+files.thirdbatch=list.files(path=paste0(inputdir, "FeatureCounts/indoRNA_third_batch/sample_counts"), pattern="Filter", full.names=T)
 
-# set up DGE matrix combining first, second, and third batch
-y <- readDGE(c(files, files.secondbatch, files.thirdbatch), columns=c(1,3)) 
-# Organise gene annotation using bioconductor's Homo.sapiens package, version 1.3.1 (Based on genome:  hg19)
-geneid <- rownames(y)
-genes <- select(Homo.sapiens, keys=geneid, columns=c("SYMBOL", "TXCHROM"), keytype="ENSEMBL")
-# Check for and remove duplicated gene IDs, then add genes dataframe to DGEList object
-genes <- genes[!duplicated(genes$ENSEMBL),]
-y$genes <- genes
+featureCountsOut <- lapply(c(files, files.secondbatch, files.thirdbatch), read.delim)
 
-# Trim file names into shorter sample names and apply to column names
-colnames(y)[grep("second_batch",colnames(y))] <- paste(sapply(strsplit(colnames(y)[grep("second_batch",colnames(y))],"[_.]"), `[`, 11), "secondBatch", sep="_")
-colnames(y)[grep("third_batch",colnames(y))] <- paste(sapply(strsplit(colnames(y)[grep("third_batch",colnames(y))],"[_.]"), `[`, 9), "thirdBatch", sep="_")
-# make sure to run in this order, as grepping by 'trimmed output' only works after applying the first two commands
-colnames(y)[grep("trimmedOutput",colnames(y))] <- paste(sapply(strsplit(colnames(y)[grep("trimmedOutput",colnames(y))],"[_.]"), `[`, 10), "firstBatch", sep="_")
+indoReads <- data.frame(t(ldply(featureCountsOut, "[",,3)))
 
-# sample MPI-336 from batch three is actually sample MPI-381. Let's make sure to change this
-colnames(y)[103] <- "MPI-381_thirdBatch"
+# set col and row names:
+names1st <- paste(sapply(strsplit(files, "[_.]"), `[`, 10), "firstBatch", sep="_")
+names2nd <- paste(sapply(strsplit(files.secondbatch, "[_.]"), `[`, 12), "secondBatch", sep="_")
+names3rd <- paste(sapply(strsplit(files.thirdbatch, "[_.]"), `[`, 10), "thirdBatch", sep="_")
 
-# create samplenames vector without batch information
-samplenames=sapply(strsplit(colnames(y),"[_.]"), `[`, 1)
-# now add a hyphen inbetween the tribe abbreviation and number to keep consistency
-samplenames[104:123]=sapply(samplenames[104:123],function(x)sub("([[:digit:]]{3,3})$", "-\\1", x))
+row.names(indoReads) <- featureCountsOut[[1]]$Geneid
+names(indoReads) <- c(names1st, names2nd, names3rd) #need to manually confirm ordering. 
+
+colnames(indoReads) <- gsub("MPI-336_thirdBatch", "MPI-381_thirdBatch", colnames(indoReads)) #not hard coded. 
+
+# Into DGEList:
+y <- DGEList(indoReads, genes=rownames(indoReads), samples=colnames(indoReads))
+
+# To avoid hardcoding while standardising, fix samplenames object first, then drop the suffixes:
+samplenames <- as.character(y$samples$samples)
+samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
+samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
+
+rm(featureCountsOut) # clean up, big object
 
 # assign batch
 y$samples$batch <- c(rep(1, length(grep("firstBatch",colnames(y)))), rep(2, length(grep("secondBatch",colnames(y)))), rep(3, length(grep("thirdBatch",colnames(y)))))
 
 # Create covariate matrix
-covariates = read.xlsx("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/metadata_RNA_Batch123.xlsx",sheet=1, detectDates=T)
+covariates <- read.xlsx(paste0(covariatedir, "metadata_RNA_Batch123.xlsx"), sheet=1, detectDates=T)
 
 # add in blood
-blood=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval/predictedCellCounts_DeconCell.txt", sep="\t", as.is=T, header=T)
+blood=read.table(paste0(blooddir, "predictedCellCounts_DeconCell.txt"), sep="\t", as.is=T, header=T)
 colnames(blood)=c("Gran","Bcell","CD4T","CD8T","NK","Mono")
 blood$ID=sapply(strsplit(rownames(blood),"[_.]"), `[`, 1)
-blood$ID[104:123]=sapply(blood$ID[104:123],function(x)sub("([[:digit:]]{3,3})$", "-\\1", x))
+blood$ID <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", blood$ID)
 
 covariates[,14:19]=blood[match(covariates$Sample.ID, blood$ID),1:6]
 
@@ -110,18 +124,18 @@ covariates[which(!(covariates[,1] %in% samplenames)),]
 ## Get initial statistics before pre-processing
 
 # Visualise library size
-pdf("librarysizeIndoRNA_preFiltering.pdf", height=10, width=15)
+pdf(paste0(outputdir, "librarysizeIndoRNA_preFiltering.pdf"), height=10, width=15)
 par(oma=c(2,0,0,0))
 barplot(y$samples$lib.size*1e-6, ylab="Library size (millions)", cex.names=0.75, col=batch.col[y$samples$batch], names=samplenames, las=3, ylim=c(0,max(y$samples$lib.size*1e-6)+10), main="Library Size")
 legend(x="topright", col=batch.col[unique(y$samples$batch)], legend=c("first batch", "second batch", "third batch"), pch=15, cex=0.8)
 dev.off()
 
 # Total number of genes
-pdf("nGenesIndoRNA_preFilterin.pdf", height=10, width=15)
+pdf(paste0(outputdir, "nGenesIndoRNA_preFilterin.pdf"), height=10, width=15)
 par(oma=c(2,0,0,0))
 barplot(apply(y$counts, 2, function(c)sum(c!=0)),main="Number of Genes \n pre-Filtering", ylab="n Genes", cex.names=0.75, col=batch.col[y$samples$batch], names=samplenames, las=3, ylim=c(0,max(apply(y$counts, 2, function(c)sum(c!=0)))+3000))
 legend(x="topright", col=batch.col[unique(y$samples$batch)], legend=c("first batch", "second batch", "third batch"), pch=15, cex=0.8)
 dev.off()
 
 # save unfiltered counts file
-saveRDS(y$counts, file = "unfiltered_counts.rds")
+saveRDS(y$counts, file = paste0(outputdir, "unfiltered_counts.rds"))
