@@ -11,12 +11,13 @@ library(tidyverse)
 library(ghibli)
 library(Rcmdr)
 
+# Set paths:
+inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
+outputdir= "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval/"
+deconestimatedir= "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/"
 
 # load count data
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/countData_123_combined.R")
-
-# setwd
-setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval")
+load(paste0(inputdir, "countData/unfiltered_DGElistObject.Rda"))
 
 # assign count table This is y$counts, which has not been filtered for lowly-expressed genes
 count.table=y$counts
@@ -37,27 +38,28 @@ prediction <- dCell.predict(dCell.exp, dCell.models, res.type = "median")
 predicted.cellcounts <- prediction$dCell.prediction[,c('Granulocytes','B cells (CD19+)','CD4+ T cells','CD8+ T cells','NK cells (CD3- CD56+)','Monocytes (CD14+)')]
 
 # scale to sum to 100
-predicted.cellcounts.scaled <- (predicted.cellcounts/rowSums(predicted.cellcounts))*100
+# predicted.cellcounts.scaled <- (predicted.cellcounts/rowSums(predicted.cellcounts))*100
+
 # save table 
-write.table(predicted.cellcounts.scaled, file="predictedCellCounts_DeconCell.txt", sep="\t")
+write.table(predicted.cellcounts, file=paste0(outputdir,"predictedCellCounts_DeconCell.txt"), sep="\t")
 
 # plot percentages of each cell type
-pdf("DeconCell_RNASeqDeconvolution.pdf", height=10,width=19)
+pdf(paste0(outputdir,"DeconCell_RNASeqDeconvolution.pdf"), height=10,width=19)
 par(mar=c(14.1,4.1,10.1,2.1),xpd=T)
-barplot(t(predicted.cellcounts.scaled), col=c("#ffd92f","#e78ac3","#fc8d62","#66c2a5","#8da0cb","#a6d854"), las=3)
-legend(123,130,legend=colnames(predicted.cellcounts.scaled), col=c("#ffd92f","#e78ac3","#fc8d62","#66c2a5","#8da0cb","#a6d854"), pch=15, cex=0.8)
+barplot(t(predicted.cellcounts), col=c("#ffd92f","#e78ac3","#fc8d62","#66c2a5","#8da0cb","#a6d854"), las=3)
+legend(123,130,legend=colnames(predicted.cellcounts), col=c("#ffd92f","#e78ac3","#fc8d62","#66c2a5","#8da0cb","#a6d854"), pch=15, cex=0.8)
 dev.off()
 
 # Compare old deconvolution data to new deconvolution data ------------------------
 
 # load in deconvoluted matrix, obtained through methylation data by Heini
-norm.meth.decon=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/indonesian_cell_counts_rough_estimate_new.txt", header=T)
+norm.meth.decon=read.table(paste0(deconestimatedir,"indonesian_cell_counts_rough_estimate_new.txt"), header=T)
 # NOTE: this only has 117 rows, as opposed to 120 in the previous metylation deconvolution one by Irene
 
 # make 'not in' operator:
 '%!in%' <- function(x,y)!('%in%'(x,y))
 
-blood=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/indonesian_cell_counts_rough_estimate.txt", sep="\t", as.is=T, header=T)
+blood=read.table(paste0(deconestimatedir,"indonesian_cell_counts_rough_estimate.txt"), sep="\t", as.is=T, header=T)
 blood[,9]=gsub("_", "-", blood[,9])
 blood[,9]=gsub("-new", "", blood[,9])
 blood=blood[,c(2:7,9)]
@@ -71,16 +73,21 @@ blood=blood[-c(which(duplicated(blood$Sample.ID))),]
 blood=blood[match(norm.meth.decon$ID,blood$Sample.ID),]
 
 # Now plot the correlation between each blood type from old deconvolution and new deconvolution data
-pdf("unnormalisedVsNormalised_methDeconvolution.pdf",height=15,width=10)
+pdf(paste0(outputdir,"unnormalisedVsNormalised_methDeconvolution.pdf"),height=15,width=10)
 par(mfrow=c(3,2))
 sapply(1:6, function(x) plot(blood[,x],norm.meth.decon[,x], ylab="normalised_meth", xlab="unnormalised_meth", main=paste(colnames(blood)[x],cor(blood[,x],norm.meth.decon[,x],method="pearson"),sep="\n")))
 dev.off()
 
 # Compare RNA deconvolution data to methylation deconvolution data ------------------------
 
-rownames(predicted.cellcounts.scaled)=samplenames
+# define sample names
+samplenames <- as.character(y$samples$samples)
+samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
+samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
+
+rownames(predicted.cellcounts)=samplenames
 # match the row ordering of the RNA deconvolution data to the methylation deconvolution data
-RNA.decon=predicted.cellcounts.scaled[match(norm.meth.decon$ID,rownames(predicted.cellcounts.scaled)),]
+RNA.decon=predicted.cellcounts[match(norm.meth.decon$ID,rownames(predicted.cellcounts)),]
 # match column ordering
 col.order <- c("CD8+ T cells","CD4+ T cells","NK cells (CD3- CD56+)","B cells (CD19+)","Monocytes (CD14+)","Granulocytes")
 RNA.decon=RNA.decon[,col.order]
@@ -88,7 +95,7 @@ RNA.decon=RNA.decon[,col.order]
 norm.meth.decon[,c(1:6)]=norm.meth.decon[,c(1:6)]*100
 
 # now test correlation
-pdf("correlation_deconvolution_RNAvsMeth.pdf")
+pdf(paste0(outputdir,"correlation_deconvolution_RNAvsMeth.pdf"))
 # sapply(1:6, function(x) plot(RNA.decon[,x],norm.meth.decon[,x], main=paste(colnames(norm.meth.decon)[x],cor(RNA.decon[,x],norm.meth.decon[,x],method="pearson"),sep="\n")))
 par(mfrow=c(2,3))
 for (x in 1:6){

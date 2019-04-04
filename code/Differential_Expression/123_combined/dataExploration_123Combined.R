@@ -28,7 +28,7 @@ library(sva)
 inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Island/dataExploration/"
+outputdir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataExploration/"
 
 if (file.exists(outputdir) == FALSE){
     dir.create(outputdir)
@@ -63,6 +63,9 @@ Age <- cut(as.numeric(as.character(y$samples$Age)), c(14,24,34,44,54,64,74,84), 
 RIN <- cut(as.numeric(as.character(y$samples$RIN)), c(4.9,5.9,6.9,7.9,8.9), labels=c("5.0-5.9", "6.0-6.9", "7.0-7.9", "8.0-8.9"))
 lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,20000000,24000000), labels=c("8e+06-1.2e+07","1.2e+07-1.6e+07", "1.6e+07-2e+07", "2e+07-4.4e+07"))
 
+# assign names to covariate names so you can grab individual elements by name
+names(covariate.names)=covariate.names
+
 # MDS
 pdf(paste0(outputdir,"indoRNA_MDS_123Combined_allCovariates.pdf"), height=30, width=25)
 par(mfrow=c(5,4))
@@ -74,7 +77,7 @@ for (name in colnames(Filter(is.factor,y$samples))[-c(1,2)]) {
 plotMDS(lcpm, labels=batch, col=batch.col[as.numeric(batch)])
 title(main="batch")
 # plot blood (this is a gradient colouring scheme)
-for (name in covariate.names[c(11:16)]) {
+for (name in covariate.names[c("Gran","Bcell","CD4T","CD8T","NK","Mono")]) {
     # assign gradient colours for blood cell types
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
@@ -145,10 +148,10 @@ pc.assoc <- function(pca.data){
 }
 
 # Prepare covariate matrix
-all.covars.df <- y$samples[,c(3,5:ncol(y$samples))] 
+all.covars.df <- y$samples[,covariate.names]
 
 # Plot PCA
-for (name in colnames(Filter(is.factor,y$samples))[-c(1,2)]){
+for (name in covariate.names[1:12]){
   if (nlevels(get(name)) < 26){
     pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
     pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
@@ -167,7 +170,7 @@ pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=batch.col[as.numeric(batch)],n
 dev.off()
   
 # plot blood
-for (name in covariate.names[c(11:16)]){
+for (name in covariate.names[c("Gran","Bcell","CD4T","CD8T","NK","Mono")]){
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
     pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
@@ -193,23 +196,23 @@ all.pcs <- pc.assoc(pcaresults)
 all.pcs$Variance <- pcaresults$sdev^2/sum(pcaresults$sdev^2)
 
 # plot pca covariates association matrix to illustrate any potential confounding and evidence for batches
-pdf(outputdir,"significantCovariates_AnovaHeatmap.pdf")
+pdf(paste0(outputdir,"significantCovariates_AnovaHeatmap.pdf"))
 pheatmap(all.pcs[1:5,c(3:ncol(all.pcs)-1)], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
 dev.off()
 
 # Write out the covariates:
-write.table(all.pcs, file="pca_covariates_significanceLevels.txt", col.names=T, row.names=F, quote=F, sep="\t")
+write.table(all.pcs, file=paste0(outputdir,"pca_covariates_significanceLevels.txt"), col.names=T, row.names=F, quote=F, sep="\t")
 
 # Get relationship of all covariates
 new_cov=apply(covariates[2:ncol(covariates)], 2, FUN=function(x){x=as.numeric(as.factor(x))})
-pdf(outputdir,"covariateHeatmap.pdf", height=10, width=15)
+pdf(paste0(outputdir,"covariateHeatmap.pdf", height=10, width=15))
 pheatmap(t(new_cov),cluster_col=FALSE,cluster_rows=FALSE, labels_col=covariates[,1], colorRampPalette(rev(brewer.pal(n=10,name="Spectral")))(100),cex=1.1, main="Covariates")
 dev.off()
 
 # colnames(lcpm)=make.unique(samplenames)
 
 # Dissimilarity matrix with euclidean distances
-pdf(outputdir,"SampleDistances_Euclidean.pdf", height=8, width=15)
+pdf(paste0(outputdir,"SampleDistances_Euclidean.pdf"), height=8, width=15)
 par(mar=c(6.1,4.1,4.1,2.1))
 eucl.distance <- dist(t(lcpm), method = "euclidean")
 eucl.cluster <- hclust(eucl.distance, method = "complete")
@@ -226,7 +229,7 @@ ha1 = HeatmapAnnotation(df = df1, col = list(island = c("Mentawai" =  1, "Sumba"
 ha2 = rowAnnotation(df = df2, col= list(batch=c("1" = batch.col[1], "2" = batch.col[2], "3" = batch.col[3])))
 
 # plot
-pdf(outputdir,"lcpmCorrelationHeatmaps.pdf", height=10, width=15)
+pdf(paste0(outputdir,"lcpmCorrelationHeatmaps.pdf"), height=10, width=15)
 Heatmap(cor(lcpm,method="pearson"), col=magma(100), column_title = "Pearson Correlation \n log2-CPM", name="Corr Coeff", top_annotation = ha1, show_row_names = FALSE, column_names_gp=gpar(fontsize = 8)) + ha2
 dev.off()
 
@@ -323,7 +326,7 @@ for (i in 1:ncol(pcaresults$x)){
     }
 }
 colnames(pca.outliers.final)=c("Pca.dim", "Samples", "Z.score")
-write.table(pca.outliers.final, file="sample_outliersInPCA.txt", quote=F, row.names=F)
+write.table(pca.outliers.final, file=paste0(outputdir,"sample_outliersInPCA.txt"), quote=F, row.names=F)
 
 # Analyse what might be driving variation
 pdf(paste0(outputdir,"CovariateOutliers_SamplingSite.pdf"), height=10, width=15)

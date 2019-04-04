@@ -89,4 +89,4 @@ dev.off()
 # save unfiltered counts file
 saveRDS(y$counts, file = paste0(outputdir, "unfiltered_counts.rds"))
 # save whole DGE list object as output for downstream analysis
-saveRDS(y, file = paste0(outputdir, "unfiltered_DGElistObject.rds"))
+save(y, file = paste0(outputdir, "unfiltered_DGElistObject.Rda"))

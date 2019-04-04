@@ -33,7 +33,7 @@ batch.col=electronic_night(n=3)
 # BEGIN ANALYSIS -----------------------------------------------------------
 
 # load in count data (as DGE list object)
-y=readRDS(paste0(inputdir, "countData/unfiltered_DGElistObject.rds"))
+load(paste0(inputdir, "countData/unfiltered_DGElistObject.Rda"))
 
 # Create shortened samplenames- insert hyphen and drop suffixes
 samplenames <- as.character(y$samples$samples)
