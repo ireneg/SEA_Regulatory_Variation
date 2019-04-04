@@ -132,13 +132,16 @@ y <- calcNormFactors(y, method="TMM")
 pdf("Limma_voom_TMMNormalisation.pdf", height=8, width=12)
 par(mfrow=c(ncol=1,nrow=2))
 v <- voom(y, design, plot=TRUE)
-dupcor <- duplicateCorrelation(v, design, block=y$samples$ind)
+dupcor <- duplicateCorrelation(v, design, block=y$samples$ind) # 31 non-convergences
 dupcor$consensus # sanity check
 # [1] 0.7054115
 median(v$weights) # another sanity check:
 # [1] 19.03065
 
 vDup <- voom(y, design, plot=TRUE, block=y$samples$ind, correlation=dupcor$consensus)
+dupcor <- duplicateCorrelation(vDup, design, block=y$samples$ind) # 28 non-convergences
+dupcor$consensus # sanity check pt 2
+# [1] 0.705514
 median(vDup$weights) # another sanity check, pt 2 - small change, so it didn't matter too much, but it is good to have done it. 
 # [1] 18.93866
 
