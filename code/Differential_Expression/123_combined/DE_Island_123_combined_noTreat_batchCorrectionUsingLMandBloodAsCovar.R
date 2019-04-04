@@ -73,48 +73,57 @@ load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 # First, set up design matrix
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
 y$samples$Age[which(is.na(y$samples$Age) == T)]=45
-design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
+
+# We also need to create a new variable with individual IDs:
+y$samples$ind <- sapply(strsplit(as.character(y$samples$samples), "[_.]"), `[`, 1)
+
+# design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
+# colnames(design)=gsub("Island", "", colnames(design))
+# #rename columns to exclude spaces and unrecognised characters
+# # colnames(design)[c(1:13)]=c("Mentawai", "Sumba", "Mappi", "Age", "batch2", "batch3", "RIN", "CD8T", "CD4T", "NK", "Bcell", "Mono", "Gran")
+
+# FOR TESTING ONLY:
+design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$Gran)
 colnames(design)=gsub("Island", "", colnames(design))
-#rename columns to exclude spaces and unrecognised characters
-colnames(design)[c(1:13)]=c("Mentawai", "Sumba", "Mappi", "Age", "batch2", "batch3", "RIN", "CD8T", "CD4T", "NK", "Bcell", "Mono", "Gran")
+colnames(design)[c(1:8)]=c("Mentawai", "Sumba", "Mappi", "Age", "batch2", "batch3", "RIN", "Gran")
 
 # set up contrast matrix
 contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
 
 # plot mean-variance trend for different normalisation methods. This is helpfule for understandimg what should be done with estimating the dispersion: https://support.bioconductor.org/p/77664/
-pdf(paste0(outputdir, "EstimatingDispersion_allNormalisationMethods.pdf"), height=15, width=15)
-par(mfrow=c(4,3))
+# pdf(paste0(outputdir, "EstimatingDispersion_allNormalisationMethods.pdf"), height=15, width=15)
+# par(mfrow=c(4,3))
 
 # Fails below for statistical reasons, but runs to here as a stand-alone using the load commands!
 
 # first perform voom on unnormalised data
-y$samples$norm.factors <- 1
-estimateDisp <- estimateDisp(y, design, robust=TRUE)
-plotBCV(estimateDisp)
-title(paste0("None","\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
-v <- voom(y, design, plot=TRUE)
-title(main="None", line=0.5)
-# fit linear models
-vfit <- lmFit(v, design)
-vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-efit <- eBayes(vfit, robust=T)
-plotSA(efit, main="Mean-variance trend elimination \n None")
+# y$samples$norm.factors <- 1
+# estimateDisp <- estimateDisp(y, design, robust=TRUE)
+# plotBCV(estimateDisp)
+# title(paste0("None","\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
+# v <- voom(y, design, plot=TRUE)
+# title(main="None", line=0.5)
+# # fit linear models
+# vfit <- lmFit(v, design)
+# vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+# efit <- eBayes(vfit, robust=T)
+# plotSA(efit, main="Mean-variance trend elimination \n None")
 
-# now perform normalisation on all the others
-for (method in c("upperquartile", "TMM", "RLE")) {
-    y <- calcNormFactors(y, method=method)
-    estimateDisp <- estimateDisp(y, design, robust=TRUE)
-    plotBCV(estimateDisp)
-    title(paste0(method,"\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
-    v <- voom(y, design, plot=TRUE)
-    title(main=method, line=0.5)
-    # fit linear models
-    vfit <- lmFit(v, design)
-    vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-    efit <- eBayes(vfit, robust=T)
-    plotSA(efit, main=paste("Mean-variance trend elimination",method,sep="\n"))
-}
-dev.off()
+# # now perform normalisation on all the others
+# for (method in c("upperquartile", "TMM", "RLE")) {
+#     y <- calcNormFactors(y, method=method)
+#     estimateDisp <- estimateDisp(y, design, robust=TRUE)
+#     plotBCV(estimateDisp)
+#     title(paste0(method,"\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
+#     v <- voom(y, design, plot=TRUE)
+#     title(main=method, line=0.5)
+#     # fit linear models
+#     vfit <- lmFit(v, design)
+#     vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+#     efit <- eBayes(vfit, robust=T)
+#     plotSA(efit, main=paste("Mean-variance trend elimination",method,sep="\n"))
+# }
+# dev.off()
 
 # we'll go ahead an stick with TMM normalisation
 y <- calcNormFactors(y, method="TMM")
@@ -123,12 +132,96 @@ y <- calcNormFactors(y, method="TMM")
 pdf("Limma_voom_TMMNormalisation.pdf", height=8, width=12)
 par(mfrow=c(ncol=1,nrow=2))
 v <- voom(y, design, plot=TRUE)
+dupcor <- duplicateCorrelation(v, design, block=y$samples$ind)
+dupcor$consensus # sanity check
+# [1] 0.7054115
+median(v$weights) # another sanity check:
+# [1] 19.03065
+
+vDup <- voom(y, design, plot=TRUE, block=y$samples$ind, correlation=dupcor$consensus)
+median(vDup$weights) # another sanity check, pt 2 - small change, so it didn't matter too much, but it is good to have done it. 
+# [1] 18.93866
+
 # fit linear models
-vfit <- lmFit(v, design)
-vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-efit <- eBayes(vfit, robust=T)
-plotSA(efit, main="Mean-variance trend elimination")
+# With duplicate correction and blocking:
+    voomDupVfit <- lmFit(vDup, design, block=y$samples$ind, correlation=dupcor$consensus)
+    voomDupVfit <- contrasts.fit(voomDupVfit, contrasts=contr.matrix)
+    voomDupEfit <- eBayes(voomDupVfit, robust=T)
+
+# And without:
+    vfit <- lmFit(v, design)
+    vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+    efit <- eBayes(vfit, robust=T)
+
+plotSA(voomDupEfit, main="Mean-variance trend elimination with duplicate correction")
+plotSA(efit, main="Mean-variance trend elimination without duplicate correction")
 dev.off()
+
+### IGR: Quick DE qc after fitting lms:
+# With dup correction:
+    voomDupTopTableSMB.MTW <- topTable(voomDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
+    voomDupTopTableSMB.MPI <- topTable(voomDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
+    voomDupTopTableMTW.MPI <- topTable(voomDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+
+    summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
+    #        SMBvsMTW SMBvsMPI MTWvsMPI
+    # Down       1411     2286     1657
+    # NotSig    10530     8533     9768
+    # Up         1034     2156     1550
+
+    summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
+    #        SMBvsMTW SMBvsMPI MTWvsMPI
+    # Down        136      618      439
+    # NotSig    12624    11619    12032
+    # Up          215      738      504
+ 
+    summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
+    #        SMBvsMTW SMBvsMPI MTWvsMPI
+    # Down         13       83       97
+    # NotSig    12939    12684    12740
+    # Up           23      208      138
+
+
+# And without:
+    topTableSMB.MTW <- topTable(efit, coef=1, p.value=0.01, n=Inf, sort.by="p")
+    topTableSMB.MPI <- topTable(efit, coef=2, p.value=0.01, n=Inf, sort.by="p")
+    topTableMTW.MPI <- topTable(efit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+
+    summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01))
+    #        SMBvsMTW SMBvsMPI MTWvsMPI
+    # Down       1447     2320     1728
+    # NotSig    10439     8483     9641
+    # Up         1089     2172     1606
+
+    summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
+    #        SMBvsMTW SMBvsMPI MTWvsMPI
+    # Down        128      603      441
+    # NotSig    12610    11624    12026
+    # Up          237      748      508
+
+    summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
+    #        SMBvsMTW SMBvsMPI MTWvsMPI
+    # Down         11       82       97
+    # NotSig    12935    12680    12741
+    # Up           29      213      137
+
+
+# And finally, correlation between those two measurements - sort by gene first, then cor test
+    MTW.MPI <- join(voomDupTopTableMTW.MPI, topTableMTW.MPI, by="genes")
+    cor(MTW.MPI[,6], MTW.MPI[,12], method="spearman", use="complete")
+    # [1] 0.9773361
+ 
+    SMB.MPI <- join(voomDupTopTableSMB.MPI, topTableSMB.MPI, by="genes")
+    cor(SMB.MPI[,6], SMB.MPI[,12], method="spearman", use="complete")
+    # [1] 0.9765353
+
+    SMB.MTW <- join(voomDupTopTableSMB.MTW, topTableSMB.MTW, by="genes")
+    cor(SMB.MTW[,6], SMB.MTW[,12], method="spearman", use="complete")
+    # [1] 0.9688961
+
+# Didn't break anything! Woo!
+
+# Back to Kat's regularly scheduled code:
 
 # We can view how UQ normalisation performed using MD plots. This visualizes the library size-adjusted log-fold change between
 # two libraries (the difference) against the average log-expression across those libraries (themean). MD plots are generated by comparing sample 1 against an artificial
