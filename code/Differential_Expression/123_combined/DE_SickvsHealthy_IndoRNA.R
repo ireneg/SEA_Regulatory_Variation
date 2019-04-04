@@ -109,15 +109,20 @@ covariates[which(!(covariates[,1] %in% samplenames)),]
 # Read in plasmodium count data and identify sick samples -----------------------------------------
 
 # read in count files from featureCounts for plasmodium falciparum and vivax and assign to DGElist object
-files.pf=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/pFalciparum", full.names=T)
-files.vx=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/pVivax", full.names=T)
+#files.pf=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/pFalciparum", full.names=T)
+#files.vx=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/pVivax", full.names=T)
+files.pfpx=list.files(path="/Users/katalinabobowik/Documents/UniMelb_PhD/Projects/Sumba/PFPX_Combined", full.names=T)
 
-pf <- readDGE(files.pf, columns=c(1,3))
-dim(pf)
+
+#pf <- readDGE(files.pf, columns=c(1,3))
+#dim(pf)
 # [1] 14495   123
-vx <- readDGE(files.vx, columns=c(1,3))
-dim(vx)
+#vx <- readDGE(files.vx, columns=c(1,3))
+#dim(vx)
 # [1] 17737   123
+
+pfpx <- readDGE(files.pfpx, columns=c(1,3))
+
 
 # rename samplenames
 samplenames=sapply(strsplit(colnames(y),"[_.]"), `[`, 1)

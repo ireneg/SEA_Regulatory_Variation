@@ -1,82 +1,60 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-### Last edit: IGR 03.04.2019
-### Clean up paths, remove hardcoding, test for stand-alone
+### Last edit: KB 03.04.2019
 
-# first load dependencies and set input paths(i.e., count data)
-### IGR: should ditch the source command and instead load saved output from object and re-reading covariate matrices etc. Right now a lot of variables from the first script get invisibly recreated in this one if they are run separately - explicitly restating paths here: 
+# Load dependencies and set input paths --------------------------
+
+# Load dependencies:
+library(edgeR)
+library(plyr)
+library(NineteenEightyR)
+library(RColorBrewer)
+library(biomaRt)
+library(ggpubr)
+library(ggplot2)
+library(ggsignif)
+library(pheatmap)
+library(viridis)
+library(gplots)
+library(circlize)
+library(ComplexHeatmap)
 
 # Set paths:
-inputdir <- "/data/cephfs/punim0586/igallego/indoRNA_testing/dataPreprocessing" #output from previous script. 
-# covariatedir <- "~/"
-# blooddir <- "/data/cephfs/punim0586/kbobowik/Sumba/Output/DE_Analysis/123_combined/batchRemoval/"
-#repodir <- "~/repos/SEA_Regulatory_Variation/"
-#source(paste0(repodir, "code/Differential_Expression/123_combined/countData_123_combined.R"))
+inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
+housekeepingdir="/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/BatchEffects/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA_testing/DE_testing"
+outputdir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Island/LM_allCovarPlusBlood/"
 
 if (file.exists(outputdir) == FALSE){
     dir.create(outputdir)
 }
 
 # Load colour schemes:
-KAT TO INSERT THEM HERE # This line purposefully throws and error.
+wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
+palette(c(wes, brewer.pal(8,"Dark2")))
+# set up colour palette for batch
+batch.col=electronic_night(n=3)
 
-
-# Load all packages here:
-library(RColorBrewer)
-library(edgeR)
-library(plyr)
-# library(readr)
-# library(openxlsx)
-# library(pheatmap)
-# library(devtools)
-library(ggbiplot)
-library(biomaRt)
-# library(biomartr)
-library(gplots)
-# library(sva) # not needed
-library(magrittr)
-library(dendextend)
-library(qvalue)
-library(rowr)
-library(reshape2)
-library(RUVSeq)
-# library(doParallel)
-library(car)
-library(ggpubr)
-# library(GO.db)
-library(goseq)
-library(ggplot2)
-library(ggsignif)
-# library(wesanderson) # not needed
-library(treemap)
-library(NineteenEightyR)
-# library(ComplexHeatmap)
-library(circlize)
-library(viridis)
-library(vioplot)
-library(ReactomePA)
-
-
-### BEGIN ANALYSIS
+# BEGIN ANALYSIS -------------------------------------------------------------------------------------------------
 
 # Load log CPM matrix and y object:
+# lcpm
 load(paste0(inputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
+# y DGE list object
 load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
-
 
 # Removing heteroscedascity with voom and fitting linear models -----------------------------------------------------------------------
 
 # First, set up design matrix
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
 y$samples$Age[which(is.na(y$samples$Age) == T)]=45
-design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
+design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Mono + y$samples$Gran) + y$samples$Bcell
 colnames(design)=gsub("Island", "", colnames(design))
 #rename columns to exclude spaces and unrecognised characters
 colnames(design)[c(1:13)]=c("Mentawai", "Sumba", "Mappi", "Age", "batch2", "batch3", "RIN", "CD8T", "CD4T", "NK", "Bcell", "Mono", "Gran")
+colnames(design)[c(1:12)]=c("Mentawai", "Sumba", "Mappi", "Age", "batch2", "batch3", "RIN", "CD8T", "CD4T", "NK", "Mono", "Gran")
 
 # set up contrast matrix
 contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
@@ -120,7 +98,7 @@ dev.off()
 y <- calcNormFactors(y, method="TMM")
 
 # now go ahead with voom normalisation
-pdf("Limma_voom_TMMNormalisation.pdf", height=8, width=12)
+pdf(paste0(outputdir,"Limma_voom_TMMNormalisation.pdf"), height=8, width=12)
 par(mfrow=c(ncol=1,nrow=2))
 v <- voom(y, design, plot=TRUE)
 # fit linear models
@@ -135,7 +113,7 @@ dev.off()
 # library constructed from the average of all other samples. Ideally, the bulk of genes should be centred at a log-fold change of zero.  This indicates
 # that any composition bias between libraries has been successfully removed
 
-pdf("MDPlots_TMM_Normalisation_OutliersCheck.pdf", height=15, width=15)
+pdf(paste0(outputdir,"MDPlots_TMM_Normalisation_OutliersCheck.pdf"), height=15, width=15)
 par(mfrow=c(4,4))
 for (i in 1:ncol(y)){
   plotMD(cpm(y, log=TRUE), column=i)
@@ -146,7 +124,7 @@ dev.off()
 # QC after fitting linear models --------------------------------------------------------------------------------------
 
 # check to see p-value distribution is normal
-pdf("PvalueDist_NotAdjusted.pdf", height=15, width=10)
+pdf(paste0(outputdir,"PvalueDist_NotAdjusted.pdf"), height=15, width=10)
 par(mfrow=c(3,1))
 for (i in 1:ncol(efit)){
     hist(efit$p.value[,i], main=colnames(efit)[i], ylim=c(0,max(table(round(efit$p.value[,i], 1)))+1000), xlab="p-value")
@@ -154,7 +132,7 @@ for (i in 1:ncol(efit)){
 dev.off()
 
 # check p-value distribution for adjusted p-values
-pdf("PvalueDist_Adjusted.pdf", height=15, width=10)
+pdf(paste0(outputdir,"PvalueDist_Adjusted.pdf"), height=15, width=10)
 par(mfrow=c(3,1))
 for (i in 1:ncol(efit)){
     topTable <- topTable(efit, coef=i, n=Inf)
@@ -164,7 +142,7 @@ for (i in 1:ncol(efit)){
 dev.off()
 
 # Verify that control housekeeping genes are not significantly DE. Set up list of housekeeping genes as controls (from Eisenberg and Levanon, 2003)
-housekeeping=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/BatchEffects/Housekeeping_ControlGenes.txt", as.is=T, header=F)
+housekeeping=read.table(paste0(housekeepingdir,"Housekeeping_ControlGenes.txt"), as.is=T, header=F)
 # if this is broken, use host = "uswest.ensembl.org"
 ensembl.mart.90 <- useMart(biomart='ENSEMBL_MART_ENSEMBL', dataset='hsapiens_gene_ensembl', host = 'www.ensembl.org', ensemblRedirect = FALSE)
 biomart.results.table <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name'), mart = ensembl.mart.90,values=housekeeping, filters="hgnc_symbol")
@@ -172,7 +150,7 @@ hkGenes=as.vector(biomart.results.table[,1])
 hkControls=hkGenes[which(hkGenes %in% rownames(y$counts))]
 
 # Volcano plot with points of housekeeping genes
-pdf("VolcanoPlots.pdf", height=15, width=10)
+pdf(paste0(outputdir,"VolcanoPlots.pdf"), height=15, width=10)
 par(mfrow=c(3,1))
 for (i in 1:ncol(efit)){
     plot(efit$coef[,i], -log10(as.matrix(efit$p.value)[,i]), pch=20, main=colnames(efit)[i], xlab="log2FoldChange", ylab="-log10(pvalue)")
@@ -185,16 +163,39 @@ dev.off()
 # PCA visualisation after correction and association with covariates ------------------------------------------------------------
 
 # let's also visualise how our PCAs look after limma correction by using removeBatcheffect. Help on design of removeBatcheffects was given by the lovely John Blischak.
-design <- model.matrix(~0 + Island)
+design <- model.matrix(~0 + y$samples$Island)
 colnames(design)=gsub("Island", "", colnames(design))
 colnames(design)[(3)]=c("Mappi")
-batch.corrected.lcpm <- removeBatchEffect(lcpm, batch=batch, covariates = cbind(y$samples$Age, y$samples$RIN, y$sample$CD8T, y$sample$CD4T, y$sample$NK, y$sample$Bcell, y$sample$Monoy$sample$Gran),design=design)
+batch.corrected.lcpm <- removeBatchEffect(lcpm, batch=y$samples$batch, covariates = cbind(y$samples$Age, y$samples$RIN, y$samples$CD8T, y$samples$CD4T, y$samples$NK, y$samples$Bcell, y$samples$Mono, y$samples$Gran), design=design)
+
+# define sample names
+samplenames <- as.character(y$samples$samples)
+samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
+samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
 
 # rename column names of lcpm to sample names (so that they are shorter and easier to read)
 colnames(lcpm)=samplenames
 
 # get which samples are replicates
+load(paste0(inputdir, "covariates.Rda"))
+allreps=covariates[,1][which(covariates$replicate)]
+allreps=unique(allreps)
 allreplicated=as.factor(samplenames %in% allreps)
+
+# assign covariate names
+# subtract variables we don't need
+subtract=c("group", "norm.factors", "samples")
+# get index of unwanted variables
+subtract=which(colnames(y$samples) %in% subtract)
+covariate.names = colnames(y$samples)[-subtract]
+for (name in covariate.names){
+ assign(name, y$samples[[paste0(name)]])
+}
+
+# Age, RIN, and library size need to be broken up into chunks for easier visualisation of trends (for instance in Age, we want to see high age vs low age rather than the effect of every single age variable)
+Age <- cut(as.numeric(as.character(y$samples$Age)), c(14,24,34,44,54,64,74,84), labels=c("15-24","25-34", "35-44", "45-54", "55-64", "65-74", "75-84"))
+RIN <- cut(as.numeric(as.character(y$samples$RIN)), c(4.9,5.9,6.9,7.9,8.9), labels=c("5.0-5.9", "6.0-6.9", "7.0-7.9", "8.0-8.9"))
+lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,20000000,24000000), labels=c("8e+06-1.2e+07","1.2e+07-1.6e+07", "1.6e+07-2e+07", "2e+07-4.4e+07"))
 
 # PCA plotting function
 plot.pca <- function(dataToPca, speciesCol, namesPch, sampleNames){
@@ -233,29 +234,32 @@ pc.assoc <- function(pca.data){
 }
 
 # Prepare covariate matrix
-all.covars.df <- y$samples[,c(3,5:22)] 
+all.covars.df <- y$samples[,covariate.names] 
+
+# assign names to covariate names so you can grab individual elements by name
+names(covariate.names)=covariate.names
 
 # Plot PCA
-for (name in covariate.names[c(1:10,17:18)]){
-  if (nlevels(get(name)) < 26){
-    pdf(paste0("batchCorrected_pcaresults_",name,".pdf"))
-    pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
-    dev.off()
-  } else {
-    pdf(paste0("pcaresults_",name,".pdf"))
-    pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=as.numeric(get(name)),namesPch=20,sampleNames=get(name))
-    dev.off()
-  }
+for (name in covariate.names[1:12]){
+    if (nlevels(get(name)) < 26){
+        pdf(paste0(outputdir,"batchCorrected_pcaresults_",name,".pdf"))
+        pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
+        dev.off()
+    } else {
+        pdf(paste0("pcaresults_",name,".pdf"))
+        pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=as.numeric(get(name)),namesPch=20,sampleNames=get(name))
+        dev.off()
+    }
 }
 
-# plot batch (this has to be done separately since it ha sa different colour scheme)
-pdf(paste0("batchCorrected_pcaresults_batch.pdf"))
+# plot batch (this has to be done separately since it has a different colour scheme)
+pdf(paste0(outputdir,"batchCorrected_pcaresults_batch.pdf"))
 name="batch"
 pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=batch.col[as.numeric(batch)],namesPch=as.numeric(y$samples$batch) + 14,sampleNames=batch)
 dev.off()
   
 # plot blood - this one also has a differnet gradient colour scheme
-for (name in covariate.names[c(11:16)]){
+for (name in covariate.names[c("Gran","Bcell","CD4T","CD8T","NK","Mono")]){
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
     pdf(paste0("batchCorrected_pcaresults_",name,".pdf"))
@@ -268,12 +272,12 @@ all.pcs <- pc.assoc(pcaresults)
 all.pcs$Variance <- pcaresults$sdev^2/sum(pcaresults$sdev^2)
 
 # plot pca covariates association matrix to illustrate any remaining confounding/batch
-pdf("significantCovariates_AnovaHeatmap.pdf")
+pdf(paste0(outputdir,"significantCovariates_AnovaHeatmap.pdf"))
 pheatmap(all.pcs[1:5,c(3:20)], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
 dev.off()
 
 # Write out the covariates:
-write.table(all.pcs, file="pca_covariates_blood.txt", col.names=T, row.names=F, quote=F, sep="\t")
+write.table(all.pcs, file=paste0(outputdir,"pca_covariates_blood.txt"), col.names=T, row.names=F, quote=F, sep="\t")
 
 # Summary and visualisation of gene trends ---------------------------------------------------------------------------
 
@@ -288,16 +292,33 @@ for (number in c(0,0.5,1)){
     logFC.df[counter,]=values
 }
 logFC.df=cbind(logFC = c(0,0.5,1), logFC.df)
-write.table(logFC.df, file="logFC_thresholds.txt")
+write.table(logFC.df, file=paste0(outputdir,"logFC_thresholds.txt"))
 
 dt <- decideTests(efit, p.value=0.01, lfc=1)
 # get summary of decide tests statistics
-write.table(summary(dt), file="numberSigDEgenes_voom_efit.txt")
+write.table(summary(dt), file=paste0(outputdir,"numberSigDEgenes_voom_efit.txt"))
 # write out top table results 
-write.fit(efit, dt, file="toptable_SigGenes_voom_efit.txt")
+write.fit(efit, dt, file=paste0(outputdir,"toptable_SigGenes_voom_efit.txt"))
+
+# plot log2 fold change between islands
+pdf(paste0(outputdir,"log2FC_IslandComparisons_pval01.pdf"))
+# note 'p.value' is the cutoff value for adjusted p-values
+topTable <- topTable(efit, coef=1, n=Inf, p.value=0.01)
+plot(density(topTable$logFC), col=9, xlim=c(-2,2), main="LogFC Density", xlab="LogFC", ylab="Density")
+abline(v=c(-1,-0.5,0.5,1), lty=3)
+counter=0
+for (i in 2:ncol(efit)){
+    counter=counter+1
+    topTable <- topTable(efit, coef=i, n=Inf, p.value=0.01)
+    lines(density(topTable$logFC), col=9+counter, xlim=c(-2,2))
+}
+legend(x="topright", bty="n", col=9:11, legend=colnames(efit), lty=1, lwd=2)
+dev.off()
+
+# this part below breaks because I haven't incorporated gene names
 
 # graphical representation of DE results through MD plot
-pdf("MD_Plots_pval01_lfc1.pdf", height=15, width=10)
+pdf(paste0(outputdir,"MD_Plots_pval01_lfc1.pdf"), height=15, width=10)
 par(mfrow=c(3,1))
 for (i in 1:ncol(efit)){
     o <- which(names(efit$Amean) %in% names(which(abs(dt[,i])==1)))
@@ -310,21 +331,6 @@ for (i in 1:ncol(efit)){
     legend(legend=paste(names(summary(dt)[,i]), summary(dt)[,i], sep="="), x="bottomright", border=F, bty="n")
     text(x[o], z[t], labels=G)
 }
-dev.off()
-
-# plot log2 fold change between islands
-pdf("log2FC_IslandComparisons_pval01.pdf")
-# note 'p.value' is the cutoff value for adjusted p-values
-topTable <- topTable(efit, coef=1, n=Inf, p.value=0.01)
-plot(density(topTable$logFC), col=9, xlim=c(-2,2), main="LogFC Density", xlab="LogFC", ylab="Density")
-abline(v=c(-1,-0.5,0.5,1), lty=3)
-counter=0
-for (i in 2:ncol(efit)){
-	counter=counter+1
-    topTable <- topTable(efit, coef=i, n=Inf, p.value=0.01)
-    lines(density(topTable$logFC), col=9+counter, xlim=c(-2,2))
-}
-legend(x="topright", bty="n", col=9:11, legend=colnames(efit), lty=1, lwd=2)
 dev.off()
 
 # We can also look at the top ten DE genes with a heatmap of logCPM values for the top 100 genes. Each gene (or row) is scaled so that mean expression is zero and the standard deviation is one (we're using 'E' from the voom object which is a numeric matrix of normalized expression values on the log2 scale). Samples with relatively high expression of a given gene are marked in red and samples with relatively low expression are marked in blue. Lighter shades and white represent genes with intermediate expression levels. Samples and genes are reordered by the method of hierarchical clustering
@@ -340,7 +346,7 @@ df1=data.frame(island = as.character(Island))
 df2=data.frame(batch = as.numeric(batch))
 ha1 = HeatmapAnnotation(df = df1, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3)))
 
-pdf("HeatmapAllPops.pdf", height=15, width=15)
+pdf(paste0(outputdir,"HeatmapAllPops.pdf"), height=15, width=15)
 grid.newpage()
 pushViewport(viewport(layout = grid.layout(nr = 2, nc = 2)))
 # set up layout row position
@@ -380,7 +386,7 @@ for (i1 in island1){
         index <- which(v$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
         df=data.frame(island = as.character(Island[grep(paste(i1,i2,sep="|"), Island)]))
         ha =  HeatmapAnnotation(df = df, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3)))
-        pdf(paste("HeatmapTopeGenes",i1,i2,".pdf",sep="_"), height=10, width=15)
+        pdf(paste0(outputdir,"HeatmapTopeGenes_",i1,"_vs_",i2,".pdf"), height=10, width=15)
         draw(Heatmap(t(scale(t(v$E[index,])))[,grep(paste(i1,i2,sep="|"), Island)], col=col_fun, column_title = colnames(efit)[counter], top_annotation = ha, show_row_names = T, show_heatmap_legend = T, show_column_names = F, name = "Z-Score"),show_annotation_legend = TRUE,newpage=F)
         dev.off()
     }
@@ -391,27 +397,28 @@ for (i in 1:ncol(efit)){
     # note 'p.value' is the cutoff value for adjusted p-values
     topTable <- topTable(efit, coef=i, p.value=0.01, n=Inf, lfc=1, sort.by="p")
     topGenes <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', 'go_id', 'name_1006', "interpro","interpro_description"), mart = ensembl.mart.90,values=topTable$ENSEMBL, filters="ensembl_gene_id")
-    write.table(topGenes, file=paste0("top_genes_",colnames(efit)[i],".txt"), quote=F, row.names=F)
-    write.table(topTable, file=paste0("top_Table_",colnames(efit)[i],".txt"), quote=F, row.names=F)
+    write.table(topGenes, file=paste0(outputdir,"top_genes_",colnames(efit)[i],".txt"), quote=F, row.names=F)
+    write.table(topTable, file=paste0(outputdir,"top_Table_",colnames(efit)[i],".txt"), quote=F, row.names=F)
 }
 
 # show the number of DE genes between all islands
-pdf("vennDiagram_allSigDEGenes_pval01_FDR1.pdf", height=15, width=15)
+pdf(paste0(outputdir,"vennDiagram_allSigDEGenes_pval01_FDR1.pdf"), height=15, width=15)
 vennDiagram(dt[,1:3], circle.col=c(9,10,11))
 dev.off()
 
 # get DE genes in common with populations compared to Mappi, i.e., SMBvsMPI and MTWvsMPI (since we think this is an interesting island comparison)
+rownames(efit$genes)=efit$genes$ENSEMBL
 de.common.MPI = which(dt[,2]!=0 & dt[,3]!=0)
 # get what these genes are doing and save them to a file
 commonGenes.MPI <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.MPI), filters="ensembl_gene_id")
-write.table(de.common.MPI, file="allCommonGenes_MPI.txt")
+write.table(de.common.MPI, file=paste0(outputdir,"allCommonGenes_MPI.txt"))
 # save the common gene names 
 de.common.MPI=efit$genes[names(de.common.MPI),]
 
 # now plot the common genes to see if they're being regulated in the same direction
 tt.SMBvsMPI=topTable(efit, coef=2, p.value=0.01, n=Inf, lfc=1, sort.by="p")
 tt.MTWvsMPI=topTable(efit, coef=3, p.value=0.01, n=Inf, lfc=1, sort.by="p")
-pdf("logFC_commonMPIgenes.pdf")
+pdf(paste0(outputdir,"logFC_commonMPIgenes.pdf"))
 plot(tt.SMBvsMPI[rownames(de.common.MPI),"logFC"], tt.MTWvsMPI[rownames(de.common.MPI),"logFC"], xlab="logFC SMBvsMPI", ylab="logFC MTWvsMPI", pch=20, main="Common DE Genes", xlim=c(-5,5), ylim=c(-6,6))
 text(tt.SMBvsMPI[rownames(de.common.MPI),"logFC"], tt.MTWvsMPI[rownames(de.common.MPI),"logFC"], labels=tt.SMBvsMPI[rownames(de.common.MPI),"SYMBOL"], pos=3)
 abline(h=0,v=0, lty=2)
@@ -443,7 +450,7 @@ topGenes.pvalue=formatC(topGenes.pvalue, format="e", digits=2, drop0trailing=T)
 topGenes.pvalue=sub("e", "x10^", topGenes.pvalue)
 
 # We can make the violin plots using ggpubr
-pdf("TopGenes_ggboxplot_Island.pdf", height=8, width=10)
+pdf(paste0(outputdir,"TopGenes_ggboxplot_Island.pdf"), height=8, width=10)
 counter=0
 for(ensembl in topEnsembl){
     counter=counter+1
@@ -455,8 +462,9 @@ for(ensembl in topEnsembl){
 dev.off()
 
 # after analysing the distributions and reading up on some of the genes, my three favourite genes are Siglec6, Siglec7, and MARCO. Lets plot out the distribution solely for these three genes
-favGenes=c("SIGLEC6","SIGLEC7","MARCO","RSAD2","AIM2","TNFSF4")
-favEnsembl=de.common.MPI[,1][sapply(1:length(favGenes), function(x)grep(favGenes[x],de.common.MPI[,2]))]
+favGenes=c("SIGLEC6","SIGLEC7","MARCO")
+#"RSAD2","AIM2","TNFSF4")
+favEnsembl=de.common.MPI[,1][sapply(1:length(favGenes), function(x) grep(favGenes[x],de.common.MPI[,2]))]
 
 # set up pvalue matrix
 topGenes.pvalue=matrix(nrow=length(favEnsembl), ncol=ncol(efit))
@@ -488,8 +496,9 @@ for(ensembl in favEnsembl){
     assign(favGenes[counter], ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=favGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 3, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
 }
 
-pdf("favouriteTopGenes_distribution_Island.pdf", height=12, width=15)
-ggarrange(SIGLEC6,SIGLEC7,MARCO,AIM2,TNFSF4,RSAD2)
+pdf(paste0(outputdir,"favouriteTopGenes_distribution_Island.pdf"), height=12, width=15)
+ggarrange(SIGLEC6,SIGLEC7,MARCO)
+#AIM2,TNFSF4,RSAD2)
 dev.off()
 
 

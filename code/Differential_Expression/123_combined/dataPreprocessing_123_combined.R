@@ -1,30 +1,68 @@
 # script created by KSB, 26.07.18
 # perform data pre-processing on both batches of indonesian RNA-seq data- third batch
 
-### Last edit: IGR 03.04.2019
-### Clean up paths
+### Last edit: KB 03.04.2019
 
+# Load dependencies and set input paths --------------------------
 
-# first load dependencies and set input paths(i.e., count data)
-### IGR: should ditch the source command and instead load saved output from object and re-reading covariate matrices etc. Right now a lot of variables from the first script get invisibly recreated in this one if they are run separately - explicitly restating paths here: 
+# Load dependencies:
+library(edgeR)
+library(plyr)
+library(NineteenEightyR)
+library(openxlsx)
+library(RColorBrewer)
 
 # Set paths:
-inputdir <- "/data/cephfs/punim0586/kbobowik/Sumba/"
-covariatedir <- "~/"
-blooddir <- "/data/cephfs/punim0586/kbobowik/Sumba/Output/DE_Analysis/123_combined/batchRemoval/"
-repodir <- "~/repos/SEA_Regulatory_Variation/"
-source(paste0(repodir, "code/Differential_Expression/123_combined/countData_123_combined.R"))
+# inputdir <- "/data/cephfs/punim0586/kbobowik/Sumba/Output/DE_Analysis/123_combined/" # on server
+inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/" # locally
+covariatedir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA_testing/dataPreprocessing"
+outputdir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
 
 if (file.exists(outputdir) == FALSE){
     dir.create(outputdir)
 }
 
-# Load any additional packages here:
+# set up colour palette. The "wes" palette will be used for island and other statistical information, whereas NineteenEightyR will be used for batch information
+wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
+palette(c(wes, brewer.pal(8,"Dark2")))
+# set up colour palette for batch
+batch.col=electronic_night(n=3)
 
+# BEGIN ANALYSIS -----------------------------------------------------------
 
+# load in count data (as DGE list object)
+y=readRDS(paste0(inputdir, "countData/unfiltered_DGElistObject.rds"))
+
+# Create shortened samplenames- insert hyphen and drop suffixes
+samplenames <- as.character(y$samples$samples)
+samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
+samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
+
+# Create the covariate matrix --------------------------------------
+
+covariates <- read.xlsx(paste0(covariatedir, "metadata_RNA_Batch123.xlsx"), sheet=1, detectDates=T)
+
+# add in blood
+blood=read.table(paste0(inputdir, "batchRemoval/predictedCellCounts_DeconCell.txt"), sep="\t", as.is=T, header=T)
+colnames(blood)=c("Gran","Bcell","CD4T","CD8T","NK","Mono")
+blood$ID=sapply(strsplit(rownames(blood),"[_.]"), `[`, 1)
+blood$ID <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", blood$ID)
+# add blood data into covariates matrix
+covariates[,14:19]=blood[match(covariates$Sample.ID, blood$ID),1:6]
+
+# add in replicate information
+covariates$replicate=duplicated(covariates[,1])
+
+# The date column is being finnicky and importing strangely (i.e., some of the dates are recognised as dates, some are not). To fix this, I have to reformat the dates in rows 39:70, then change this to a date variable so that it can be handled correctly for the ANOVA analysis (below).
+covariates[39:70, 6]="10/03/2016"
+covariates[,6]=as.Date(covariates[,6], tryFormats="%d/%m/%Y")
+
+## Check if any samples in the covariate DF are not in samplenames
+covariates[which(!(covariates[,1] %in% samplenames)),]
+# <0 rows> (or 0-length row.names)
+# Nothing! So that's good news
 
 # covariate setup ------------------------------------------------------
 
@@ -35,7 +73,7 @@ all(samplenames == covariates[,1])
 # TRUE
 
 # add in sick sample information. We can first read in the sick metadata which was generated in the script "indoRNA_DEAnalysis_STAR_HealthyvsSickMappi.R".
-malaria.metadata=read.table(paste0(inputdir, "Output/DE_Analysis/123_combined/DE_Sick/Malaria_summary_table.txt"), sep="\t", header=T)
+malaria.metadata=read.table(paste0(inputdir, "DE_Sick/Malaria_summary_table.txt"), sep="\t", header=T)
 # add in malaria information
 covariates$microscopy.pos=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"microscopy"]
 covariates$PCR.pos=malaria.metadata[match(covariates$Sample.ID, malaria.metadata$sample.ID),"PCR"]
@@ -57,12 +95,12 @@ for (name in head(covariate.names, -2)){
 }
 
 # Make sure all covariates in y$samples are the appropriate structure. This is important, as it affects the linear model and ANOVA tests
-# Get variables that aren't numeric and transform them into factors. Batch is considered numeric (which we want to change), so we'll also add this into our convert.factors vector
-covar.numeric=unlist(lapply(y$samples, is.numeric))
-convert.factors=c(colnames(y$samples[,!covar.numeric])[3:ncol(y$samples[,!covar.numeric])], "batch")
+# Get variables that aren't numeric and transform them into factors. Batch is considered numeric (which we want to change), so we'll also add this into our make.factor vector
+which.numeric=unlist(lapply(y$samples, is.numeric))
+make.factor=c(colnames(y$samples[,!which.numeric])[3:ncol(y$samples[,!which.numeric])], "batch")
         
 # assign variables and make y-samples metadata into appropriate structure
-for (name in convert.factors){
+for (name in make.factor){
   if(sum(is.na(y$samples[[name]])) > 0){
     y$samples[[paste0(name)]]=assign(name, as.factor(addNA(y$samples[[paste0(name)]])))
   }
@@ -79,7 +117,7 @@ lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,2000
 
 # assign blood type information to variables
 for (name in covariate.names[c(11:16)]){
-  assign(name, as.numeric(as.character(y$samples[[paste0(name)]])))
+assign(name, as.numeric(as.character(y$samples[[paste0(name)]])))
 }
 
 # assign PF and VX load information
@@ -125,7 +163,7 @@ allreps=covariates[,1][which(covariates$replicate)]
 allreps=unique(allreps)
 
 # look at how well replicate performed
-pdf(psate0(outputdir, "replicate_comparisons_noFiltering_123Combined.pdf"), height=10, width=10)
+pdf(paste0(outputdir, "replicate_comparisons_noFiltering_123Combined.pdf"), height=10, width=10)
 par(mfrow=c(3,3))
 # Since SMB-ANK-027 had two replicates, we need to plot one vs three and two vs three. First, one vs three
 smoothScatter(lcpm[,which(samplenames %in% "SMB-ANK-027")[1]], lcpm[,which(samplenames %in% "SMB-ANK-027")[3]], ylab=colnames(lcpm)[which(samplenames %in% allreps[1])[3]], xlab=colnames(lcpm)[which(samplenames %in% allreps[1])[1]], xlim=c(-5,15), ylim=c(-5,15), main="Technical replicate SMB-ANK-027")
@@ -289,5 +327,10 @@ dev.off()
 # recalculate lcpm
 lcpm=cpm(y, log=T)
 
+# save data
 save(lcpm, file=paste0(outputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
 save(y, file=paste0(outputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
+# covariate matrix
+save(covariates, file=paste0(outputdir, "covariates.Rda"))
+
+

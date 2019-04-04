@@ -1,15 +1,70 @@
 # script created by KSB, 06.06.18
 # data exploration (MDS, PCA, and sample outlier analysis) of Indonesia RNA-seq data (both batches)
 
-# load dependencies: human count data and data preprocessing
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/countData_123_combined.R")
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/dataPreprocessing_123_combined.R")
+### Last edit: KB 03.04.2019
 
-# set working directory
-setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataExploration")
+# Load dependencies and set input paths --------------------------
+
+# Load dependencies:
+library(edgeR)
+library(plyr)
+library(NineteenEightyR)
+library(RColorBrewer)
+library(biomaRt)
+library(ggpubr)
+library(ggplot2)
+library(ggsignif)
+library(pheatmap)
+library(viridis)
+library(gplots)
+library(circlize)
+library(ComplexHeatmap)
+library(dendextend)
+library(reshape2)
+library(car)
+library(sva)
+
+# Set paths:
+inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
+
+# Set output directory and create it if it does not exist:
+outputdir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Island/dataExploration/"
+
+if (file.exists(outputdir) == FALSE){
+    dir.create(outputdir)
+}
+
+# Load colour schemes:
+wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
+palette(c(wes, brewer.pal(8,"Dark2")))
+# set up colour palette for batch
+batch.col=electronic_night(n=3)
+
+# BEGIN ANALYSIS -------------------------------------------------------------------------------------------------
+
+# Load log CPM matrix and y object:
+# lcpm
+load(paste0(inputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
+# y DGE list object
+load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
+
+# assign covariate names
+# subtract variables we don't need
+subtract=c("group", "norm.factors", "samples")
+# get index of unwanted variables
+subtract=which(colnames(y$samples) %in% subtract)
+covariate.names = colnames(y$samples)[-subtract]
+for (name in covariate.names){
+ assign(name, y$samples[[paste0(name)]])
+}
+
+# Age, RIN, and library size need to be broken up into chunks for easier visualisation of trends (for instance in Age, we want to see high age vs low age rather than the effect of every single age variable)
+Age <- cut(as.numeric(as.character(y$samples$Age)), c(14,24,34,44,54,64,74,84), labels=c("15-24","25-34", "35-44", "45-54", "55-64", "65-74", "75-84"))
+RIN <- cut(as.numeric(as.character(y$samples$RIN)), c(4.9,5.9,6.9,7.9,8.9), labels=c("5.0-5.9", "6.0-6.9", "7.0-7.9", "8.0-8.9"))
+lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,20000000,24000000), labels=c("8e+06-1.2e+07","1.2e+07-1.6e+07", "1.6e+07-2e+07", "2e+07-4.4e+07"))
 
 # MDS
-pdf("indoRNA_MDS_123Combined_allCovariates.pdf", height=30, width=25)
+pdf(paste0(outputdir,"indoRNA_MDS_123Combined_allCovariates.pdf"), height=30, width=25)
 par(mfrow=c(5,4))
 for (name in colnames(Filter(is.factor,y$samples))[-c(1,2)]) {
     plotMDS(lcpm, labels=get(name), col=as.numeric(get(name)))
@@ -36,8 +91,19 @@ for (name in covariate.names[grep("reads", covariate.names)]){
 }
 dev.off()
 
+# Create shortened samplenames- insert hyphen and drop suffixes
+samplenames <- as.character(y$samples$samples)
+samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
+samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
+
 # rename column names of lcpm
 colnames(lcpm)=samplenames
+
+# get which samples are replicates
+load(paste0(inputdir, "covariates.Rda"))
+allreps=covariates[,1][which(covariates$replicate)]
+allreps=unique(allreps)
+allreplicated=as.factor(samplenames %in% allreps)
 
 # get which samples are replicates
 allreplicated=as.factor(samplenames %in% allreps)
@@ -84,18 +150,18 @@ all.covars.df <- y$samples[,c(3,5:ncol(y$samples))]
 # Plot PCA
 for (name in colnames(Filter(is.factor,y$samples))[-c(1,2)]){
   if (nlevels(get(name)) < 26){
-    pdf(paste0("pcaresults_",name,".pdf"))
+    pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
     pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
     dev.off()
   } else {
-    pdf(paste0("pcaresults_",name,".pdf"))
+    pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
     pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=20,sampleNames=get(name))
     dev.off()
   }
 }
 
 # plot batch
-pdf(paste0("pcaresults_batch.pdf"))
+pdf(paste0(outputdir,"pcaresults_batch.pdf"))
 name="batch"
 pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=batch.col[as.numeric(batch)],namesPch=as.numeric(y$samples$batch) + 14,sampleNames=batch)
 dev.off()
@@ -104,7 +170,7 @@ dev.off()
 for (name in covariate.names[c(11:16)]){
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
-    pdf(paste0("pcaresults_",name,".pdf"))
+    pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
     pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=bloodCol,namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
     legend(legend=c("High","Low"), pch=16, x="bottomright", col=c(bloodCol[which.max(get(name))], bloodCol[which.min(get(name))]), cex=0.6, title=name, border=F, bty="n")
     legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
@@ -115,7 +181,7 @@ for (name in covariate.names[c(11:16)]){
 for (name in covariate.names[grep("reads", covariate.names)]){
     initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     plasmoCol <- colorRampPalette(c("blue", "red"))(79)[initial]
-    pdf(paste0("pcaresults_",name,".pdf"))
+    pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
     pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=plasmoCol,namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
     legend(legend=c("High","Low"), pch=16, x="bottomright", col=c(plasmoCol[which.max(get(name))], plasmoCol[which.min(get(name))]), cex=0.6, title=name, border=F, bty="n")
     legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
@@ -127,7 +193,7 @@ all.pcs <- pc.assoc(pcaresults)
 all.pcs$Variance <- pcaresults$sdev^2/sum(pcaresults$sdev^2)
 
 # plot pca covariates association matrix to illustrate any potential confounding and evidence for batches
-pdf("significantCovariates_AnovaHeatmap.pdf")
+pdf(outputdir,"significantCovariates_AnovaHeatmap.pdf")
 pheatmap(all.pcs[1:5,c(3:ncol(all.pcs)-1)], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
 dev.off()
 
@@ -136,17 +202,14 @@ write.table(all.pcs, file="pca_covariates_significanceLevels.txt", col.names=T, 
 
 # Get relationship of all covariates
 new_cov=apply(covariates[2:ncol(covariates)], 2, FUN=function(x){x=as.numeric(as.factor(x))})
-pdf("covariateHeatmap.pdf", height=10, width=15)
+pdf(outputdir,"covariateHeatmap.pdf", height=10, width=15)
 pheatmap(t(new_cov),cluster_col=FALSE,cluster_rows=FALSE, labels_col=covariates[,1], colorRampPalette(rev(brewer.pal(n=10,name="Spectral")))(100),cex=1.1, main="Covariates")
 dev.off()
 
-# set colnames to samplenames to conserve space
-samplenames=sapply(strsplit(colnames(y),"[_.]"), `[`, 1)
-samplenames[104:123]=sapply(samplenames[104:123],function(x)sub("([[:digit:]]{3,3})$", "-\\1", x))
-colnames(lcpm)=make.unique(samplenames)
+# colnames(lcpm)=make.unique(samplenames)
 
 # Dissimilarity matrix with euclidean distances
-pdf("SampleDistances_Euclidean.pdf", height=8, width=15)
+pdf(outputdir,"SampleDistances_Euclidean.pdf", height=8, width=15)
 par(mar=c(6.1,4.1,4.1,2.1))
 eucl.distance <- dist(t(lcpm), method = "euclidean")
 eucl.cluster <- hclust(eucl.distance, method = "complete")
@@ -163,7 +226,7 @@ ha1 = HeatmapAnnotation(df = df1, col = list(island = c("Mentawai" =  1, "Sumba"
 ha2 = rowAnnotation(df = df2, col= list(batch=c("1" = batch.col[1], "2" = batch.col[2], "3" = batch.col[3])))
 
 # plot
-pdf("lcpmCorrelationHeatmaps.pdf", height=10, width=15)
+pdf(outputdir,"lcpmCorrelationHeatmaps.pdf", height=10, width=15)
 Heatmap(cor(lcpm,method="pearson"), col=magma(100), column_title = "Pearson Correlation \n log2-CPM", name="Corr Coeff", top_annotation = ha1, show_row_names = FALSE, column_names_gp=gpar(fontsize = 8)) + ha2
 dev.off()
 
@@ -185,7 +248,7 @@ for (method in c("spearman", "pearson")){
         allCPM$value[duplicated(allCPM$value)]=NA
         withinVillage[[sample]]=allCPM[,3]
     }
-    pdf(paste0("IslandVariation_",method,".pdf"),height=15, width=15)
+    pdf(paste0(outputdir,"IslandVariation_",method,".pdf"),height=15, width=15)
     par(mai=rep(0.5, 4))
     layout(matrix(c(1,2,3,3), ncol = 2, byrow = TRUE))
     withinIsland=list()
@@ -263,7 +326,7 @@ colnames(pca.outliers.final)=c("Pca.dim", "Samples", "Z.score")
 write.table(pca.outliers.final, file="sample_outliersInPCA.txt", quote=F, row.names=F)
 
 # Analyse what might be driving variation
-pdf("CovariateOutliers_SamplingSite.pdf", height=10, width=15)
+pdf(paste0(outputdir,"CovariateOutliers_SamplingSite.pdf"), height=10, width=15)
 for (covariate in colnames(y$samples)[c(3,10,13,16:21)]){
     Boxplot(get(covariate)~Island,data=y$samples, main=covariate, col=1:5)
 }
@@ -280,7 +343,7 @@ for (sample in island){
 }
 
 # let's look at the correlation of gene variance by all population pairs
-pdf("geneVariance_correlationbyIsland_Pearson.pdf")
+pdf(paste0(outputdir,"geneVariance_correlationbyIsland_Pearson.pdf"))
 upper.panel<-function(x, y){
   points(x,y, pch=19)
   r <- round(cor(x, y, method="pearson"), digits=2)
