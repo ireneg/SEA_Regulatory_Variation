@@ -1,15 +1,29 @@
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/countData_123_combined.R")
-source("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Scripts/GIT/SEA_Regulatory_Variation/code/Differential_Expression/123_combined/dataPreprocessing_123_combined.R")
+# script created by KSB, 08.08.18
+# Analyse the amount of variance each covariate contributes to the design matrix
+
+### Last edit: KB 05.04.2019
+
+# Load dependencies and set input paths --------------------------
 
 # load libraries-
 library(variancePartition)
 library(pvca)
+library(doParallel)
+library(edgeR)
+library(magrittr)
+library(RUVSeq)
+library(Homo.sapiens)
+library(ggubr)
+
+# Set paths:
+inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
+outputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval/RUVvsLinearModel/"
+# Load the DGE list object. y:
+load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 
 # set up parallel processing
 cl <- makeCluster(4)
 registerDoParallel(cl)
-
-setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval/RUVvsLinearModel")
 
 # Variance partition per variable ---------------------------------
 # First, using Limma implementing known covariates 
@@ -17,11 +31,8 @@ setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Outpu
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
 y$samples$Age[which(is.na(y$samples$Age) == T)]=45
 # set up design
-design <- model.matrix(~0 + Island + y$samples$Age + batch + y$samples$RIN + y$sample$CD8T + y$sample$CD4T + y$sample$NK + y$sample$Bcell + y$sample$Mono + y$sample$Gran)
-colnames(design)=gsub("Island", "", colnames(design))
-#rename columns to exclude spaces and unrecognised characters
-colnames(design)[c(3,4,7:13)]=c("Mappi","Age","RIN", "CD8T", "CD4T", "NK", "Bcell", "Mono", "Gran")
-# Estimate precision weights for each gene and sample
+design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
+colnames(design)=gsub("Island", "", colnames(design)) %>% gsub("[\\y$]", "", .) %>% gsub("samples", "", .) %>% gsub("West Papua", "Mappi", .)
 v <- voom(y, design, plot=F)
 
 # Specify variables to consider
@@ -43,14 +54,24 @@ vp1 <- sortCols(varPart1)
 
 # violin plot of contribution of each variable to total variance
 fig=plotVarPart(vp1, main="Limma")
-ggsave(file="totalVarianceContribution_lmModel_allVariables.pdf", fig)
+ggsave(file=paste0(outputdir,"totalVarianceContribution_lmModel_allVariables.pdf"), fig)
 
-write.table(summary(vp1), file="summary_lmModel_VariancePartition.txt")
+write.table(summary(vp1), file=paste0(outputdir,"summary_lmModel_VariancePartition.txt"))
 
 # Now look at RUVs ----------------------------------------------------------------------------------------------------
 
 # identify which samples are replicated
+load(paste0(inputdir, "covariates.Rda"))
+allreps=covariates[,1][which(covariates$replicate)]
+allreps=unique(allreps)
 allreplicated=as.factor(samplenames %in% allreps)
+
+allreplicated=as.factor(samplenames %in% allreps)
+
+# define sample names
+samplenames <- as.character(y$samples$samples)
+samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
+samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
 
 # construct a matrix specifying the replicates. 
 replicates=matrix(-1, nrow=length(allreps), ncol=3)
@@ -61,16 +82,17 @@ for (i in 1:nrow(replicates)){
 genes <- rownames(y)
 
 # set up pheno data with all known factors of unwanted variation
-set <- newSeqExpressionSet(as.matrix(y$counts), phenoData = data.frame(Island, row.names=colnames(y)))
+set <- newSeqExpressionSet(as.matrix(y$counts), phenoData = data.frame(y$samples$Island, row.names=colnames(y)))
 # normalise with upper quartile normalisation
 set <- betweenLaneNormalization(set, which="upper")
 set1 <- RUVs(set, genes, k=5, replicates)
 
 # create design matrix
-design <- model.matrix(~0 + Island + W_1 + W_2 + W_3 + W_4 + W_5, data=pData(set1))
-colnames(design)=gsub("Island", "", colnames(design))
-colnames(design)[3]="Mappi"
-z <- DGEList(counts=counts(set1), group=Island)
+design <- model.matrix(~0 + y.samples.Island + W_1 + W_2 + W_3 + W_4 + W_5, data=pData(set1))
+colnames(design)=gsub("y.samples.Island", "", colnames(design))
+colnames(design)=gsub("West Papua", "Mappi", colnames(design))
+
+z <- DGEList(counts=counts(set1), group=y$samples$Island)
 z <- calcNormFactors(z, method="upperquartile")
 
 # set up gene names
@@ -85,7 +107,7 @@ contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi,
 v.ruv <- voom(z, design, plot=FALSE, normalize.method = "cyclicloess")
 
 # Define formula
-form2 <- ~ W_1 + W_2 + W_3 + W_4 + W_5 + (1|Island)
+form2 <- ~ W_1 + W_2 + W_3 + W_4 + W_5 + (1|y.samples.Island)
 # fit modelf
 varPart2 <- fitExtractVarPartModel(v.ruv, form2, pData(set1))
 

@@ -19,7 +19,7 @@ inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/
 covariatedir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
+outputdir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/allBloodCellTypes/"
 
 if (file.exists(outputdir) == FALSE){
     dir.create(outputdir)
@@ -46,15 +46,15 @@ samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
 covariates <- read.xlsx(paste0(covariatedir, "metadata_RNA_Batch123.xlsx"), sheet=1, detectDates=T)
 
 # add in blood
-blood=read.table(paste0(inputdir, "batchRemoval/predictedCellCounts_DeconCell.txt"), sep="\t", as.is=T, header=T)
-colnames(blood)=c("Gran","Bcell","CD4T","CD8T","NK","Mono")
+blood=read.table(paste0(inputdir, "batchRemoval/AllPredictedCellCounts_DeconCell.txt"), sep="\t", as.is=T, header=T)
+#colnames(blood)=c("Gran","Bcell","CD4T","CD8T","NK","Mono")
 blood$ID=sapply(strsplit(rownames(blood),"[_.]"), `[`, 1)
 blood$ID <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", blood$ID)
 # add blood data into covariates matrix
 covariates=cbind(covariates, blood[match(covariates$Sample.ID, blood$ID),])
 
 # add in replicate information
-covariates$replicate=duplicated(covariates[,1])
+covariates$replicate=duplicated(covariates[,"Sample.ID"])
 
 # The date column is being finnicky and importing strangely (i.e., some of the dates are recognised as dates, some are not). To fix this, I have to reformat the dates so that they can be handled correctly for the ANOVA analysis (below).
 # first let's check which rows in the sampling date column are not in the correct format
@@ -66,7 +66,7 @@ covariates$Sampling.Date=gsub("2016-03-10","10/03/2016",covariates$Sampling.Date
 # Check if any samples in the covariate DF are not in samplenames
 covariates[which(!(covariates[,"Sample.ID"] %in% samplenames)),]
 # <0 rows> (or 0-length row.names)
-# Nothing! So that's good news
+# Nothing! So that's good news and we can move on
 
 # covariate setup ------------------------------------------------------
 
@@ -85,12 +85,11 @@ covariates$fract.pfpx.reads=malaria.metadata[match(covariates$Sample.ID, malaria
 
 # Assign covariates to DGE list
 # subtract variables we don't need
-subtract=c("Sample.ID", "Kabisu.Ethnicity","Sequencing.Batch")
+subtract=c("Sample.ID", "Kabisu.Ethnicity","Sequencing.Batch","ID")
 # get index of unwanted variables
 subtract=which(colnames(covariates) %in% subtract)
-# subtract unwanted variables and add in library size and batch variables
+# assign names to covariate names
 covariate.names = colnames(covariates)[-subtract]
-
 # assign covariates to DGE list. Library size and batch are already assigned so subtract these from the loop.
 for (name in covariate.names){
   y$samples[[paste0(name)]]<- covariates[,name]

@@ -48,6 +48,7 @@ names3rd <- paste(sapply(strsplit(basename(files.thirdbatch), "[_.]"), `[`, 7), 
 row.names(indoReads) <- featureCountsOut[[1]]$Geneid
 names(indoReads) <- c(names1st, names2nd, names3rd) #need to manually confirm ordering --> KB: what do you mean by this?
 
+# rename MPI-336 to MPI-381 (mixup in naming when perfomring sequencing)
 colnames(indoReads) <- gsub("MPI-336_thirdBatch", "MPI-381_thirdBatch", colnames(indoReads)) 
 
 # Into DGEList:

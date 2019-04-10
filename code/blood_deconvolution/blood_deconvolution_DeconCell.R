@@ -12,12 +12,12 @@ library(ghibli)
 library(Rcmdr)
 
 # Set paths:
-inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
+inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/countData/"
 outputdir= "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/batchRemoval/"
 deconestimatedir= "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/indoRNA_SequencingFiles/"
 
 # load count data
-load(paste0(inputdir, "countData/unfiltered_DGElistObject.Rda"))
+load(paste0(inputdir, "unfiltered_DGElistObject.Rda"))
 
 # assign count table This is y$counts, which has not been filtered for lowly-expressed genes
 count.table=y$counts
@@ -34,13 +34,17 @@ dCell.exp <- dCell.expProcessing(count.table, trim = TRUE)
 # predict cell counts
 prediction <- dCell.predict(dCell.exp, dCell.models, res.type = "median")
 
-# select relevant cell types
+# first select all cell types
+all.predicted.cellcounts=prediction$dCell.prediction
+
+# then just select relevant cell types
 predicted.cellcounts <- prediction$dCell.prediction[,c('Granulocytes','B cells (CD19+)','CD4+ T cells','CD8+ T cells','NK cells (CD3- CD56+)','Monocytes (CD14+)')]
 
 # scale to sum to 100
 # predicted.cellcounts.scaled <- (predicted.cellcounts/rowSums(predicted.cellcounts))*100
 
-# save table 
+# save both tables 
+write.table(all.predicted.cellcounts, file=paste0(outputdir,"AllPredictedCellCounts_DeconCell.txt"), sep="\t")
 write.table(predicted.cellcounts, file=paste0(outputdir,"predictedCellCounts_DeconCell.txt"), sep="\t")
 
 # plot percentages of each cell type

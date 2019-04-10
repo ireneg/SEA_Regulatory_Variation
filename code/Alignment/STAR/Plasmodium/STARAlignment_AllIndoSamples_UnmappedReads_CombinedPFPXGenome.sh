@@ -68,4 +68,7 @@ for pathname in /data/cephfs/punim0586/kbobowik/STAR/IndoRNA_CombinedPFPX_Second
     directory=`dirname $pathname`
     # "-q 255" = unique reads
     samtools view -q 255 $pathname > ${directory}/uniquelyMapped_${filename} 
+    echo $file
 done
+
+
