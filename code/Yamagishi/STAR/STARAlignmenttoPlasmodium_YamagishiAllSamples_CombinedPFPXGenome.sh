@@ -27,9 +27,7 @@ for file in ${star}/Yamagishi/{Controls,Sick}/*.fastq; do
   	echo STAR --genomeDir ${mainDir}/STAR/Yamagishi_CombinedPFPX --readFilesIn $file --runThreadN 12 --sjdbOverhang 35 --outFileNamePrefix ${mainDir}/STAR/Yamagishi_CombinedPFPX/Sick/STAR_PXPFCombined_${healthStatus}_${sample} --outSAMtype BAM SortedByCoordinate --genomeSAindexNbases 11 --alignIntronMax 35000 --alignMatesGapMax 35000
   fi
 done > ${mainDir}/Sumba/scripts/Array_Scripts/STARArrayTable_YamagishiSamples_PXPFCombined.txt
-# run as sbatch script 
 
-----
 # combine all of the SJ.out.tab files from from all files created in first pass into one file 
 cat ${mainDir}/STAR/Yamagishi_CombinedPFPX/{Controls,Sick}/*.out.tab > ${mainDir}/STAR/Yamagishi_CombinedPFPX/Sick/STAR_PFPX_allFilesSJ.out.tab
 
@@ -47,7 +45,6 @@ for file in ${star}/Yamagishi/{Controls,Sick}/*.fastq; do
   fi
 done > ${mainDir}/Sumba/scripts/Array_Scripts/STARArrayTable_YamagishiSamples_PXPFCombined_SecondPass.txt
 
----#---
 # filter the bam file so that only uniquely mapped reads remain
 for pathname in /data/cephfs/punim0586/kbobowik/STAR/Hg38_SecondPass/Yamagishi/Controls/STAR_*.bam; do
     filename=`basename $pathname`

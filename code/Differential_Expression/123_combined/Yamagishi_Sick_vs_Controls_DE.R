@@ -46,6 +46,7 @@ library(ReactomePA)
 # set colour palette
 wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
 palette(c(wes, brewer.pal(8,"Dark2")))
+dev.off()
 
 # Set working directory
 setwd("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/Yamagishi")
@@ -87,7 +88,6 @@ barplot(apply(y$counts, 2, function(c)sum(c!=0)), ylab="n Genes", cex.names=0.75
 legend(x="topright", col=unique(as.numeric(factor(y$samples$diseaseStatus))), legend=c("malaria", "controls"), pch=15, cex=0.8)
 dev.off()
 
---------
 # Load in Yamagishi et al 2014 supplementary table 11 (with patient information)
 sup11.sick=read.xlsx("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/Yamagishi/Supplemental_Table_11.xlsx", sheet=1)
 sup11.controls=read.xlsx("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/ReferenceFiles/Yamagishi/Supplemental_Table_11.xlsx", sheet=3)
@@ -122,23 +122,31 @@ sample_summary$Patient_Name[which(is.na(match(sample_summary$Patient_Name, sra.a
 sra.all$Library_Name=gsub("malaria11#0","malaria11#", sra.all$Library_Name)
 sample_summary[,"SRA_ID"]=sra.all[match(sample_summary$Patient_Name, sra.all$Library_Name),"Run"]
 
-# Assign gender and age
+# Assign gender, age, location, and PF load
 y$samples$gender <- as.factor(sample_summary[match(colnames(y), sample_summary$SRA_ID),"Sex"])
 y$samples$age <- as.numeric(sample_summary[match(colnames(y), sample_summary$SRA_ID),"Age"])
 y$samples$location <- as.factor(sample_summary[match(colnames(y), sample_summary$SRA_ID),"From"])
 y$samples$PFload <- as.numeric(as.character(sample_summary[match(colnames(y), sample_summary$SRA_ID),"PF_Tags"]))
-y$samples$PFload <- as.numeric(sample_summary[match(colnames(y), sample_summary$SRA_ID),"PF_Tags"])
+
+# let's also add our own PF load made by getting the total number of unmapped reads that mapped to the combined PFPX genome
+alignedPFPXreads=read.table("/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Sick/Malaria_summary_table_Yamagishi.txt", header=T)
+colnames(alignedPFPXreads)[1]="SampleID"
+alignedPFPXreads$SampleID=gsub("_Controls","",alignedPFPXreads$SampleID) %>% gsub("_Sick","",.)
+identical(alignedPFPXreads$SampleID, colnames(y))
+# [1] TRUE
+y$samples$alignedPFPX=alignedPFPXreads$fract.reads.pfpx.yam
 
 #assign covariates to variables
 gender <- addNA(y$samples$gender)
 age <- addNA(cut(as.numeric(as.character(y$samples$age)), c(0,15,30,70), labels=c("0-15", "15-30", "30-70")))
 lib.size <- cut(as.numeric(as.character(y$samples$lib.size)), c(0,1000000,10000000,20000000,40000000, 60000000), labels=c("0-1","1-10", "10-20", "20-40", "40-60"))
-pfload=addNA(cut(y$samples$PFload, c(-1,20,40,60,80), labels=c("0-20","20-40", "40-60", "60-80")))
+PFload=addNA(cut(y$samples$PFload, c(-1,20,40,60,80), labels=c("0-20","20-40", "40-60", "60-80")))
 diseaseStatus=y$samples$diseaseStatus
 location=addNA(y$samples$location)
+alignedPFPX=y$samples$alignedPFPX
 
 # assign covariate names
-covariate.names=c("gender", "age", "lib.size", "pfload","diseaseStatus","location")
+covariate.names=c("gender", "age", "lib.size", "PFload","diseaseStatus","location")
 
 pdf("rarefactionCurves.pdf")
 for (name in covariate.names) {
@@ -157,9 +165,9 @@ dev.off
 # Data pre-processing ------------------------------------------------------------------------
 
 # Filter out samples with library size <5 million and samples with no gender information and assign covariate names
-y=y[,which(y$samples$lib.size >= 6000000)]
+y=y[,which(y$samples$lib.size >= 9000000)]
 dim(y)
-# [1] 27413  142
+# [1] 27413  124
 
 # Visualise library size after filtering
 pdf("librarysizeYamagishi_postFiltering.pdf", height=10, width=15)
@@ -186,6 +194,8 @@ hist(rowSums(cpm>1), main= "n Genes expressed at cpm > 1 \n pre-filtering", xlab
 # Remove genes that are lowly expressed- a gene is only retained if it is expressed at log-CPM > 1 in at least half of the libraries
 keep.exprs <- rowSums(cpm>1) >= (nrow(y$samples)*0.5)
 y <- y[keep.exprs,, keep.lib.sizes=FALSE]
+dim(y)
+# [1] 11096   124
 
 # Compare library sizes before and after removing lowly-expressed genes
 nsamples <- ncol(y)
@@ -244,36 +254,29 @@ dev.off()
 # Reassign covariates
 gender <- addNA(y$samples$gender)
 age <- addNA(cut(as.numeric(as.character(y$samples$age)), c(0,15,30,70), labels=c("0-15", "15-30", "30-70")))
-lib.size <- cut(as.numeric(as.character(y$samples$lib.size)), c(1000000,10000000,20000000,40000000, 60000000, 80000000), labels=c("1-10", "10-20", "20-40", "40-60", "60-80"))
+lib.size <- cut(as.numeric(as.character(y$samples$lib.size)), c(0,1000000,10000000,20000000,40000000, 60000000), labels=c("0-1","1-10", "10-20", "20-40", "40-60"))
+PFload=addNA(cut(y$samples$PFload, c(-1,20,40,60,80), labels=c("0-20","20-40", "40-60", "60-80")))
+diseaseStatus=y$samples$diseaseStatus
+location=addNA(y$samples$location)
+alignedPFPX=y$samples$alignedPFPX
 
-# Assign colors
-col.group <- gender
-levels(col.group) <- brewer.pal(nlevels(col.group),"Set1")
-col.group <- as.character(col.group)
-col.age <- age
-levels(col.age) <- brewer.pal(nlevels(col.age),"Set1")
-col.age <- as.character(col.age)
-col.lib.size=lib.size
-levels(col.lib.size) <- brewer.pal(nlevels(col.lib.size),"Set1")
-col.lib.size=as.character(col.lib.size)
 
-# MDS
-lcpm <- cpm(y, log=TRUE)
-plotMDS(lcpm, labels=y$samples$group, col=c("#c51b7d", "#4d9221"))
-title(main="Sample Gender")
-plotMDS(lcpm, labels=addNA(lib.size, col=col.lib.size)
-title(main="Sample Library Size")
-plotMDS(lcpm, labels=age, col=col.age)
-title(main="Sample Age")
+# plot MDS
+for (name in covariate.names) {
+    plotMDS(lcpm, labels=get(name), col=as.numeric(get(name)))
+    title(main=name)
+}
+
 
 # PCA plotting function
 plot.pca <- function(dataToPca, speciesCol, namesPch, sampleNames){
     pca <- prcomp(t(dataToPca), scale=T, center=T)
     pca.var <- pca$sdev^2/sum(pca$sdev^2)
-    plot(pca$x[,1], pca$x[,2], col=speciesCol, pch=namesPch, cex=2, xlab=paste("PC1 (", round(pca.var[1]*100, digits=2), "% of variance)", sep=""), ylab=paste("PC2 (", round(pca.var[2]*100, digits=2), "% of variance)", sep=""), main="PCA")
-    plot(pca$x[,2], pca$x[,3], col=speciesCol, pch=namesPch, cex=2, xlab=paste("PC2 (", round(pca.var[2]*100, digits=2), "% of variance)", sep=""), ylab=paste("PC3 (", round(pca.var[3]*100, digits=2), "% of variance)", sep=""))
-    plot(pca$x[,3], pca$x[,4], col=speciesCol, pch=namesPch, cex=2, xlab=paste("PC3 (", round(pca.var[3]*100, digits=2), "% of variance)", sep=""), ylab=paste("PC4 (", round(pca.var[4]*100, digits=2), "% of variance)", sep=""))
-
+    for (i in 1:9){
+        pca_axis1=i
+        pca_axis2=i+1
+        plot(pca$x[,pca_axis1], pca$x[,pca_axis2], col=speciesCol, pch=namesPch, cex=2, xlab=paste0("PC", pca_axis1, " (", round(pca.var[pca_axis1]*100, digits=2), "% of variance)"), ylab=paste0("PC", pca_axis2, " (", round(pca.var[pca_axis2]*100, digits=2), "% of variance)", sep=""), main=name)
+       }
     return(pca)
 }
 
@@ -298,62 +301,40 @@ pc.assoc <- function(pca.data){
 }
 
 # Prepare covariate matrix
-all.covars.df <- y$samples[,c(2,3,5)] 
-all.covars.df$group <- factor(all.covars.df$group)
-all.covars.df$age <- factor(all.covars.df$age)
+all.covars.df <- y$samples[,c(covariate.names, "alignedPFPX")] 
 
-# Plot gender
-pcaresults <- plot.pca(lcpm, col.group, 20, colnames(y))
-
-    
-# Get PCA associations
-# PCA plotting function
-plot.pca <- function(dataToPca, speciesCol, namesPch, sampleNames){
-    pca <- prcomp(t(dataToPca), scale=T, center=T)
-    pca.var <- pca$sdev^2/sum(pca$sdev^2)
-    plot(pca$x[,1], pca$x[,2], col=speciesCol, pch=namesPch, cex=2, xlab=paste("PC1 (", round(pca.var[1]*100, digits=2), "% of variance)", sep=""), ylab=paste("PC2 (", round(pca.var[2]*100, digits=2), "% of variance)", sep=""), main="PCA")
-    plot(pca$x[,2], pca$x[,3], col=speciesCol, pch=namesPch, cex=2, xlab=paste("PC2 (", round(pca.var[2]*100, digits=2), "% of variance)", sep=""), ylab=paste("PC3 (", round(pca.var[3]*100, digits=2), "% of variance)", sep=""))
-    plot(pca$x[,3], pca$x[,4], col=speciesCol, pch=namesPch, cex=2, xlab=paste("PC3 (", round(pca.var[3]*100, digits=2), "% of variance)", sep=""), ylab=paste("PC4 (", round(pca.var[4]*100, digits=2), "% of variance)", sep=""))
-
-    return(pca)
+# Plot PCA
+for (name in covariate.names){
+    pdf(paste0("pcaresults_",name,".pdf"))
+    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=15,sampleNames=get(name))
+    dev.off()
 }
 
-
-# PCA association function
-pc.assoc <- function(pca.data){
-    all.pcs <- data.frame()
-    for (i in 1:ncol(pca.data$x)){
-        all.assoc <- vector()
-        for (j in 1:ncol(all.covars.df)){
-            test.assoc <- anova(lm(pca.data$x[,i] ~ all.covars.df[,j]))[1,5]
-            all.assoc <- c(all.assoc, test.assoc)
-        }
-        single.pc <- c(i, all.assoc)
-        all.pcs <- rbind(all.pcs, single.pc)
-    }
-    names(all.pcs) <- c("PC", colnames(all.covars.df))
-
-    print ("Here are the relationships between PCs and some possible covariates")
-    print (all.pcs)
-    return (all.pcs)
-}
-
-# Prepare covariate matrix
-all.covars.df <- y$samples[,c(2,3,5)] 
-all.covars.df$group <- factor(all.covars.df$group)
-all.covars.df$age <- factor(all.covars.df$age)
-
-# Plot gender
-pcaresults <- plot.pca(lcpm, col.group, 20, colnames(y))
+# plot numeric variables
+name="alignedPFPX"
+initial = .bincode(alignedPFPX, breaks=seq(min(alignedPFPX, na.rm=T), max(alignedPFPX, na.rm=T), len = 80),include.lowest = TRUE)
+bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
+pdf("pcaresults_alignedPlasmodiumLoad.pdf")
+pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=bloodCol,namesPch=15,sampleNames=alignedPFPX)
+legend(legend=c("High","Low"), pch=16, x="bottomright", col=c(bloodCol[which.max(alignedPFPX)], bloodCol[which.min(alignedPFPX)]), cex=0.6, title=name, border=F, bty="n")
+dev.off()
 
 # Get PCA associations
 all.pcs <- pc.assoc(pcaresults)
-all.pcs
+all.pcs$Variance <- pcaresults$sdev^2/sum(pcaresults$sdev^2)
 
-# DE analysis
+# plot pca covariates association matrix to illustrate any potential confounding and evidence for batches
+pdf("significantCovariates_AnovaHeatmap.pdf")
+pheatmap(all.pcs[1:5,c(covariate.names,"alignedPFPX")], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
+dev.off()
+
+# Write out the covariates:
+write.table(all.pcs, file="pca_covariates_significanceLevels.txt", col.names=T, row.names=F, quote=F, sep="\t")
+
+# DE analysis ------------
 
 # Set up design matrix
-design <- model.matrix(~0 + y$samples$diseaseStatus)
+design <- model.matrix(~0 + y$samples$diseaseStatus + y$samples$alignedPFPX)
 colnames(design)=gsub("diseaseStatus", "", colnames(design))
 colnames(design)=gsub("[\\y$]", "", colnames(design))
 colnames(design)=gsub("samples", "", colnames(design))
@@ -362,10 +343,8 @@ colnames(design)=gsub("samples", "", colnames(design))
 contr.matrix <- makeContrasts(HealthyvsSick=control - malaria, levels=colnames(design))
 
 # Remove heteroscedascity from count data
-pdf("DE/Limma_Voom/Limma_voom_TMM_cyclicLoess.pdf")
+pdf("Limma_voom_TMM_cyclicLoess.pdf")
 v <- voom(y, design, plot=TRUE)
-dev.off()
-
 # fit linear models
 vfit <- lmFit(v, design)
 vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
@@ -378,6 +357,24 @@ dt <- decideTests(efit,p.value=0.01,lfc=1)
 summary(dt)
 
 #        HealthyvsSick
-Down             537
-NotSig          9613
-Up               918
+#Down             1407
+#NotSig          9613
+#Up               974
+
+# look at different DE thresholds
+# test different logFC thresholds
+logFC.df=matrix(nrow=3,ncol=1)
+counter=0
+for (number in c(0,0.5,1)){
+    counter=counter+1
+    dt <- decideTests(efit, p.value=0.01, lfc=number)
+    logFC.df[counter,]=sum(abs(dt))
+}
+logFC.df=cbind(logFC = c(0,0.5,1), logFC.df)
+write.table(logFC.df, file="logFC_thresholds.txt")
+
+# get top genes
+toptable=topTable(efit, coef=1, p.value=0.01, n=Inf, sort.by="p")
+write.table(toptable,file="topTable_healthyvsSick.txt")
+
+

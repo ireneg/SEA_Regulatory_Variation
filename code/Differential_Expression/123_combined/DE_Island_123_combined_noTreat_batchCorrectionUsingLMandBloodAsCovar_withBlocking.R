@@ -45,22 +45,20 @@ load(paste0(inputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
 # y DGE list object
 load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 
-# Removing heteroscedascity with voom and fitting linear models -----------------------------------------------------------------------
+# Initial QC -----------------------------------------------------------------------
 
-# First, set up design matrix
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
 y$samples$Age[which(is.na(y$samples$Age) == T)]=45
 
-# We also need to create a new variable with individual IDs:
-y$samples$ind <- sapply(strsplit(as.character(y$samples$samples), "[_.]"), `[`, 1)
-
+# Set up design matrix
 design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
 colnames(design)=gsub("Island", "", colnames(design))
 
-#rename columns to exclude spaces and unrecognised characters
+# rename columns to exclude spaces and unrecognised characters
 colnames(design)=gsub("[\\y$]", "", colnames(design))
 colnames(design)=gsub("samples", "", colnames(design))
 colnames(design)=gsub("West Papua", "Mappi", colnames(design))
+
 # set up contrast matrix
 contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
 
@@ -68,142 +66,41 @@ contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi,
 pdf(paste0(outputdir, "EstimatingDispersion_allNormalisationMethods.pdf"), height=15, width=15)
 par(mfrow=c(4,3))
 # first perform voom on unnormalised data
-# y$samples$norm.factors <- 1
-# estimateDisp <- estimateDisp(y, design, robust=TRUE)
-# plotBCV(estimateDisp)
-# title(paste0("None","\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
-# v <- voom(y, design, plot=TRUE)
-# title(main="None", line=0.5)
-# # fit linear models
-# vfit <- lmFit(v, design)
-# vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-# efit <- eBayes(vfit, robust=T)
-# plotSA(efit, main="Mean-variance trend elimination \n None")
+y$samples$norm.factors <- 1
+estimateDisp <- estimateDisp(y, design, robust=TRUE)
+plotBCV(estimateDisp)
+title(paste0("None","\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
+v <- voom(y, design, plot=TRUE)
+title(main="None", line=0.5)
+# fit linear models
+vfit <- lmFit(v, design)
+vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+efit <- eBayes(vfit, robust=T)
+plotSA(efit, main="Mean-variance trend elimination \n None")
 
-# # now perform normalisation on all the others
-# for (method in c("upperquartile", "TMM", "RLE")) {
-#     y <- calcNormFactors(y, method=method)
-#     estimateDisp <- estimateDisp(y, design, robust=TRUE)
-#     plotBCV(estimateDisp)
-#     title(paste0(method,"\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
-#     v <- voom(y, design, plot=TRUE)
-#     title(main=method, line=0.5)
-#     # fit linear models
-#     vfit <- lmFit(v, design)
-#     vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-#     efit <- eBayes(vfit, robust=T)
-#     plotSA(efit, main=paste("Mean-variance trend elimination",method,sep="\n"))
-# }
-# dev.off()
+# now perform normalisation on all the others
+for (method in c("upperquartile", "TMM", "RLE")) {
+    y <- calcNormFactors(y, method=method)
+    estimateDisp <- estimateDisp(y, design, robust=TRUE)
+    plotBCV(estimateDisp)
+    title(paste0(method,"\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
+    v <- voom(y, design, plot=TRUE)
+    title(main=method, line=0.5)
+    # fit linear models
+    vfit <- lmFit(v, design)
+    vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+    efit <- eBayes(vfit, robust=T)
+    plotSA(efit, main=paste("Mean-variance trend elimination",method,sep="\n"))
+}
+dev.off()
 
 # we'll go ahead an stick with TMM normalisation
 y <- calcNormFactors(y, method="TMM")
 
-# now go ahead with voom normalisation
-pdf(paste0(outputdir,"Limma_voom_TMMNormalisation.pdf"), height=8, width=12)
-v <- voom(y, design, plot=TRUE)
-
-# Using duplicate correlation --------------------------------------------------
-dupcor <- duplicateCorrelation(v, design, block=y$samples$ind)
-dupcor$consensus # sanity check
-# [1] 0.7054115
-median(v$weights) # another sanity check:
-# [1] 19.03065
-
-vDup <- voom(y, design, plot=TRUE, block=y$samples$ind, correlation=dupcor$consensus)
-dupcor <- duplicateCorrelation(vDup, design, block=y$samples$ind) # 28 non-convergences
-dupcor$consensus # sanity check pt 2
-# [1] 0.705514
-median(vDup$weights) # another sanity check, pt 2 - small change, so it didn't matter too much, but it is good to have done it. 
-# [1] 18.93866
-
-# fit linear models
-# With duplicate correction and blocking:
-    voomDupVfit <- lmFit(vDup, design, block=y$samples$ind, correlation=dupcor$consensus)
-    voomDupVfit <- contrasts.fit(voomDupVfit, contrasts=contr.matrix)
-    voomDupEfit <- eBayes(voomDupVfit, robust=T)
-
-# And without:
-    vfit <- lmFit(v, design)
-    vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-    efit <- eBayes(vfit, robust=T)
-
-
-plotSA(voomDupEfit, main="Mean-variance trend elimination with duplicate correction")
-plotSA(efit, main="Mean-variance trend elimination without duplicate correction")
-dev.off()
-
-### IGR: Quick DE qc after fitting lms:
-# With dup correction:
-    voomDupTopTableSMB.MTW <- topTable(voomDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
-    voomDupTopTableSMB.MPI <- topTable(voomDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
-    voomDupTopTableMTW.MPI <- topTable(voomDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
-
-    summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-    #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down       1411     2286     1657
-    # NotSig    10530     8533     9768
-    # Up         1034     2156     1550
-
-    summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-    #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down        136      618      439
-    # NotSig    12624    11619    12032
-    # Up          215      738      504
- 
-    summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-    #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down         13       83       97
-    # NotSig    12939    12684    12740
-    # Up           23      208      138
-
-
-# And without:
-    topTableSMB.MTW <- topTable(efit, coef=1, p.value=0.01, n=Inf, sort.by="p")
-    topTableSMB.MPI <- topTable(efit, coef=2, p.value=0.01, n=Inf, sort.by="p")
-    topTableMTW.MPI <- topTable(efit, coef=3, p.value=0.01, n=Inf, sort.by="p")
-
-    summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01))
-    #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down       1447     2320     1728
-    # NotSig    10439     8483     9641
-    # Up         1089     2172     1606
-
-    summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-    #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down        128      603      441
-    # NotSig    12610    11624    12026
-    # Up          237      748      508
-
-    summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-    #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down         11       82       97
-    # NotSig    12935    12680    12741
-    # Up           29      213      137
-
-
-# And finally, correlation between those two measurements - sort by gene first, then cor test
-    MTW.MPI <- join(voomDupTopTableMTW.MPI, topTableMTW.MPI, by="genes")
-    cor(MTW.MPI[,6], MTW.MPI[,12], method="spearman", use="complete")
-    # [1] 0.9773361
- 
-    SMB.MPI <- join(voomDupTopTableSMB.MPI, topTableSMB.MPI, by="genes")
-    cor(SMB.MPI[,6], SMB.MPI[,12], method="spearman", use="complete")
-    # [1] 0.9765353
-
-    SMB.MTW <- join(voomDupTopTableSMB.MTW, topTableSMB.MTW, by="genes")
-    cor(SMB.MTW[,6], SMB.MTW[,12], method="spearman", use="complete")
-    # [1] 0.9688961
-
-# Didn't break anything! Woo!
-
-# Back to Kat's regularly scheduled code:
-
-# We can view how UQ normalisation performed using MD plots. This visualizes the library size-adjusted log-fold change between
+# We can view how TMM normalisation performed using MD plots. This visualizes the library size-adjusted log-fold change between
 # two libraries (the difference) against the average log-expression across those libraries (themean). MD plots are generated by comparing sample 1 against an artificial
 # library constructed from the average of all other samples. Ideally, the bulk of genes should be centred at a log-fold change of zero.  This indicates
 # that any composition bias between libraries has been successfully removed
-
 pdf(paste0(outputdir,"MDPlots_TMM_Normalisation_OutliersCheck.pdf"), height=15, width=15)
 par(mfrow=c(4,4))
 for (i in 1:ncol(y)){
@@ -212,82 +109,142 @@ for (i in 1:ncol(y)){
 }
 dev.off()
 
-# DE qc after fitting lms --------------------------------------
+# Using duplicate correlation and blocking -----------------------------------------------------
 
-# With dup correction:
+# First, we need to perform voom normalisation
+v <- voom(y, design, plot=F)
+
+# create a new variable for blocking using sample IDs
+y$samples$ind <- sapply(strsplit(as.character(y$samples$samples), "[_.]"), `[`, 1)
+
+# Estimate the correlation between the replicates.
+# Information is borrowed by constraining the within-block corre-lations to be equal between genes and by using empirical Bayes methods to moderate the standarddeviations between genes 
+dupcor <- duplicateCorrelation(v, design, block=y$samples$ind)
+# The value dupcor$consensus estimates the average correlation within the blocks and should be positive
+dupcor$consensus # sanity check
+# [1] 0.6511448
+median(v$weights) # another sanity check:
+# [1] 22.8338
+
+# run voom a second time with the blocking variable and estimated correlation
+# The  vector y$samples$ind indicates the  two  blocks  corresponding  to  biological  replicates
+pdf(paste0(outputdir,"Limma_voomDuplicateCorrelation_TMMNormalisation.pdf"), height=8, width=12)
+vDup <- voom(y, design, plot=TRUE, block=y$samples$ind, correlation=dupcor$consensus)
+dupcor <- duplicateCorrelation(vDup, design, block=y$samples$ind) # get warning message: Too much damping - convergence tolerance not achievable
+dupcor$consensus # sanity check pt 2
+# [1] 0.6511448
+median(vDup$weights) # another sanity check, pt 2 
+# [1] 22.67414
+
+# With duplicate correction and blocking:
+# the inter-subject correlation is input into the linear model fit
+voomDupVfit <- lmFit(vDup, design, block=y$samples$ind, correlation=dupcor$consensus)
+voomDupVfit <- contrasts.fit(voomDupVfit, contrasts=contr.matrix)
+voomDupEfit <- eBayes(voomDupVfit, robust=T)
+
+plotSA(voomDupEfit, main="Mean-variance trend elimination with duplicate correction")
+dev.off()
+
+# get top genes using toptable
 voomDupTopTableSMB.MTW <- topTable(voomDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
 voomDupTopTableSMB.MPI <- topTable(voomDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
 voomDupTopTableMTW.MPI <- topTable(voomDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
 
+# get number of DE genes at differnet thresholds
+# noLFC
 summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
 #           SMBvsMTW SMBvsMPI MTWvsMPI
 #Down        930     2511     2134
 #NotSig    11352     8180     8817
 #Up          693     2284     2024
+write.table(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01), file=paste0(outputdir,"numberDEgens_adjustmethodBH_noLFC_pval01.txt"))
 
+# LFC of 0.5
 summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
 #       SMBvsMTW SMBvsMPI MTWvsMPI
 #Down        105      663      545
 #NotSig    12634    11479    11943
 #Up          236      833      487
+write.table(decideTests(voomDupEfit,method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5), file=paste0(outputdir,"numberDEgens_adjustmethodBH_LFC05_pval01.txt"))
 
+# LFC of 1
 summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #       SMBvsMTW SMBvsMPI MTWvsMPI
 #Down          5       95       98
 #NotSig    12935    12641    12742
 #Up           35      239      135
+write.table(decideTests(voomDupEfit,method="separate", adjust.method = "BH", p.value = 0.01, lfc=1), file=paste0(outputdir,"numberDEgens_adjustmethodBH_LFC1_pval01.txt"))
 
-# And without:
+
+# Without duplicate correlation -------------------------------------------------
+
+pdf(paste0(outputdir,"Limma_voom_TMMNormalisation.pdf"), height=8, width=12)
+vfit <- lmFit(v, design)
+vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+efit <- eBayes(vfit, robust=T)
+
+plotSA(efit, main="Mean-variance trend elimination without duplicate correction")
+dev.off()
+
+# get top genes using toptable
 topTableSMB.MTW <- topTable(efit, coef=1, p.value=0.01, n=Inf, sort.by="p")
 topTableSMB.MPI <- topTable(efit, coef=2, p.value=0.01, n=Inf, sort.by="p")
 topTableMTW.MPI <- topTable(efit, coef=3, p.value=0.01, n=Inf, sort.by="p")
 
+# no LFC threshold
 summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01))
 #       SMBvsMTW SMBvsMPI MTWvsMPI
 #Down       1032     2569     2228
 #NotSig    11183     8106     8669
 #Up          760     2300     2078
+write.table(summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01)), file=paste0(outputdir,"numberDEgens_adjustmethodBH_noLFC_pval01_noDupCor.txt"))
 
+# LFC of 0.05
 summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
 #       SMBvsMTW SMBvsMPI MTWvsMPI
 #Down        112      654      558
 #NotSig    12603    11492    11920
 #Up          260      829      497
+write.table(summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5)), file=paste0(outputdir,"numberDEgens_adjustmethodBH_LFC05_pval01_noDupCor.txt"))
 
+# LFC of 1
 summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #       SMBvsMTW SMBvsMPI MTWvsMPI
 #Down          6       93      103
 #NotSig    12923    12643    12737
 #Up           46      239      135
+write.table(summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1)), file=paste0(outputdir,"numberDEgens_adjustmethodBH_LFC1_pval01_noDupCor.txt"))
 
+# Let's check the correlation between those two measurements - sort by gene first, then cor test on adjusted p-value
+MTW.MPI <- join(voomDupTopTableMTW.MPI, topTableMTW.MPI, by="ENSEMBL")
+cor(MTW.MPI[,8], MTW.MPI[,16], method="spearman", use="complete")
+# [1] 0.9738879
 
-# And finally, correlation between those two measurements - sort by gene first, then cor test
-#MTW.MPI <- join(voomDupTopTableMTW.MPI, topTableMTW.MPI, by="ENSEMBL")
-#cor(MTW.MPI[,6], MTW.MPI[,12], method="spearman", use="complete")
+SMB.MPI <- join(voomDupTopTableSMB.MPI, topTableSMB.MPI, by="ENSEMBL")
+cor(SMB.MPI[,8], SMB.MPI[,16], method="spearman", use="complete")
+# [1] 0.9710091
 
-#SMB.MPI <- join(voomDupTopTableSMB.MPI, topTableSMB.MPI, by="ENSEMBL")
-#cor(SMB.MPI[,6], SMB.MPI[,12], method="spearman", use="complete")
+SMB.MTW <- join(voomDupTopTableSMB.MTW, topTableSMB.MTW, by="ENSEMBL")
+cor(SMB.MTW[,8], SMB.MTW[,16], method="spearman", use="complete")
+# [1] 0.9610844
 
-#SMB.MTW <- join(voomDupTopTableSMB.MTW, topTableSMB.MTW, by="genes")
-
-
-# Visual QC after fitting linear models --------------------------------------------------------------------------------------
+# Visual QC of duplicate correlation voom output after fitting linear models --------------------------------------------------------------------------------------
 
 # check to see p-value distribution is normal
-pdf(paste0(outputdir,"PvalueDist_NotAdjusted.pdf"), height=15, width=10)
+pdf(paste0(outputdir,"PvalueDist_NotAdjusted_dupCor.pdf"), height=15, width=10)
 par(mfrow=c(3,1))
 for (i in 1:ncol(efit)){
-    hist(efit$p.value[,i], main=colnames(efit)[i], ylim=c(0,max(table(round(efit$p.value[,i], 1)))+1000), xlab="p-value")
+    hist(voomDupEfit$p.value[,i], main=colnames(voomDupEfit)[i], ylim=c(0,max(table(round(voomDupEfit$p.value[,i], 1)))+1000), xlab="p-value")
 }
 dev.off()
 
 # check p-value distribution for adjusted p-values
-pdf(paste0(outputdir,"PvalueDist_Adjusted.pdf"), height=15, width=10)
+pdf(paste0(outputdir,"PvalueDist_Adjusted_dupCor.pdf"), height=15, width=10)
 par(mfrow=c(3,1))
-for (i in 1:ncol(efit)){
-    topTable <- topTable(efit, coef=i, n=Inf)
-    histData <- hist(topTable$adj.P.Val, main=colnames(efit)[i], xlab="p-value")
-    hist(topTable$adj.P.Val, main=colnames(efit)[i], ylim=c(0,max(histData$counts)+1000), xlab="p-value")
+for (i in 1:ncol(voomDupEfit)){
+    topTable <- topTable(voomDupEfit, coef=i, n=Inf)
+    histData <- hist(topTable$adj.P.Val, main=colnames(voomDupEfit)[i], xlab="p-value")
+    hist(topTable$adj.P.Val, main=colnames(voomDupEfit)[i], ylim=c(0,max(histData$counts)+1000), xlab="p-value")
 }
 dev.off()
 
@@ -300,11 +257,11 @@ hkGenes=as.vector(biomart.results.table[,1])
 hkControls=hkGenes[which(hkGenes %in% rownames(y$counts))]
 
 # Volcano plot with points of housekeeping genes
-pdf(paste0(outputdir,"VolcanoPlots.pdf"), height=15, width=10)
+pdf(paste0(outputdir,"VolcanoPlots_dupCorEfit.pdf"), height=15, width=10)
 par(mfrow=c(3,1))
-for (i in 1:ncol(efit)){
-    plot(efit$coef[,i], -log10(as.matrix(efit$p.value)[,i]), pch=20, main=colnames(efit)[i], xlab="log2FoldChange", ylab="-log10(pvalue)")
-    points(efit$coef[,i][which(names(efit$coef[,i]) %in% hkControls)], -log10(as.matrix(efit$p.value)[,i][which(names(efit$coef[,i]) %in% hkControls)]) , pch=20, col=4, xlab="log2FoldChange", ylab="-log10(pvalue)")
+for (i in 1:ncol(voomDupEfit)){
+    plot(voomDupEfit$coef[,i], -log10(as.matrix(voomDupEfit$p.value)[,i]), pch=20, main=colnames(voomDupEfit)[i], xlab="log2FoldChange", ylab="-log10(pvalue)")
+    points(voomDupEfit$coef[,i][which(names(voomDupEfit$coef[,i]) %in% hkControls)], -log10(as.matrix(voomDupEfit$p.value)[,i][which(names(voomDupEfit$coef[,i]) %in% hkControls)]) , pch=20, col=4, xlab="log2FoldChange", ylab="-log10(pvalue)")
     legend("topleft", "genes", "hk genes",fill=4)
     abline(v=c(-1,1))
 }
@@ -315,7 +272,9 @@ dev.off()
 # let's also visualise how our PCAs look after limma correction by using removeBatcheffect. Help on design of removeBatcheffects was given by the lovely John Blischak.
 design <- model.matrix(~0 + y$samples$Island)
 colnames(design)=gsub("Island", "", colnames(design))
-colnames(design)[(3)]=c("Mappi")
+colnames(design)=gsub("[\\y$]", "", colnames(design))
+colnames(design)=gsub("samples", "", colnames(design))
+colnames(design)=gsub("West Papua", "Mappi", colnames(design))
 batch.corrected.lcpm <- removeBatchEffect(lcpm, batch=y$samples$batch, covariates = cbind(y$samples$Age, y$samples$RIN, y$samples$CD8T, y$samples$CD4T, y$samples$NK, y$samples$Bcell, y$samples$Mono, y$samples$Gran), design=design)
 
 # define sample names
@@ -343,9 +302,16 @@ for (name in covariate.names){
 }
 
 # Age, RIN, and library size need to be broken up into chunks for easier visualisation of trends (for instance in Age, we want to see high age vs low age rather than the effect of every single age variable)
-Age <- cut(as.numeric(as.character(y$samples$Age)), c(14,24,34,44,54,64,74,84), labels=c("15-24","25-34", "35-44", "45-54", "55-64", "65-74", "75-84"))
-RIN <- cut(as.numeric(as.character(y$samples$RIN)), c(4.9,5.9,6.9,7.9,8.9), labels=c("5.0-5.9", "6.0-6.9", "7.0-7.9", "8.0-8.9"))
-lib.size <- cut(as.numeric(y$samples$lib.size), c(8000000,12000000,16000000,20000000,24000000), labels=c("8e+06-1.2e+07","1.2e+07-1.6e+07", "1.6e+07-2e+07", "2e+07-4.4e+07"))
+for (name in c("Age","RIN","lib.size")){
+  assign(name, cut(as.numeric(as.character(y$samples[[paste0(name)]])), breaks=5))
+}
+
+# assign names to covariate names so you can grab individual elements by name
+names(covariate.names)=covariate.names
+
+# assign factor variables
+factorVariables=c(colnames(Filter(is.factor,y$samples))[which(colnames(Filter(is.factor,y$samples)) %in% covariate.names)], "Age", "lib.size", "RIN")
+numericVariables=colnames(Filter(is.numeric,y$samples))[which(colnames(Filter(is.numeric,y$samples)) %in% covariate.names)] %>% subset(., !(. %in% factorVariables))
 
 # PCA plotting function
 plot.pca <- function(dataToPca, speciesCol, namesPch, sampleNames){
@@ -384,36 +350,35 @@ pc.assoc <- function(pca.data){
 }
 
 # Prepare covariate matrix
-all.covars.df <- y$samples[,covariate.names] 
-
-# assign names to covariate names so you can grab individual elements by name
-names(covariate.names)=covariate.names
+all.covars.df <- y$samples[,covariate.names]
 
 # Plot PCA
-for (name in covariate.names[1:12]){
-    if (nlevels(get(name)) < 26){
-        pdf(paste0(outputdir,"batchCorrected_pcaresults_",name,".pdf"))
-        pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
-        dev.off()
-    } else {
-        pdf(paste0("pcaresults_",name,".pdf"))
-        pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=as.numeric(get(name)),namesPch=20,sampleNames=get(name))
-        dev.off()
-    }
+for (name in factorVariables){
+  if (nlevels(get(name)) < 26){
+    pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
+    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
+    dev.off()
+  } else {
+    pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
+    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=20,sampleNames=get(name))
+    dev.off()
+  }
 }
 
-# plot batch (this has to be done separately since it has a different colour scheme)
-pdf(paste0(outputdir,"batchCorrected_pcaresults_batch.pdf"))
+# plot batch
+pdf(paste0(outputdir,"pcaresults_batch.pdf"))
 name="batch"
-pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=batch.col[as.numeric(batch)],namesPch=as.numeric(y$samples$batch) + 14,sampleNames=batch)
+pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=batch.col[as.numeric(batch)],namesPch=as.numeric(y$samples$batch) + 14,sampleNames=batch)
 dev.off()
   
-# plot blood - this one also has a differnet gradient colour scheme
-for (name in covariate.names[c("Gran","Bcell","CD4T","CD8T","NK","Mono")]){
-    initial <- cut(get(name), breaks = seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
+# plot numeric variables
+for (name in numericVariables){
+    initial = .bincode(get(name), breaks=seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
-    pdf(paste0("batchCorrected_pcaresults_",name,".pdf"))
-    pcaresults <- plot.pca(dataToPca=batch.corrected.lcpm, speciesCol=bloodCol,namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
+    pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
+    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=bloodCol,namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
+    legend(legend=c("High","Low"), pch=16, x="bottomright", col=c(bloodCol[which.max(get(name))], bloodCol[which.min(get(name))]), cex=0.6, title=name, border=F, bty="n")
+    legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
     dev.off()
 }
 
@@ -424,57 +389,41 @@ all.pcs$Variance <- pcaresults$sdev^2/sum(pcaresults$sdev^2)
 # plot pca covariates association matrix to illustrate any remaining confounding/batch
 pdf(paste0(outputdir,"significantCovariates_AnovaHeatmap.pdf"))
 pheatmap(all.pcs[1:5,c(3:20)], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
+pheatmap(all.pcs[1:5,c(5:ncol(all.pcs)-2)], cluster_col=F, col= colorRampPalette(brewer.pal(11, "RdYlBu"))(100), cluster_rows=F, main="Significant Covariates \n Anova")
 dev.off()
 
 # Write out the covariates:
-write.table(all.pcs, file=paste0(outputdir,"pca_covariates_blood.txt"), col.names=T, row.names=F, quote=F, sep="\t")
+write.table(all.pcs, file=paste0(outputdir,"pca_covariates_blood_RNASeqDeconCell.txt"), col.names=T, row.names=F, quote=F, sep="\t")
 
 # Summary and visualisation of gene trends ---------------------------------------------------------------------------
 
-# first see which logFC threshold is best
-logFC.df=matrix(nrow=3,ncol=3)
-colnames(logFC.df)=colnames(efit)
-counter=0
-for (number in c(0,0.5,1)){
-    counter=counter+1
-    dt <- decideTests(efit, p.value=0.01, lfc=number)
-    values=c(sum(abs(dt[,1])), sum(abs(dt[,2])), sum(abs(dt[,3])))
-    logFC.df[counter,]=values
-}
-logFC.df=cbind(logFC = c(0,0.5,1), logFC.df)
-write.table(logFC.df, file=paste0(outputdir,"logFC_thresholds.txt"))
-
-dt <- decideTests(efit, p.value=0.01, lfc=1)
-# get summary of decide tests statistics
-write.table(summary(dt), file=paste0(outputdir,"numberSigDEgenes_voom_efit.txt"))
-# write out top table results 
-write.fit(efit, dt, file=paste0(outputdir,"toptable_SigGenes_voom_efit.txt"))
+dt <- decideTests(voomDupEfit, p.value=0.01, lfc=1)
 
 # plot log2 fold change between islands
-pdf(paste0(outputdir,"log2FC_IslandComparisons_pval01.pdf"))
+pdf(paste0(outputdir,"log2FC_IslandComparisons_pval01_dupCor.pdf"))
 # note 'p.value' is the cutoff value for adjusted p-values
-topTable <- topTable(efit, coef=1, n=Inf, p.value=0.01)
+topTable <- topTable(voomDupEfit, coef=1, n=Inf, p.value=0.01)
 plot(density(topTable$logFC), col=9, xlim=c(-2,2), main="LogFC Density", xlab="LogFC", ylab="Density")
 abline(v=c(-1,-0.5,0.5,1), lty=3)
 counter=0
-for (i in 2:ncol(efit)){
+for (i in 2:ncol(voomDupEfit)){
     counter=counter+1
-    topTable <- topTable(efit, coef=i, n=Inf, p.value=0.01)
+    topTable <- topTable(voomDupEfit, coef=i, n=Inf, p.value=0.01)
     lines(density(topTable$logFC), col=9+counter, xlim=c(-2,2))
 }
-legend(x="topright", bty="n", col=9:11, legend=colnames(efit), lty=1, lwd=2)
+legend(x="topright", bty="n", col=9:11, legend=colnames(voomDupEfit), lty=1, lwd=2)
 dev.off()
 
 # graphical representation of DE results through MD plot
-pdf(paste0(outputdir,"MD_Plots_pval01_lfc1.pdf"), height=15, width=10)
+pdf(paste0(outputdir,"MD_Plots_pval01_lfc1_dupCor.pdf"), height=15, width=10)
 par(mfrow=c(3,1))
-for (i in 1:ncol(efit)){
-    o <- which(names(efit$Amean) %in% names(which(abs(dt[,i])==1)))
-    x <- efit$Amean
-    z <- efit$coefficients[,i]
-    t=which(names(efit$coefficients[,i]) %in% names(which(abs(dt[,i])==1)))
-    G <- efit$genes[names(which(abs(dt[,i])==1)),]$SYMBOL
-    plotMD(efit, column=i, status=dt[,i], main=colnames(efit)[i], hl.col=c("blue","red"), values=c(-1,1))
+for (i in 1:ncol(voomDupEfit)){
+    o <- which(names(voomDupEfit$Amean) %in% names(which(abs(dt[,i])==1)))
+    x <- voomDupEfit$Amean
+    z <- voomDupEfit$coefficients[,i]
+    t=which(names(voomDupEfit$coefficients[,i]) %in% names(which(abs(dt[,i])==1)))
+    G <- voomDupEfit$genes[names(which(abs(dt[,i])==1)),]$SYMBOL
+    plotMD(voomDupEfit, column=i, status=dt[,i], main=colnames(voomDupEfit)[i], hl.col=c("blue","red"), values=c(-1,1))
     abline(h=c(1,-1), lty=2)
     legend(legend=paste(names(summary(dt)[,i]), summary(dt)[,i], sep="="), x="bottomright", border=F, bty="n")
     text(x[o], z[t], labels=G)
@@ -485,7 +434,7 @@ dev.off()
 # first, make a heatmap of all top genes in one pdf
 
 # reset ensemble row names to gene symbols
-rownames(v$E)=v$genes$SYMBOL
+rownames(vDup$E)=vDup$genes$SYMBOL
 
 # set up annotation
 col_fun = colorRamp2(c(-4, 0, 4), c("blue", "white", "red"))
@@ -494,7 +443,7 @@ df1=data.frame(island = as.character(Island))
 df2=data.frame(batch = as.numeric(batch))
 ha1 = HeatmapAnnotation(df = df1, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3)))
 
-pdf(paste0(outputdir,"HeatmapAllPops.pdf"), height=15, width=15)
+pdf(paste0(outputdir,"HeatmapAllPops_dupCor.pdf"), height=15, width=15)
 grid.newpage()
 pushViewport(viewport(layout = grid.layout(nr = 2, nc = 2)))
 # set up layout row position
@@ -502,11 +451,11 @@ layout.row=c(1,1,2)
 # set up column position
 layout.col=c(1,2,1)
 
-for (i in 1:ncol(efit)){
-    topTable <- topTable(efit, coef=i, p.value=0.01, lfc=1, n=Inf, sort.by="p")
-    index <- which(v$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
+for (i in 1:ncol(voomDupEfit)){
+    topTable <- topTable(voomDupEfit, coef=i, p.value=0.01, lfc=1, n=Inf, sort.by="p")
+    index <- which(voomDupEfit$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
     pushViewport(viewport(layout.pos.row = layout.row[i], layout.pos.col = layout.col[i]))
-    draw(Heatmap(t(scale(t(v$E[index,]))), col=col_fun, column_title = colnames(efit)[i], top_annotation = ha1, show_row_names = T, show_heatmap_legend = F, show_column_names = F, name = "Z-Score"),show_annotation_legend = FALSE,newpage=F)
+    draw(Heatmap(t(scale(t(vDup$E[index,]))), col=col_fun, column_title = colnames(voomDupEfit)[i], top_annotation = ha1, show_row_names = T, show_heatmap_legend = F, show_column_names = F, name = "Z-Score"),show_annotation_legend = FALSE,newpage=F)
     upViewport()
 
 }
@@ -530,43 +479,34 @@ for (i1 in island1){
     island2=island2[-1]
     for (i2 in island2){
         counter=counter+1
-        topTable <- topTable(efit, coef=counter, p.value=0.01, lfc=1, n=Inf, sort.by="p")
-        index <- which(v$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
+        topTable <- topTable(voomDupEfit, coef=counter, p.value=0.01, lfc=1, n=Inf, sort.by="p")
+        index <- which(vDup$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
         df=data.frame(island = as.character(Island[grep(paste(i1,i2,sep="|"), Island)]))
         ha =  HeatmapAnnotation(df = df, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3)))
-        pdf(paste0(outputdir,"HeatmapTopeGenes_",i1,"_vs_",i2,".pdf"), height=10, width=15)
-        draw(Heatmap(t(scale(t(v$E[index,])))[,grep(paste(i1,i2,sep="|"), Island)], col=col_fun, column_title = colnames(efit)[counter], top_annotation = ha, show_row_names = T, show_heatmap_legend = T, show_column_names = F, name = "Z-Score"),show_annotation_legend = TRUE,newpage=F)
+        pdf(paste0(outputdir,"HeatmapTopeGenes_",i1,"_vs_",i2,"_dupCor.pdf"), height=10, width=15)
+        draw(Heatmap(t(scale(t(vDup$E[index,])))[,grep(paste(i1,i2,sep="|"), Island)], col=col_fun, column_title = colnames(voomDupEfit)[counter], top_annotation = ha, show_row_names = T, show_heatmap_legend = T, show_column_names = F, name = "Z-Score"),show_annotation_legend = TRUE,newpage=F)
         dev.off()
     }
 }
 
-# Get top DE genes through topTable (FDR 0.01) with log fold change of one and save gene information to file
-for (i in 1:ncol(efit)){
-    # note 'p.value' is the cutoff value for adjusted p-values
-    topTable <- topTable(efit, coef=i, p.value=0.01, n=Inf, lfc=1, sort.by="p")
-    topGenes <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', 'go_id', 'name_1006', "interpro","interpro_description"), mart = ensembl.mart.90,values=topTable$ENSEMBL, filters="ensembl_gene_id")
-    write.table(topGenes, file=paste0(outputdir,"top_genes_",colnames(efit)[i],".txt"), quote=F, row.names=F)
-    write.table(topTable, file=paste0(outputdir,"top_Table_",colnames(efit)[i],".txt"), quote=F, row.names=F)
-}
-
 # show the number of DE genes between all islands
-pdf(paste0(outputdir,"vennDiagram_allSigDEGenes_pval01_FDR1.pdf"), height=15, width=15)
+pdf(paste0(outputdir,"vennDiagram_allSigDEGenes_pval01_FDR1_dupCor.pdf"), height=15, width=15)
 vennDiagram(dt[,1:3], circle.col=c(9,10,11))
 dev.off()
 
 # get DE genes in common with populations compared to Mappi, i.e., SMBvsMPI and MTWvsMPI (since we think this is an interesting island comparison)
-rownames(efit$genes)=efit$genes$ENSEMBL
+rownames(voomDupEfit$genes)=voomDupEfit$genes$ENSEMBL
 de.common.MPI = which(dt[,2]!=0 & dt[,3]!=0)
 # get what these genes are doing and save them to a file
 commonGenes.MPI <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.MPI), filters="ensembl_gene_id")
-write.table(de.common.MPI, file=paste0(outputdir,"allCommonGenes_MPI.txt"))
+write.table(de.common.MPI, file=paste0(outputdir,"allCommonGenes_MPI_dupcor.txt"))
 # save the common gene names 
-de.common.MPI=efit$genes[names(de.common.MPI),]
+de.common.MPI=voomDupEfit$genes[names(de.common.MPI),]
 
 # now plot the common genes to see if they're being regulated in the same direction
-tt.SMBvsMPI=topTable(efit, coef=2, p.value=0.01, n=Inf, lfc=1, sort.by="p")
-tt.MTWvsMPI=topTable(efit, coef=3, p.value=0.01, n=Inf, lfc=1, sort.by="p")
-pdf(paste0(outputdir,"logFC_commonMPIgenes.pdf"))
+tt.SMBvsMPI=topTable(voomDupEfit, coef=2, p.value=0.01, n=Inf, lfc=1, sort.by="p")
+tt.MTWvsMPI=topTable(voomDupEfit, coef=3, p.value=0.01, n=Inf, lfc=1, sort.by="p")
+pdf(paste0(outputdir,"logFC_commonMPIgenes_dupCor.pdf"))
 plot(tt.SMBvsMPI[rownames(de.common.MPI),"logFC"], tt.MTWvsMPI[rownames(de.common.MPI),"logFC"], xlab="logFC SMBvsMPI", ylab="logFC MTWvsMPI", pch=20, main="Common DE Genes", xlim=c(-5,5), ylim=c(-6,6))
 text(tt.SMBvsMPI[rownames(de.common.MPI),"logFC"], tt.MTWvsMPI[rownames(de.common.MPI),"logFC"], labels=tt.SMBvsMPI[rownames(de.common.MPI),"SYMBOL"], pos=3)
 abline(h=0,v=0, lty=2)
@@ -580,12 +520,12 @@ topEnsembl=de.common.MPI[,1]
 
 # To visualise distributions, we'll be making violin plots using ggpubr which needs p-value labels. Let's go ahead and make a matrix to input this into ggpubr
 # first set up matrix
-topGenes.pvalue=matrix(nrow=length(topEnsembl), ncol=ncol(efit))
+topGenes.pvalue=matrix(nrow=length(topEnsembl), ncol=ncol(voomDupEfit))
 rownames(topGenes.pvalue)=topEnsembl
-colnames(topGenes.pvalue)=colnames(efit)
-for (i in 1:ncol(efit)){
+colnames(topGenes.pvalue)=colnames(voomDupEfit)
+for (i in 1:ncol(voomDupEfit)){
     # get significant genes over a logFC of 1 for all Island comparisons
-    topTable <- topTable(efit, coef=i, n=Inf)
+    topTable <- topTable(voomDupEfit, coef=i, n=Inf)
     for(j in topEnsembl){
         # input the adjusted p.value for each gene
         topGenes.pvalue[j,i]=topTable[j,"adj.P.Val"]
@@ -602,7 +542,7 @@ pdf(paste0(outputdir,"TopGenes_ggboxplot_Island.pdf"), height=8, width=10)
 counter=0
 for(ensembl in topEnsembl){
     counter=counter+1
-    gene.df <- data.frame(v$E[which(v$genes$ENSEMBL==ensembl),],Island)
+    gene.df <- data.frame(vDup$E[which(vDup$genes$ENSEMBL==ensembl),],Island)
     colnames(gene.df)=c("CPM", "Island")
     annotation_df <- data.frame(start=c("Sumba","Sumba", "Mentawai"), end=c("Mentawai","West Papua","West Papua"), y=c(max(gene.df[,1]+4),max(gene.df[,1]+5),max(gene.df[,1]+6)), label=paste("limma p-value =",topGenes.pvalue[ensembl,],sep=" "))
     print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=topGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
@@ -615,12 +555,12 @@ favGenes=c("SIGLEC6","SIGLEC7","MARCO")
 favEnsembl=de.common.MPI[,1][sapply(1:length(favGenes), function(x) grep(favGenes[x],de.common.MPI[,2]))]
 
 # set up pvalue matrix
-topGenes.pvalue=matrix(nrow=length(favEnsembl), ncol=ncol(efit))
+topGenes.pvalue=matrix(nrow=length(favEnsembl), ncol=ncol(voomDupEfit))
 rownames(topGenes.pvalue)=favEnsembl
-colnames(topGenes.pvalue)=colnames(efit)
-for (i in 1:ncol(efit)){
+colnames(topGenes.pvalue)=colnames(voomDupEfit)
+for (i in 1:ncol(voomDupEfit)){
     # get significant genes over a logFC of 1 for all Island comparisons
-    topTable <- topTable(efit, coef=i, n=Inf)
+    topTable <- topTable(voomDupEfit, coef=i, n=Inf)
     for(j in favEnsembl){
         # input the adjusted p.value for each gene
         topGenes.pvalue[j,i]=topTable[j,"adj.P.Val"]
@@ -637,7 +577,7 @@ counter=0
 for(ensembl in favEnsembl){
     counter=counter+1
     # pdf(paste0("FavouriteGenes_ggboxplot_",favGenes[counter],".pdf"), height=8, width=10)
-    gene.df <- data.frame(v$E[which(v$genes$ENSEMBL==ensembl),],Island)
+    gene.df <- data.frame(vDup$E[which(vDup$genes$ENSEMBL==ensembl),],Island)
     colnames(gene.df)=c("CPM", "Island")
     annotation_df <- data.frame(start=c("Sumba","Sumba", "Mentawai"), end=c("Mentawai","West Papua","West Papua"), y=c(max(gene.df[,1]+4),max(gene.df[,1]+5),max(gene.df[,1]+6)), label=paste("limma p-value =",topGenes.pvalue[ensembl,],sep=" "))
     # print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=favGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
@@ -648,5 +588,19 @@ pdf(paste0(outputdir,"favouriteTopGenes_distribution_Island.pdf"), height=12, wi
 ggarrange(SIGLEC6,SIGLEC7,MARCO)
 #AIM2,TNFSF4,RSAD2)
 dev.off()
+
+# finally, get logFC thresholds
+logFC.df=matrix(nrow=3,ncol=3)
+colnames(logFC.df)=colnames(voomDupEfit)
+counter=0
+for (number in c(0,0.5,1)){
+    counter=counter+1
+    dt <- decideTests(voomDupEfit, p.value=0.01, lfc=number)
+    values=c(sum(abs(dt[,1])), sum(abs(dt[,2])), sum(abs(dt[,3])))
+    logFC.df[counter,]=values
+}
+logFC.df=cbind(logFC = c(0,0.5,1), logFC.df)
+write.table(logFC.df, file=paste0(outputdir,"logFC_thresholds.txt"))
+
 
 
