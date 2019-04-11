@@ -52,13 +52,13 @@ names(indoReads) <- c(names1st, names2nd, names3rd) #need to manually confirm or
 # rename MPI-336 to MPI-381 (mixup in naming when perfomring sequencing)
 colnames(indoReads) <- gsub("MPI-336_thirdBatch", "MPI-381_thirdBatch", colnames(indoReads)) 
 
-# Into DGEList:
-y <- DGEList(indoReads, genes=rownames(indoReads), samples=colnames(indoReads))
-
-# Create shortened samplenames- insert hyphen and drop suffixes
-samplenames <- as.character(y$samples$samples)
+# To avoid hardcoding while standardising, fix samplenames object first, then drop the suffixes:
+samplenames <- as.character(colnames(indoReads))
 samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
-samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
+samplenamesSlim <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
+
+# Into DGEList:
+y <- DGEList(indoReads, genes=rownames(indoReads), samples=samplenames)
 
 rm(featureCountsOut) # clean up, big object
 

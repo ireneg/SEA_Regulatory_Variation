@@ -37,6 +37,7 @@ palette(c(wes, brewer.pal(8,"Dark2")))
 # set up colour palette for batch
 batch.col=electronic_night(n=3)
 
+
 # BEGIN ANALYSIS -------------------------------------------------------------------------------------------------
 
 # Load log CPM matrix and y object:
@@ -102,20 +103,24 @@ y <- calcNormFactors(y, method="TMM")
 # now go ahead with voom normalisation
 pdf(paste0(outputdir,"Limma_voom_TMMNormalisation.pdf"), height=8, width=12)
 v <- voom(y, design, plot=TRUE)
+<<<<<<< HEAD
 
 # Using duplicate correlation --------------------------------------------------
 dupcor <- duplicateCorrelation(v, design, block=y$samples$ind)
+=======
+dupcor <- duplicateCorrelation(v, design, block=y$samples$ind) # 46 non-convergences
+>>>>>>> f56d977000a3a04c82d8454668facaacda36433b
 dupcor$consensus # sanity check
-# [1] 0.7054115
+# [1] 0.7236156
 median(v$weights) # another sanity check:
 # [1] 19.03065
 
 vDup <- voom(y, design, plot=TRUE, block=y$samples$ind, correlation=dupcor$consensus)
 dupcor <- duplicateCorrelation(vDup, design, block=y$samples$ind) # 28 non-convergences
 dupcor$consensus # sanity check pt 2
-# [1] 0.705514
+# [1] 0.7239365
 median(vDup$weights) # another sanity check, pt 2 - small change, so it didn't matter too much, but it is good to have done it. 
-# [1] 18.93866
+# [1] 18.71378
 
 # fit linear models
 # With duplicate correction and blocking:
@@ -141,22 +146,21 @@ dev.off()
 
     summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
     #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down       1411     2286     1657
-    # NotSig    10530     8533     9768
-    # Up         1034     2156     1550
+    # Down       1393     2158     1590
+    # NotSig    10575     8760     9867
+    # Up         1007     2057     1518
 
     summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
     #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down        136      618      439
-    # NotSig    12624    11619    12032
-    # Up          215      738      504
- 
+    # Down        152      574      432
+    # NotSig    12631    11695    12041
+    # Up          192      706      502
+
     summary(decideTests(voomDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
     #        SMBvsMTW SMBvsMPI MTWvsMPI
-    # Down         13       83       97
-    # NotSig    12939    12684    12740
-    # Up           23      208      138
-
+    # Down         14       81       96
+    # NotSig    12942    12706    12744
+    # Up           19      188      135
 
 # And without:
     topTableSMB.MTW <- topTable(efit, coef=1, p.value=0.01, n=Inf, sort.by="p")
@@ -185,17 +189,17 @@ dev.off()
 # And finally, correlation between those two measurements - sort by gene first, then cor test
     MTW.MPI <- join(voomDupTopTableMTW.MPI, topTableMTW.MPI, by="genes")
     cor(MTW.MPI[,6], MTW.MPI[,12], method="spearman", use="complete")
-    # [1] 0.9773361
- 
+    # [1] 0.969342
+
     SMB.MPI <- join(voomDupTopTableSMB.MPI, topTableSMB.MPI, by="genes")
     cor(SMB.MPI[,6], SMB.MPI[,12], method="spearman", use="complete")
-    # [1] 0.9765353
+    # [1] 0.929687
 
     SMB.MTW <- join(voomDupTopTableSMB.MTW, topTableSMB.MTW, by="genes")
     cor(SMB.MTW[,6], SMB.MTW[,12], method="spearman", use="complete")
-    # [1] 0.9688961
+    # [1] 0.8754186
 
-# Didn't break anything! Woo!
+# Didn't break anything! But comparisons Sumba look notably different, which is interesting.
 
 # Back to Kat's regularly scheduled code:
 
