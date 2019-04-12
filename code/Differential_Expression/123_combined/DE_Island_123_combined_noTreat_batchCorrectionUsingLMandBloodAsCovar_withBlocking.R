@@ -26,12 +26,12 @@ library(plyr)
 library(NineteenEightyR)
 library(RColorBrewer)
 # library(biomaRt)
-library(ggpubr)
+# library(ggpubr)
 library(ggplot2)
 library(ggsignif)
 # library(pheatmap)
 library(viridis)
-library(gplots)
+# library(gplots)
 library(circlize)
 library(ComplexHeatmap)
 library(VennDiagram)
@@ -156,9 +156,9 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
     dev.off()
 
     # get top genes using toptable
-    voomNoNormDupTopTableSMB.MTW <- topTable(voomNoNormDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
-    voomNoNormDupTopTableSMB.MPI <- topTable(voomNoNormDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
-    voomNoNormDupTopTableMTW.MPI <- topTable(voomNoNormDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+    voomNoNormDupTopTableSMB.MTW <- topTable(voomNoNormDupEfit, coef=1, n=Inf, sort.by="p")
+    voomNoNormDupTopTableSMB.MPI <- topTable(voomNoNormDupEfit, coef=2, n=Inf, sort.by="p")
+    voomNoNormDupTopTableMTW.MPI <- topTable(voomNoNormDupEfit, coef=3, n=Inf, sort.by="p")
 
 # Quantile normalisation between samples and tmm and voom:
     voomQuant <- voom(yFilt, design, normalize.method="quantile", plot=F) 
@@ -195,9 +195,9 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
     dev.off()
 
     # get top genes using toptable
-    voomQuantDupTopTableSMB.MTW <- topTable(voomQuantDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
-    voomQuantDupTopTableSMB.MPI <- topTable(voomQuantDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
-    voomQuantDupTopTableMTW.MPI <- topTable(voomQuantDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+    voomQuantDupTopTableSMB.MTW <- topTable(voomQuantDupEfit, coef=1, n=Inf, sort.by="p")
+    voomQuantDupTopTableSMB.MPI <- topTable(voomQuantDupEfit, coef=2, n=Inf, sort.by="p")
+    voomQuantDupTopTableMTW.MPI <- topTable(voomQuantDupEfit, coef=3, n=Inf, sort.by="p")
 
 
 # Loess normalisation between samples and tmm and voom:
@@ -235,60 +235,60 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
     dev.off()
 
     # get top genes using toptable
-    voomLoessDupTopTableSMB.MTW <- topTable(voomLoessDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
-    voomLoessDupTopTableSMB.MPI <- topTable(voomLoessDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
-    voomLoessDupTopTableMTW.MPI <- topTable(voomLoessDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+    voomLoessDupTopTableSMB.MTW <- topTable(voomLoessDupEfit, coef=1, n=Inf, sort.by="p")
+    voomLoessDupTopTableSMB.MPI <- topTable(voomLoessDupEfit, coef=2, n=Inf, sort.by="p")
+    voomLoessDupTopTableMTW.MPI <- topTable(voomLoessDupEfit, coef=3, n=Inf, sort.by="p")
 
 # LOL omg what was the point? On the basis of this, going with no norm so there's no need to think about it any deeper.
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down        930     2511     2134
-# NotSig    11352     8180     8817
-# Up          693     2284     2024
+# Down        898     2325     2102
+# NotSig    11430     8479     8887
+# Up          647     2171     1986
 summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down        930     2511     2134
-# NotSig    11352     8180     8817
-# Up          693     2284     2024
+# Down        896     2324     2102
+# NotSig    11432     8480     8887
+# Up          647     2171     1986
 summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down        930     2511     2135
-# NotSig    11352     8180     8816
-# Up          693     2284     2024
+# Down        898     2325     2102
+# NotSig    11430     8479     8887
+# Up          647     2171     1986
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down        105      663      545
-# NotSig    12634    11479    11943
-# Up          236      833      487
+# Down         96      606      536
+# NotSig    12661    11577    11958
+# Up          218      792      481
 summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down        105      663      545
-# NotSig    12634    11479    11943
-# Up          236      833      487
+# Down         96      606      536
+# NotSig    12661    11577    11958
+# Up          218      792      481
 summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down        105      663      545
-# NotSig    12634    11479    11943
-# Up          236      833      487
+# Down         96      606      536
+# NotSig    12661    11577    11958
+# Up          218      792      481
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down          5       95       98
-# NotSig    12935    12641    12742
-# Up           35      239      135
+# Down          6       87       96
+# NotSig    12940    12662    12748
+# Up           29      226      131
 
 summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down          5       95       98
-# NotSig    12935    12641    12742
-# Up           35      239      135
+# Down          6       87       96
+# NotSig    12940    12662    12748
+# Up           29      226      131
 
 summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #        SMBvsMTW SMBvsMPI MTWvsMPI
-# Down          5       95       98
-# NotSig    12935    12641    12742
-# Up           35      239      135
+# Down          6       87       96
+# NotSig    12940    12662    12748
+# Up           29      226      131
 
 write.table(voomNoNormDupTopTableSMB.MTW, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.SMB-MTW.txt"))
 write.table(voomNoNormDupTopTableSMB.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.SMB-MPI.txt"))
@@ -319,9 +319,9 @@ pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.no_dup_correction.me
 dev.off()
 
 # get top genes using toptable
-topTableSMB.MTW <- topTable(voomNoNormEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
-topTableSMB.MPI <- topTable(voomNoNormEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
-topTableMTW.MPI <- topTable(voomNoNormEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+topTableSMB.MTW <- topTable(voomNoNormEfit, coef=1, n=Inf, sort.by="p")
+topTableSMB.MPI <- topTable(voomNoNormEfit, coef=2, n=Inf, sort.by="p")
+topTableMTW.MPI <- topTable(voomNoNormEfit, coef=3, n=Inf, sort.by="p")
 
 # no LFC threshold
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01))
@@ -331,14 +331,14 @@ summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.v
 #Up          760     2300     2078
 
 # LFC of 0.05
-summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
+summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
 #       SMBvsMTW SMBvsMPI MTWvsMPI
 #Down        112      654      558
 #NotSig    12603    11492    11920
 #Up          260      829      497
 
 # LFC of 1
-summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
+summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #       SMBvsMTW SMBvsMPI MTWvsMPI
 #Down          6       93      103
 #NotSig    12923    12643    12737
@@ -346,7 +346,7 @@ summary(decideTests(efit, method="separate", adjust.method = "BH", p.value = 0.0
 
 # Let's check the correlation between those two approaches - sort by gene first, then cor test on adjusted p-value
 MTW.MPI <- join(voomNoNormDupTopTableMTW.MPI, topTableMTW.MPI, by="genes")
-cor(MTW.MPI[,6], MTW.MPI[,12], method="spearman", use="complete")
+cor(MTW.MPI[,6], MTW.MPI[,12], method="spearman"    )
 # [1] 0.9739983
 
 SMB.MPI <- join(voomNoNormDupTopTableSMB.MPI, topTableSMB.MPI, by="genes")
@@ -422,7 +422,7 @@ pdf(paste0(edaoutput,"log2FC_IslandComparisons_pval01_dupCor.pdf"))
     for (i in 2:ncol(voomNoNormDupEfit)){
         counter=counter+1
         topTable <- topTable(voomNoNormDupEfit, coef=i, n=Inf, p.value=0.01)
-        lines(density(topTable$logFC), col=9+counter, xlim=c(-2,2))
+        lines(density(topTable$logFC), col=9+counter, xlim=c(-2,2), lwd=3)
     }
     legend(x="topright", bty="n", col=9:11, legend=colnames(voomNoNormDupEfit), lty=1, lwd=2)
 dev.off()
@@ -512,7 +512,7 @@ make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P
 
 make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MTW$logFC>= 0.5,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MPI$logFC>= 0.5,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableMTW.MPI$logFC>= 0.5,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_0.5"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
 
-make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MTW$logFC>= 1,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MPI$logFC>= 1,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableMTW.MPI$logFC>= 1,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_0.5"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MTW$logFC>= 1,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MPI$logFC>= 1,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableMTW.MPI$logFC>= 1,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_1"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
 
 
     ###################################################################################################
