@@ -1,8 +1,17 @@
 # Load in FeatureCounts data, set up covariate matrices, and get initial statistics from first and second batch of RNASeq Indonesian DE analysis
 # Code developed by Katalina Bobowik, 06.06.2018
 
-### Last edit: 02.04.2019
-### IGR edit read ins, clean package loading list and get rid of hardcoding of paths and indexes 
+### Last edit: 2019.04.12
+### IGR clean up script and add headers.
+
+### 0. Set up everything ----------------------
+### 1. BEGIN ANALYSIS -----------------------------------------------------------
+### 2. Get initial statistics before pre-processing ----------------------- 
+
+
+###################################################
+### 0. Set up everything ---------------------- ###
+###################################################
 
 # load packages
 library(RColorBrewer)
@@ -22,14 +31,16 @@ inputdir <- "/data/cephfs/punim0586/kbobowik/Sumba/" # on server
 
 # Set output directory and create it if it does not exist:
 outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
-edaoutput <- paste0(outputdir, "/eda/")
+edaoutput <- paste0(outputdir, "eda/")
 
 if (file.exists(outputdir) == FALSE){
     dir.create(outputdir, recursive=T)
     dir.create(edaoutput, recursive=T)
 }
 
-# BEGIN ANALYSIS -----------------------------------------------------------
+#####################################################################################
+### 1. BEGIN ANALYSIS ----------------------------------------------------------- ###
+#####################################################################################
 
 # read in count files from featureCounts. Here, I'm loading in files for all three batches.
 files=list.files(path=paste0(inputdir, "FeatureCounts/indoRNA/sample_counts"), pattern="Filter", full.names=T)
@@ -62,11 +73,13 @@ y <- DGEList(indoReads, genes=rownames(indoReads), samples=samplenames)
 
 rm(featureCountsOut) # clean up, big object
 
-
 # assign batch
 y$samples$batch <- c(rep(1, length(grep("firstBatch",colnames(y)))), rep(2, length(grep("secondBatch",colnames(y)))), rep(3, length(grep("thirdBatch",colnames(y)))))
 
-# Get initial statistics before pre-processing -----------------------
+
+###############################################################################
+### 2. Get initial statistics before pre-processing ----------------------- ###
+###############################################################################
 
 # Visualise library size
 pdf(paste0(edaoutput, "librarysizeIndoRNA_preFiltering.pdf"), height=10, width=15)
@@ -76,7 +89,7 @@ pdf(paste0(edaoutput, "librarysizeIndoRNA_preFiltering.pdf"), height=10, width=1
 dev.off()
 
 # Total number of genes
-pdf(paste0(edaoutput, "nGenesIndoRNA_preFilterin.pdf"), height=10, width=15)
+pdf(paste0(edaoutput, "nGenesIndoRNA_preFiltering.pdf"), height=10, width=15)
     par(oma=c(2,0,0,0))
     barplot(apply(y$counts, 2, function(c)sum(c!=0)),main="Number of Genes \n pre-Filtering", ylab="n Genes", cex.names=0.75, col=batch.col[y$samples$batch], names=samplenames, las=3, ylim=c(0,max(apply(y$counts, 2, function(c)sum(c!=0)))+3000))
     legend(x="topright", col=batch.col[unique(y$samples$batch)], legend=c("first batch", "second batch", "third batch"), pch=15, cex=0.8)
