@@ -21,14 +21,16 @@ library(circlize)
 library(ComplexHeatmap)
 
 # Set paths:
-inputdir = "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/dataPreprocessing/"
-housekeepingdir="/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/BatchEffects/"
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
+covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/Users/katalinabobowik/Documents/UniMelb_PhD/Analysis/UniMelb_Sumba/Output/DE_Analysis/123_combined/DE_Island/LM_allCovarPlusBlood/"
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
+edaoutput <- paste0(outputdir, "/eda/")
 
 if (file.exists(outputdir) == FALSE){
-    dir.create(outputdir)
+    dir.create(outputdir, recursive=T)
+    dir.create(edaoutput, recursive=T)
 }
 
 # Load colour schemes:
@@ -48,54 +50,57 @@ load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 # Initial QC -----------------------------------------------------------------------
 
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
-y$samples$Age[which(is.na(y$samples$Age) == T)]=45
+yFilt$samples$Age[which(is.na(yFilt$samples$Age) == T)]=45
 
 # Set up design matrix
-design <- model.matrix(~0 + y$samples$Island + y$samples$Age + y$samples$batch + y$samples$RIN + y$samples$CD8T + y$samples$CD4T + y$samples$NK + y$samples$Bcell + y$samples$Mono + y$samples$Gran)
+design <- model.matrix(~0 + yFilt$samples$Island + yFilt$samples$Age + yFilt$samples$batch + yFilt$samples$RIN + yFilt$samples$CD8T + yFilt$samples$CD4T + yFilt$samples$NK + yFilt$samples$Bcell + yFilt$samples$Mono + yFilt$samples$Gran)
 colnames(design)=gsub("Island", "", colnames(design))
 
 # rename columns to exclude spaces and unrecognised characters
-colnames(design)=gsub("[\\y$]", "", colnames(design))
-colnames(design)=gsub("samples", "", colnames(design))
+colnames(design)=gsub("yFilt\\$samples\\$", "", colnames(design))
 colnames(design)=gsub("West Papua", "Mappi", colnames(design))
 
 # set up contrast matrix
 contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
 
-# plot mean-variance trend for different normalisation methods. This is helpfule for understandimg what should be done with estimating the dispersion: https://support.bioconductor.org/p/77664/
-pdf(paste0(outputdir, "EstimatingDispersion_allNormalisationMethods.pdf"), height=15, width=15)
-par(mfrow=c(4,3))
-# first perform voom on unnormalised data
-y$samples$norm.factors <- 1
-estimateDisp <- estimateDisp(y, design, robust=TRUE)
-plotBCV(estimateDisp)
-title(paste0("None","\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
-v <- voom(y, design, plot=TRUE)
-title(main="None", line=0.5)
-# fit linear models
-vfit <- lmFit(v, design)
-vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-efit <- eBayes(vfit, robust=T)
-plotSA(efit, main="Mean-variance trend elimination \n None")
+#################################################################################
+### IGR NOTE 2019.04.12 - THIS IS BROKEN AND DOES NOT RUN. NEEDS TO BE FIXED. ###
+#################################################################################
 
-# now perform normalisation on all the others
-for (method in c("upperquartile", "TMM", "RLE")) {
-    y <- calcNormFactors(y, method=method)
-    estimateDisp <- estimateDisp(y, design, robust=TRUE)
-    plotBCV(estimateDisp)
-    title(paste0(method,"\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
-    v <- voom(y, design, plot=TRUE)
-    title(main=method, line=0.5)
-    # fit linear models
-    vfit <- lmFit(v, design)
-    vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
-    efit <- eBayes(vfit, robust=T)
-    plotSA(efit, main=paste("Mean-variance trend elimination",method,sep="\n"))
-}
-dev.off()
+                        # plot mean-variance trend for different normalisation methods. This is helpfule for understandimg what should be done with estimating the dispersion: https://support.bioconductor.org/p/77664/
+                        # pdf(paste0(edaoutput, "EstimatingDispersion_allNormalisationMethods.pdf"), height=15, width=15)
+                        #     par(mfrow=c(4,3))
+                        #     # first perform voom on unnormalised data
+                        #     yFilt$samples$norm.factors <- 1
+                        #     estimateDisp <- estimateDisp(yFilt, design, robust=TRUE)
+                        #     plotBCV(estimateDisp)
+                        #     title(paste0("None","\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
+                        #     v <- voom(yFilt, design, plot=TRUE)
+                        #     title(main="None", line=0.5)
+                        #     # fit linear models
+                        #     vfit <- lmFit(v, design)
+                        #     vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+                        #     efit <- eBayes(vfit, robust=T)
+                        #     plotSA(efit, main="Mean-variance trend elimination \n None")
+
+                        #     # now perform normalisation on all the others
+                        #     for (method in c("upperquartile", "TMM", "RLE")) {
+                        #         yFilt <- calcNormFactors(yFilt, method=method)
+                        #         estimateDisp <- estimateDisp(yFilt, design, robust=TRUE)
+                        #         plotBCV(estimateDisp)
+                        #         title(paste0(method,"\nDispersion Range = ",round(min(estimateDisp$prior.df), 2), "-", round(max(estimateDisp$prior.df), 2)))
+                        #         v <- voom(yFilt, design, plot=TRUE)
+                        #         title(main=method, line=0.5)
+                        #         # fit linear models
+                        #         vfit <- lmFit(v, design)
+                        #         vfit <- contrasts.fit(vfit, contrasts=contr.matrix)
+                        #         efit <- eBayes(vfit, robust=T)
+                        #         plotSA(efit, main=paste("Mean-variance trend elimination",method,sep="\n"))
+                        #     }
+                        # dev.off()
 
 # we'll go ahead an stick with TMM normalisation
-y <- calcNormFactors(y, method="TMM")
+yFilt <- calcNormFactors(yFilt, method="TMM")
 
 # We can view how TMM normalisation performed using MD plots. This visualizes the library size-adjusted log-fold change between
 # two libraries (the difference) against the average log-expression across those libraries (themean). MD plots are generated by comparing sample 1 against an artificial
@@ -103,52 +108,146 @@ y <- calcNormFactors(y, method="TMM")
 # that any composition bias between libraries has been successfully removed
 pdf(paste0(outputdir,"MDPlots_TMM_Normalisation_OutliersCheck.pdf"), height=15, width=15)
 par(mfrow=c(4,4))
-for (i in 1:ncol(y)){
-  plotMD(cpm(y, log=TRUE), column=i)
+for (i in 1:ncol(yFilt)){
+  plotMD(cpm(yFilt, log=TRUE), column=i)
   abline(h=0, col="red", lty=2, lwd=2)
 }
 dev.off()
 
+
+
+
+
 # Using duplicate correlation and blocking -----------------------------------------------------
 
-# First, we need to perform voom normalisation
-v <- voom(y, design, plot=F)
-
 # create a new variable for blocking using sample IDs
-y$samples$ind <- sapply(strsplit(as.character(y$samples$samples), "[_.]"), `[`, 1)
+yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"), `[`, 1)
 
-# Estimate the correlation between the replicates.
-# Information is borrowed by constraining the within-block corre-lations to be equal between genes and by using empirical Bayes methods to moderate the standarddeviations between genes 
-dupcor <- duplicateCorrelation(v, design, block=y$samples$ind)
-# The value dupcor$consensus estimates the average correlation within the blocks and should be positive
-dupcor$consensus # sanity check
-# [1] 0.6511448
-median(v$weights) # another sanity check:
-# [1] 22.8338
+# First, we need to perform voom normalisation
 
-# run voom a second time with the blocking variable and estimated correlation
-# The  vector y$samples$ind indicates the  two  blocks  corresponding  to  biological  replicates
-pdf(paste0(outputdir,"Limma_voomDuplicateCorrelation_TMMNormalisation.pdf"), height=8, width=12)
-vDup <- voom(y, design, plot=TRUE, block=y$samples$ind, correlation=dupcor$consensus)
-dupcor <- duplicateCorrelation(vDup, design, block=y$samples$ind) # get warning message: Too much damping - convergence tolerance not achievable
-dupcor$consensus # sanity check pt 2
-# [1] 0.6511448
-median(vDup$weights) # another sanity check, pt 2 
-# [1] 22.67414
+# No normalisation between samples beyond tmm and voom:
+    voomNoNorm <- voom(yFilt, design, normalize.method="none", plot=F) 
+    dupcorNone <- duplicateCorrelation(voomNoNorm, design, block=yFilt$samples$ind) # 50 or more non-convergences
+    # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
+    dupcorNone$consensus # sanity check
+    # [1] 0.6511448
+    median(voomNoNorm$weights) # another sanity check:
+    # [1] 22.8338
+    save(voomNoNorm, file=paste0(outputdir, "voomNoNorm.tmm.filtered.indoRNA.Rda"))
 
-# With duplicate correction and blocking:
-# the inter-subject correlation is input into the linear model fit
-voomDupVfit <- lmFit(vDup, design, block=y$samples$ind, correlation=dupcor$consensus)
-voomDupVfit <- contrasts.fit(voomDupVfit, contrasts=contr.matrix)
-voomDupEfit <- eBayes(voomDupVfit, robust=T)
+    # Second round:
+    voomNoNormDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorNone$consensus)
+    dupcorNoneDup <- duplicateCorrelation(voomNoNormDup, design, block=yFilt$samples$ind) # 50 or more non-convergences
+    dupcorNoneDup$consensus # sanity check pt 2
+    # [1] 0.6511119
+    median(voomNoNormDup$weights) # another sanity check, pt 2 
+    # [1] 22.67414
 
-plotSA(voomDupEfit, main="Mean-variance trend elimination with duplicate correction")
-dev.off()
+    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.densities.pdf"))
+        plotDensities(voomNoNormDup, group=yFilt$samples$batch)
+        plotDensities(voomNoNormDup, group=yFilt$samples$Island)
+    dev.off()
+    save(voomNoNormDup, file=paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
 
-# get top genes using toptable
-voomDupTopTableSMB.MTW <- topTable(voomDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
-voomDupTopTableSMB.MPI <- topTable(voomDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
-voomDupTopTableMTW.MPI <- topTable(voomDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+    # DE testing:
+    # the inter-subject correlation is input into the linear model fit
+    voomNoNormDupVfit <- lmFit(voomNoNormDup, design, block=yFilt$samples$ind, correlation=dupcorNoneDup$consensus)
+    voomNoNormDupVfit <- contrasts.fit(voomNoNormDupVfit, contrasts=contr.matrix)
+    voomNoNormDupEfit <- eBayes(voomNoNormDupVfit, robust=T)
+
+    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
+        plotSA(voomNoNormDupEfit, main="Mean-variance trend elimination with duplicate correction")
+    dev.off()
+
+    # get top genes using toptable
+    voomNoNormDupTopTableSMB.MTW <- topTable(voomNoNormDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
+    voomNoNormDupTopTableSMB.MPI <- topTable(voomNoNormDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
+    voomNoNormDupTopTableMTW.MPI <- topTable(voomNoNormDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+
+# Quantile normalisation between samples and tmm and voom:
+    voomQuant <- voom(yFilt, design, normalize.method="quantile", plot=F) 
+    dupcorQuant <- duplicateCorrelation(voomQuant, design, block=yFilt$samples$ind) # 46 warnings
+    # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
+    dupcorQuant$consensus # sanity check
+    # [1] 0.6519809
+    median(voomQuant$weights) # another sanity check:
+    # [1] 22.94226
+    save(voomQuant, file=paste0(outputdir, "voomQuant.tmm.filtered.indoRNA.Rda"))
+
+    # Second round:
+    voomQuantDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorQuant$consensus)
+    dupcorQuantDup <- duplicateCorrelation(voomQuantDup, design, block=yFilt$samples$ind) # 48 warnings
+    dupcorQuantDup$consensus # sanity check pt 2
+    # [1] 0.6511742
+    median(voomQuantDup$weights) # another sanity check, pt 2 
+    # [1] 22.67318
+
+    pdf(file=paste0(edaoutput, "voomQuant.tmm.filtered.indoRNA.densities.pdf"))
+        plotDensities(voomQuantDup, group=yFilt$samples$batch)
+        plotDensities(voomQuantDup, group=yFilt$samples$Island)
+    dev.off()
+    save(voomQuantDup, file=paste0(outputdir, "voomQuant.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+
+    # DE testing:
+    # the inter-subject correlation is input into the linear model fit
+    voomQuantDupVfit <- lmFit(voomQuantDup, design, block=yFilt$samples$ind, correlation=dupcorQuantDup$consensus)
+    voomQuantDupVfit <- contrasts.fit(voomQuantDupVfit, contrasts=contr.matrix)
+    voomQuantDupEfit <- eBayes(voomQuantDupVfit, robust=T)
+
+    pdf(file=paste0(edaoutput, "voomQuant.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
+        plotSA(voomQuantDupEfit, main="Mean-variance trend elimination with duplicate correction")
+    dev.off()
+
+    # get top genes using toptable
+    voomQuantDupTopTableSMB.MTW <- topTable(voomQuantDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
+    voomQuantDupTopTableSMB.MPI <- topTable(voomQuantDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
+    voomQuantDupTopTableMTW.MPI <- topTable(voomQuantDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+
+
+# Loess normalisation between samples and tmm and voom:
+    voomLoess <- voom(yFilt, design, normalize.method="cyclicloess", plot=F) 
+    dupcorLoess <- duplicateCorrelation(voomLoess, design, block=yFilt$samples$ind) # 46 warnings
+    # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
+    dupcorLoess$consensus # sanity check
+    # [1] 0.6519809
+    median(voomLoess$weights) # another sanity check:
+    # [1] 22.94226
+    save(voomLoess, file=paste0(outputdir, "voomLoess.tmm.filtered.indoRNA.Rda"))
+
+    # Second round:
+    voomLoessDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorLoess$consensus)
+    dupcorLoessDup <- duplicateCorrelation(voomLoessDup, design, block=yFilt$samples$ind) # 48 warnings
+    dupcorLoessDup$consensus # sanity check pt 2
+    # [1] 0.6511742
+    median(voomLoessDup$weights) # another sanity check, pt 2 
+    # [1] 22.67318
+
+    pdf(file=paste0(edaoutput, "voomLoess.tmm.filtered.indoRNA.densities.pdf"))
+        plotDensities(voomLoessDup, group=yFilt$samples$batch)
+        plotDensities(voomLoessDup, group=yFilt$samples$Island)
+    dev.off()
+    save(voomLoessDup, file=paste0(outputdir, "voomLoess.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+
+    # DE testing:
+    # the inter-subject correlation is input into the linear model fit
+    voomLoessDupVfit <- lmFit(voomLoessDup, design, block=yFilt$samples$ind, correlation=dupcorLoessDup$consensus)
+    voomLoessDupVfit <- contrasts.fit(voomLoessDupVfit, contrasts=contr.matrix)
+    voomLoessDupEfit <- eBayes(voomLoessDupVfit, robust=T)
+
+    pdf(file=paste0(edaoutput, "voomLoess.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
+        plotSA(voomLoessDupEfit, main="Mean-variance trend elimination with duplicate correction")
+    dev.off()
+
+    # get top genes using toptable
+    voomLoessDupTopTableSMB.MTW <- topTable(voomLoessDupEfit, coef=1, p.value=0.01, n=Inf, sort.by="p")
+    voomLoessDupTopTableSMB.MPI <- topTable(voomLoessDupEfit, coef=2, p.value=0.01, n=Inf, sort.by="p")
+    voomLoessDupTopTableMTW.MPI <- topTable(voomLoessDupEfit, coef=3, p.value=0.01, n=Inf, sort.by="p")
+
+
+
+
+
+
 
 # get number of DE genes at differnet thresholds
 # noLFC
@@ -254,7 +353,7 @@ housekeeping=read.table(paste0(housekeepingdir,"Housekeeping_ControlGenes.txt"),
 ensembl.mart.90 <- useMart(biomart='ENSEMBL_MART_ENSEMBL', dataset='hsapiens_gene_ensembl', host = 'www.ensembl.org', ensemblRedirect = FALSE)
 biomart.results.table <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name'), mart = ensembl.mart.90,values=housekeeping, filters="hgnc_symbol")
 hkGenes=as.vector(biomart.results.table[,1])
-hkControls=hkGenes[which(hkGenes %in% rownames(y$counts))]
+hkControls=hkGenes[which(hkGenes %in% rownames(yFilt$counts))]
 
 # Volcano plot with points of housekeeping genes
 pdf(paste0(outputdir,"VolcanoPlots_dupCorEfit.pdf"), height=15, width=10)
@@ -270,15 +369,15 @@ dev.off()
 # PCA visualisation after correction and association with covariates ------------------------------------------------------------
 
 # let's also visualise how our PCAs look after limma correction by using removeBatcheffect. Help on design of removeBatcheffects was given by the lovely John Blischak.
-design <- model.matrix(~0 + y$samples$Island)
+design <- model.matrix(~0 + yFilt$samples$Island)
 colnames(design)=gsub("Island", "", colnames(design))
-colnames(design)=gsub("[\\y$]", "", colnames(design))
+colnames(design)=gsub("[\\yFilt$]", "", colnames(design))
 colnames(design)=gsub("samples", "", colnames(design))
 colnames(design)=gsub("West Papua", "Mappi", colnames(design))
-batch.corrected.lcpm <- removeBatchEffect(lcpm, batch=y$samples$batch, covariates = cbind(y$samples$Age, y$samples$RIN, y$samples$CD8T, y$samples$CD4T, y$samples$NK, y$samples$Bcell, y$samples$Mono, y$samples$Gran), design=design)
+batch.corrected.lcpm <- removeBatchEffect(lcpm, batch=yFilt$samples$batch, covariates = cbind(yFilt$samples$Age, yFilt$samples$RIN, yFilt$samples$CD8T, yFilt$samples$CD4T, yFilt$samples$NK, yFilt$samples$Bcell, yFilt$samples$Mono, yFilt$samples$Gran), design=design)
 
 # define sample names
-samplenames <- as.character(y$samples$samples)
+samplenames <- as.character(yFilt$samples$samples)
 samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
 samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
 
@@ -295,23 +394,23 @@ allreplicated=as.factor(samplenames %in% allreps)
 # subtract variables we don't need
 subtract=c("group", "norm.factors", "samples")
 # get index of unwanted variables
-subtract=which(colnames(y$samples) %in% subtract)
-covariate.names = colnames(y$samples)[-subtract]
+subtract=which(colnames(yFilt$samples) %in% subtract)
+covariate.names = colnames(yFilt$samples)[-subtract]
 for (name in covariate.names){
- assign(name, y$samples[[paste0(name)]])
+ assign(name, yFilt$samples[[paste0(name)]])
 }
 
 # Age, RIN, and library size need to be broken up into chunks for easier visualisation of trends (for instance in Age, we want to see high age vs low age rather than the effect of every single age variable)
 for (name in c("Age","RIN","lib.size")){
-  assign(name, cut(as.numeric(as.character(y$samples[[paste0(name)]])), breaks=5))
+  assign(name, cut(as.numeric(as.character(yFilt$samples[[paste0(name)]])), breaks=5))
 }
 
 # assign names to covariate names so you can grab individual elements by name
 names(covariate.names)=covariate.names
 
 # assign factor variables
-factorVariables=c(colnames(Filter(is.factor,y$samples))[which(colnames(Filter(is.factor,y$samples)) %in% covariate.names)], "Age", "lib.size", "RIN")
-numericVariables=colnames(Filter(is.numeric,y$samples))[which(colnames(Filter(is.numeric,y$samples)) %in% covariate.names)] %>% subset(., !(. %in% factorVariables))
+factorVariables=c(colnames(Filter(is.factor,yFilt$samples))[which(colnames(Filter(is.factor,yFilt$samples)) %in% covariate.names)], "Age", "lib.size", "RIN")
+numericVariables=colnames(Filter(is.numeric,yFilt$samples))[which(colnames(Filter(is.numeric,yFilt$samples)) %in% covariate.names)] %>% subset(., !(. %in% factorVariables))
 
 # PCA plotting function
 plot.pca <- function(dataToPca, speciesCol, namesPch, sampleNames){
@@ -324,7 +423,7 @@ plot.pca <- function(dataToPca, speciesCol, namesPch, sampleNames){
         # points(pca$x[,pca_axis1][which(allreplicated==T)], pca$x[,pca_axis2][which(allreplicated==T)], col="black", pch=8, cex=2)
         # text(pca$x[,pca_axis1][which(allreplicated==T)], pca$x[,pca_axis2][which(allreplicated==T)], labels=samplenames[which(allreplicated==T)], pos=3)
         legend(legend=unique(sampleNames), pch=16, x="bottomright", col=unique(speciesCol), cex=0.6, title=name, border=F, bty="n")
-        legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
+        legend(legend=unique(as.numeric(yFilt$samples$batch)), "topright", pch=unique(as.numeric(yFilt$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
     }
 
     return(pca)
@@ -350,13 +449,13 @@ pc.assoc <- function(pca.data){
 }
 
 # Prepare covariate matrix
-all.covars.df <- y$samples[,covariate.names]
+all.covars.df <- yFilt$samples[,covariate.names]
 
 # Plot PCA
 for (name in factorVariables){
   if (nlevels(get(name)) < 26){
     pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
-    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
+    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=as.numeric(get(name)),namesPch=as.numeric(yFilt$samples$batch) + 14,sampleNames=get(name))
     dev.off()
   } else {
     pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
@@ -368,7 +467,7 @@ for (name in factorVariables){
 # plot batch
 pdf(paste0(outputdir,"pcaresults_batch.pdf"))
 name="batch"
-pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=batch.col[as.numeric(batch)],namesPch=as.numeric(y$samples$batch) + 14,sampleNames=batch)
+pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=batch.col[as.numeric(batch)],namesPch=as.numeric(yFilt$samples$batch) + 14,sampleNames=batch)
 dev.off()
   
 # plot numeric variables
@@ -376,9 +475,9 @@ for (name in numericVariables){
     initial = .bincode(get(name), breaks=seq(min(get(name), na.rm=T), max(get(name), na.rm=T), len = 80),include.lowest = TRUE)
     bloodCol <- colorRampPalette(c("blue", "red"))(79)[initial]
     pdf(paste0(outputdir,"pcaresults_",name,".pdf"))
-    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=bloodCol,namesPch=as.numeric(y$samples$batch) + 14,sampleNames=get(name))
+    pcaresults <- plot.pca(dataToPca=lcpm, speciesCol=bloodCol,namesPch=as.numeric(yFilt$samples$batch) + 14,sampleNames=get(name))
     legend(legend=c("High","Low"), pch=16, x="bottomright", col=c(bloodCol[which.max(get(name))], bloodCol[which.min(get(name))]), cex=0.6, title=name, border=F, bty="n")
-    legend(legend=unique(as.numeric(y$samples$batch)), "topright", pch=unique(as.numeric(y$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
+    legend(legend=unique(as.numeric(yFilt$samples$batch)), "topright", pch=unique(as.numeric(yFilt$samples$batch)) + 14, title="Batch", cex=0.6, border=F, bty="n")
     dev.off()
 }
 
