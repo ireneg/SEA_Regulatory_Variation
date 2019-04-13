@@ -56,6 +56,11 @@ palette(c(wes, brewer.pal(8,"Dark2")))
 # set up colour palette for batch
 batch.col=electronic_night(n=3)
 
+#Colour schemes:
+# wes 1-3 <- Mentawai, Sumba, Taileleu
+# dark2 1-3 <- MTW-SMB, SMB-MPI, MTW-MPI
+
+
 # Venn diagram plotting figure:
 make.venn.triple <- function(geneset1, geneset2, geneset3, prefix, geneset1.label, geneset2.label, geneset3.label, universe){
     universe$g1 <- universe$genes %in% geneset1
@@ -137,7 +142,7 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
     dupcorNoneDup$consensus # sanity check pt 2
     # [1] 0.6796721
     median(voomNoNormDup$weights) # another sanity check, pt 2 
-    # [1] 22.67414
+    # [1] 22.41583
 
     pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.densities.pdf"))
         plotDensities(voomNoNormDup, group=yFilt$samples$batch)
@@ -165,7 +170,7 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
     dupcorQuant <- duplicateCorrelation(voomQuant, design, block=yFilt$samples$ind) # 46 warnings
     # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
     dupcorQuant$consensus # sanity check
-    # [1] 0.6519809
+    # [1] 0.6888087
     median(voomQuant$weights) # another sanity check:
     # [1] 22.94226
     save(voomQuant, file=paste0(outputdir, "voomQuant.tmm.filtered.indoRNA.Rda"))
@@ -174,9 +179,9 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
     voomQuantDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorQuant$consensus)
     dupcorQuantDup <- duplicateCorrelation(voomQuantDup, design, block=yFilt$samples$ind) # 48 warnings
     dupcorQuantDup$consensus # sanity check pt 2
-    # [1] 0.6511742
+    # [1] 0.6796766
     median(voomQuantDup$weights) # another sanity check, pt 2 
-    # [1] 22.67318
+    # [1] 22.37909
 
     pdf(file=paste0(edaoutput, "voomQuant.tmm.filtered.indoRNA.densities.pdf"))
         plotDensities(voomQuantDup, group=yFilt$samples$batch)
@@ -205,18 +210,18 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
     dupcorLoess <- duplicateCorrelation(voomLoess, design, block=yFilt$samples$ind) # 46 warnings
     # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
     dupcorLoess$consensus # sanity check
-    # [1] 0.6519809
+    # [1] 0.6825221
     median(voomLoess$weights) # another sanity check:
-    # [1] 22.94226
+    # [1] 23.18414
     save(voomLoess, file=paste0(outputdir, "voomLoess.tmm.filtered.indoRNA.Rda"))
 
     # Second round:
     voomLoessDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorLoess$consensus)
     dupcorLoessDup <- duplicateCorrelation(voomLoessDup, design, block=yFilt$samples$ind) # 48 warnings
     dupcorLoessDup$consensus # sanity check pt 2
-    # [1] 0.6511742
+    # [1] 0.6796738
     median(voomLoessDup$weights) # another sanity check, pt 2 
-    # [1] 22.67318
+    # [1] 22.40257
 
     pdf(file=paste0(edaoutput, "voomLoess.tmm.filtered.indoRNA.densities.pdf"))
         plotDensities(voomLoessDup, group=yFilt$samples$batch)
@@ -294,7 +299,8 @@ write.table(voomNoNormDupTopTableSMB.MTW, file=paste0(outputdir,"topTable.voomNo
 write.table(voomNoNormDupTopTableSMB.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.SMB-MPI.txt"))
 write.table(voomNoNormDupTopTableMTW.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.MTW-MPI.txt"))
 
-
+# For easily combining with the villages:
+save(voomNoNormDupEfit, file=paste0(outputdir, "voomNoNorm.tmm.filtered.dup_corrected.Efit_object.Rda"))
 
 #####################################################################################################
 ### 3. DE testing without duplicate correlation ------------------------------------------------- ###
@@ -347,20 +353,19 @@ summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.v
 # Let's check the correlation between those two approaches - sort by gene first, then cor test on adjusted p-value
 MTW.MPI <- join(voomNoNormDupTopTableMTW.MPI, topTableMTW.MPI, by="genes")
 cor(MTW.MPI[,6], MTW.MPI[,12], method="spearman"    )
-# [1] 0.9739983
+# [1] 0.9884076
 
 SMB.MPI <- join(voomNoNormDupTopTableSMB.MPI, topTableSMB.MPI, by="genes")
 cor(SMB.MPI[,6], SMB.MPI[,12], method="spearman", use="complete")
-# [1] 0.9758687
+# [1] 0.9771854
 
 SMB.MTW <- join(voomNoNormDupTopTableSMB.MTW, topTableSMB.MTW, by="genes")
 cor(SMB.MTW[,6], SMB.MTW[,12], method="spearman", use="complete")
-# [1] 0.9759085
+# [1] 0.955927
 
 write.table(topTableSMB.MTW, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-MTW.txt"))
 write.table(topTableSMB.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-MPI.txt"))
 write.table(topTableMTW.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.MTW-MPI.txt"))
-
 
 
 ######################################################################################################
@@ -510,9 +515,9 @@ counter <- 0
 # Some Venn diagrams
 make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01,]$genes, paste0(edaoutput, "all_islands.fdr_0.01"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
 
-make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MTW$logFC>= 0.5,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MPI$logFC>= 0.5,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableMTW.MPI$logFC>= 0.5,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_0.5"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 0.5,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MPI$logFC)>= 0.5,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.MPI$logFC)>= 0.5,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_0.5"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
 
-make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MTW$logFC>= 1,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableSMB.MPI$logFC>= 1,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & voomNoNormDupTopTableMTW.MPI$logFC>= 1,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_1"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 1,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MPI$logFC)>= 1,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.MPI$logFC)>= 1,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_1"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
 
 
     ###################################################################################################
