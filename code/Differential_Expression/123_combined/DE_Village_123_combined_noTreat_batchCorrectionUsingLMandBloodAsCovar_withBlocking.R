@@ -14,7 +14,7 @@
 
 ### TO DO:
 ### Fix everything that's commented out (just figures)
-
+### Triple check all numbers.
 
 #########################################################################################
 ### 0. Load dependencies and functions and set input paths -------------------------- ###
