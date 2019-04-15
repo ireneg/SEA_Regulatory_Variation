@@ -628,6 +628,15 @@ for (i in 1:5){
     }
 }
 
+# They are different, as they were of course going to be, but not THAT different, surely, to explain the difference in power? Also from the plot the effect size does not go in the direction you would expect. The things that are different are not different 
+signif(tTestOut, digits=3)
+#           Anakalung  Madobag    Mappi Taileleu    Wunga
+# Anakalung         0 2.73e-08 1.26e-02 2.66e-01 4.36e-04
+# Madobag           0 0.00e+00 2.29e-16 9.70e-06 4.30e-02
+# Mappi             0 0.00e+00 0.00e+00 2.89e-04 1.07e-09
+# Taileleu          0 0.00e+00 0.00e+00 0.00e+00 1.66e-02
+# Wunga             0 0.00e+00 0.00e+00 0.00e+00 0.00e+00
+
 # Similar plots of pairwise correlations within each village, to see if anything is as noisy as Mappi. But then how do you reconcile the CoV observations?
 
 # Good old plot of pairwise correlations within each village and level etc etc... 
