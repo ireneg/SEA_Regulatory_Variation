@@ -36,6 +36,9 @@ library(circlize)
 library(ComplexHeatmap)
 library(VennDiagram)
 library(UpSetR)
+library(matrixStats)
+library(reshape)
+library(wesanderson)
 
 
 # Set paths:
@@ -52,14 +55,14 @@ if (file.exists(outputdir) == FALSE){
 }
 
 # Load colour schemes:
-wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
-palette(c(wes, brewer.pal(8,"Dark2")))
-# set up colour palette for batch
-batch.col=electronic_night(n=3)
+mappi <- wes_palette("Zissou1", 20, type = "continuous")[20]
+mentawai <- wes_palette("Zissou1", 20, type = "continuous")[1]
+sumba <- wes_palette("Zissou1", 20, type = "continuous")[11]
 
-#Colour schemes:
-# wes 1-3 <- Mentawai, Sumba, Taileleu
-# dark2 1-3 <- MTW-SMB, SMB-MPI, MTW-MPI
+smb_mtw <- wes_palette("Darjeeling1", 9, type = "continuous")[3]
+smb_mpi <- wes_palette("Darjeeling1", 9, type = "continuous")[7]
+mtw_mpi <- "darkorchid4"
+
 
 # Load log CPM matrix and y object:
 # lcpm
@@ -408,46 +411,44 @@ allTogether1 <- data.frame(byVillages1, byIslands1)
 ### Consider using the group.by approach if figures become too messy, but this is neat.
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_village_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",4), rep("#d95f02", 2), rep("#7570b3", 2), wes[2], wes[1]), nintersects=50,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",4), rep("#d95f02", 2), rep("#7570b3", 2), wes[2], wes[1]), nintersects=50,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",4), rep("#d95f02", 2), rep("#7570b3", 2), wes[2], wes[1]), nintersects=50,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T)
 dev.off()
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_island_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c("#1b9e77", "#d95f02", "#7570b3"), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c("#1b9e77", "#d95f02", "#7570b3"), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c("#1b9e77", "#d95f02", "#7570b3"), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=100,  order.by = "freq", keep.order=T)
 dev.off()
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), rep("#d95f02", 3), rep("#7570b3", 3), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), rep("#d95f02", 3), rep("#7570b3", 3), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), rep("#d95f02", 3), rep("#7570b3", 3), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=100,  order.by = "freq", keep.order=T)
 dev.off()
 
 ### And now, focusing only on each inter-island comparison:
 ### SMB-MTW
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_MTW.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=100,  order.by = "freq", keep.order=T)
 dev.off()
 
 ### SMB-MPI
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_MPI.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep("#d95f02", 3), wes[2]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep("#d95f02", 3), wes[2]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep("#d95f02", 3), wes[2]), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=100,  order.by = "freq", keep.order=T)
 dev.off()
 
 ###MTW-MPI
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_MTW_MPI.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep("#7570b3", 3), wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep("#7570b3", 3), wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep("#7570b3", 3), wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
 dev.off()
-
-
 
 
     ###################################################################################################
@@ -574,4 +575,211 @@ dev.off()
 # write.table(logFC.df, file=paste0(outputdir,"logFC_thresholds.txt"))
 
 
+##############################################################################################################
+### 7. Quick check of variance by village, to see what drives the weird distribution of DE results. ------ ###
+##############################################################################################################
 
+# load(paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+
+# Define CoV function:
+calcCoV <- function(x){
+     (sd(x)/mean(x) )
+ }
+
+# Can't use CoV with the log transformation, need to undo it: (wikipedia said so, and yes, the negative numbers were probably messing things up)
+normLCPM <- data.frame(t(voomNoNormDup$E))
+normCPM <- normLCPM^2
+
+perVillageCoV <- t(ddply(normCPM, .(yVillage$samples$Sampling.Site), function(x) apply(as.matrix(x), 2, function(x) calcCoV(x)))) # That's a lot of transposing, but I checked it manually.
+
+# Clean up all that messy output...
+perVillageCoVDF <- data.frame(perVillageCoV[-1,], stringsAsFactors=F)
+names(perVillageCoVDF) <- perVillageCoV[1,]
+perVillageCoVDF <- as.data.frame(lapply(perVillageCoVDF, as.numeric)) # Worked fine when checking lines manually.
+summary(perVillageCoVDF)
+
+dataForPlotting <- melt(perVillageCoVDF)
+
+pdf(paste0(edaoutput, "cov_by_village.pdf"))
+    ggplot(dataForPlotting, aes(x=variable, y=value, fill=variable)) +
+        geom_violin(trim=T) + 
+        geom_boxplot(width=0.05, fill="white") + 
+        scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
+        scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+        theme_bw() + 
+        labs(title="", y="CoV CPM", x="") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(fill=F)
+dev.off()
+
+# Well that doesn't look too different... so why that DE trend?
+
+# Lots of t.tests:
+
+tTestOut <- matrix(0, nrow=5, ncol=5)
+colnames(tTestOut) <- names(perVillageCoVDF)
+rownames(tTestOut) <- names(perVillageCoVDF)
+
+for (i in 1:5){
+    for (j in 1:5){
+        if(j > i){
+            tTestOut[i,j] <- t.test(perVillageCoVDF[,i], perVillageCoVDF[,j])$p.value
+        }
+    }
+}
+
+# Similar plots of pairwise correlations within each village, to see if anything is as noisy as Mappi. But then how do you reconcile the CoV observations?
+
+# Good old plot of pairwise correlations within each village and level etc etc... 
+plot.reproducibility <- function(data.to.test, metadata, method){
+    corMat <- cor(data.to.test, method=method, use="pairwise.complete.obs")
+
+    indRep <- vector()
+    villageBatchRep <- vector()
+    islandBatchRep <- vector()
+    batchRep <- vector()
+    villageNoBatchRep <- vector()
+    islandNoBatchRep <- vector()
+    betweenBatch <- vector()
+
+    for (i in 1:ncol(data.to.test)){
+        for (j in 1:ncol(data.to.test)){
+            if (j > i){
+                if (metadata$ID[i] == metadata$ID[j]) {
+                    indRep <- c(indRep, corMat[i,j])
+                } else if (metadata$batch[i] == metadata$batch[j]){
+                    if (metadata$Sampling.Site[i] == metadata$Sampling.Site[j]){
+                        villageBatchRep <- c(villageBatchRep, corMat[i,j])
+                    } else if (metadata$Island[i] == metadata$Island[j]){
+                        islandBatchRep <- c(islandBatchRep, corMat[i,j])
+                    } else
+                        batchRep <- c(batchRep, corMat[i,j])
+                } else if (metadata$batch[i] != metadata$batch[j]){
+                    if (metadata$Sampling.Site[i] == metadata$Sampling.Site[j]){
+                        villageNoBatchRep <- c(villageNoBatchRep, corMat[i,j])
+                    } else if (metadata$Island[i] == metadata$Island[j]){
+                        islandNoBatchRep <- c(islandNoBatchRep, corMat[i,j])
+                    } else {betweenBatch <- c(betweenBatch, corMat[i,j])}
+                }
+            }
+        }
+    }
+
+    forPlot <- melt(list(indRep, villageBatchRep, villageNoBatchRep, islandBatchRep, islandNoBatchRep, batchRep, betweenBatch))
+    forPlot$L1 <- as.factor(forPlot$L1)
+
+    ggplot(forPlot, aes(x=L1, y=value, fill=L1)) +
+        geom_violin(trim=T) + 
+        geom_boxplot(width=0.05, fill="white") + 
+        scale_x_discrete(labels=c("Individual reps", "within village\nand batch", "within island\nand batch", "diff island\nwithin batch", "within village\ndiff batch", "within island\ndiff batch", "diff island\ndiff batch")) +
+        theme_bw() + 
+        labs(title="", y=paste0(method, " pairwise correlation"), x="") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(fill=F)
+
+}
+
+# And now, by village and by island plots (separed by batch)
+plotWithinSite <- function(data.to.test, metadata, method){
+    corMat <- cor(data.to.test, method=method, use="pairwise.complete.obs")
+
+    indRep <- vector()
+    smbBatchRep <- vector()
+    wngBatchRep <- vector()
+    ankBatchRep <- vector()
+    mtwBatchRep <- vector()
+    mdbBatchRep <- vector()
+    tllBatchRep <- vector()
+    mpiBatchRep <- vector()
+    smbNoBatchRep <- vector()
+    wngNoBatchRep <- vector()
+    ankNoBatchRep <- vector()
+    mtwNoBatchRep <- vector()
+    mdbNoBatchRep <- vector()
+    tllNoBatchRep <- vector()
+    mpiNoBatchRep <- vector()
+
+    for (i in 1:ncol(data.to.test)){
+        for (j in 1:ncol(data.to.test)){
+            if (j > i){
+                if (metadata$ID[i] == metadata$ID[j]) {
+                    indRep <- c(indRep, corMat[i,j])
+                } else if (metadata$batch[i] == metadata$batch[j]){
+                    if (metadata$Sampling.Site[i] == metadata$Sampling.Site[j]){
+                        if(metadata$Sampling.Site[i] == "Wunga"){
+                            wngBatchRep <- c(wngBatchRep, corMat[i,j])
+                            smbBatchRep <- c(smbBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Anakalung"){
+                            ankBatchRep <- c(ankBatchRep, corMat[i,j])
+                            smbBatchRep <- c(smbBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Madobag"){
+                            mdbBatchRep <- c(mdbBatchRep, corMat[i,j])
+                            mtwBatchRep <- c(mtwBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Taileleu"){
+                            tllBatchRep <- c(tllBatchRep, corMat[i,j])
+                            mtwBatchRep <- c(mtwBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Mappi"){
+                            mpiBatchRep <- c(mpiBatchRep, corMat[i,j])
+                        }
+                    }
+                } else if (metadata$batch[i] != metadata$batch[j]){
+                    if (metadata$Sampling.Site[i] == metadata$Sampling.Site[j]){
+                        if(metadata$Sampling.Site[i] == "Wunga"){
+                            wngNoBatchRep <- c(wngNoBatchRep, corMat[i,j])
+                            smbNoBatchRep <- c(smbNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Anakalung"){
+                            ankNoBatchRep <- c(ankNoBatchRep, corMat[i,j])
+                            smbNoBatchRep <- c(smbNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Madobag"){
+                            mdbNoBatchRep <- c(mdbNoBatchRep, corMat[i,j])
+                            mtwNoBatchRep <- c(mtwNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Taileleu"){
+                            tllNoBatchRep <- c(tllNoBatchRep, corMat[i,j])
+                            mtwNoBatchRep <- c(mtwNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Mappi"){
+                            mpiNoBatchRep <- c(mpiNoBatchRep, corMat[i,j])
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    forPlot <- melt(list(ankBatchRep, ankNoBatchRep, wngBatchRep, wngNoBatchRep, mdbBatchRep, mdbNoBatchRep, tllBatchRep, tllNoBatchRep, mpiBatchRep, mpiNoBatchRep))
+    forPlot$L1 <- as.factor(forPlot$L1)
+
+    forPlotIsland <- melt(list(smbBatchRep, mtwBatchRep, mpiBatchRep, smbNoBatchRep, mtwNoBatchRep, mpiNoBatchRep))
+    forPlotIsland$L1 <- as.factor(forPlotIsland$L1)
+
+    byVillagePlot <- ggplot(forPlot, aes(x=L1, y=value, fill=L1)) +
+        geom_violin(trim=T) + 
+        geom_boxplot(width=0.05, fill="white") + 
+        scale_x_discrete(labels=c("ANK within batch", "ANK bw batch", "WNG within batch", "WNG bw batch", "MDB within batch", "MDB bw batch", "TLL within batch", "TLL bw batch", "MPI within batch", "MPI bw batch")) +
+        theme_bw() + 
+        labs(title="", y=paste0(method, "pairwise correlation"), x="") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(fill=F)
+
+    byIslandPlot <- ggplot(forPlotIsland, aes(x=L1, y=value, fill=L1)) +
+        geom_violin(trim=T) + 
+        geom_boxplot(width=0.05, fill="white") + 
+        scale_x_discrete(labels=c("SMB within batch", "MTW within batch", "MPI within batch", "SMB bw batch", "MTW bw batch", "MPI bw batch")) +
+        theme_bw() + 
+        labs(title="", y=paste0(method, " pairwise correlation"), x="") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(fill=F)
+
+    print(byVillagePlot)
+    print(byIslandPlot)
+
+}
+
+pdf(file=paste0(edaoutput, "reproducibility_by_levels.pdf"))
+    plot.reproducibility(voomNoNormDup$E, yVillage$samples, "spearman")
+    plot.reproducibility(voomNoNormDup$E, yVillage$samples, "pearson")
+dev.off()
+
+pdf(file=paste0(edaoutput, "correlation_within_sites.pdf"))
+    plotWithinSite(voomNoNormDup$E, yVillage$samples, "spearman")
+    plotWithinSite(voomNoNormDup$E, yVillage$samples, "pearson")
+dev.off()
