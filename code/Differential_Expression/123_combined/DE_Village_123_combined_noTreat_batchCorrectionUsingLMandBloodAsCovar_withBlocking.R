@@ -11,6 +11,9 @@
 ### 4. Visual QC of duplicate correlation voom output after fitting linear models ---------------- ###
 ### 5. Summary and visualisation of gene trends --------------------------------------------- ###
 ### 6. Looking at the top ranked genes ------------------------------------------------- ###
+### 7. Quick check of variance by village, to see what drives the weird distribution of DE results. ------ ###
+### 8. Good old plot of pairwise correlations within each village and level etc etc... ------------------ ###
+
 
 ### TO DO:
 ### Fix everything that's commented out (just figures)
@@ -563,102 +566,6 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     dev.off()
 
 
-
-
-# This is just here so I can remember the positions in the contrast matrix...
-# contr.matrix <- makeContrasts(ANKvsMDB=Anakalung-Madobag, ANKvsMPI=Anakalung-Mappi, ANKvsTLL=Anakalung-Taileleu, ANKvsWNG=Anakalung-Wunga, MDBvsMPI=Madobag-Mappi, MDBvsTLL=Madobag-Taileleu, WNGvsMDB=Wunga-Madobag, TLLvsMPI=Taileleu-Mappi, WNGvsMPI=Wunga-Mappi, WNGvsTLL=Wunga-Taileleu, levels=colnames(design)) # Contrasts are ordered in the same order as the island ones, in case we want to look at directional effects
-
-
-
-
-# topGenes=de.common.MPI[,2]
-# topEnsembl=de.common.MPI[,1]
-
-# # To visualise distributions, we'll be making violin plots using ggpubr which needs p-value labels. Let's go ahead and make a matrix to input this into ggpubr
-# # first set up matrix
-# topGenes.pvalue=matrix(nrow=length(topEnsembl), ncol=ncol(voomNoNormDupEfit))
-# rownames(topGenes.pvalue)=topEnsembl
-# colnames(topGenes.pvalue)=colnames(voomNoNormDupEfit)
-# for (i in 1:ncol(voomNoNormDupEfit)){
-#     # get significant genes over a logFC of 1 for all Island comparisons
-#     topTable <- topTable(voomNoNormDupEfit, coef=i, n=Inf)
-#     for(j in topEnsembl){
-#         # input the adjusted p.value for each gene
-#         topGenes.pvalue[j,i]=topTable[j,"adj.P.Val"]
-#     }
-# }
-
-# # make pvalues into scientific notation with max 3 digits
-# topGenes.pvalue=formatC(topGenes.pvalue, format="e", digits=2, drop0trailing=T)
-# # convert e notation to base 10 notation
-# topGenes.pvalue=sub("e", "x10^", topGenes.pvalue)
-
-# # We can make the violin plots using ggpubr
-# pdf(paste0(outputdir,"TopGenes_ggboxplot_Island.pdf"), height=8, width=10)
-# counter=0
-# for(ensembl in topEnsembl){
-#     counter=counter+1
-#     gene.df <- data.frame(vDup$E[which(vDup$genes$ENSEMBL==ensembl),],Island)
-#     colnames(gene.df)=c("CPM", "Island")
-#     annotation_df <- data.frame(start=c("Sumba","Sumba", "Mentawai"), end=c("Mentawai","West Papua","West Papua"), y=c(max(gene.df[,1]+4),max(gene.df[,1]+5),max(gene.df[,1]+6)), label=paste("limma p-value =",topGenes.pvalue[ensembl,],sep=" "))
-#     print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=topGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
-# }
-# dev.off()
-
-# # after analysing the distributions and reading up on some of the genes, my three favourite genes are Siglec6, Siglec7, and MARCO. Lets plot out the distribution solely for these three genes
-# favGenes=c("SIGLEC6","SIGLEC7","MARCO")
-# #"RSAD2","AIM2","TNFSF4")
-# favEnsembl=de.common.MPI[,1][sapply(1:length(favGenes), function(x) grep(favGenes[x],de.common.MPI[,2]))]
-
-# # set up pvalue matrix
-# topGenes.pvalue=matrix(nrow=length(favEnsembl), ncol=ncol(voomNoNormDupEfit))
-# rownames(topGenes.pvalue)=favEnsembl
-# colnames(topGenes.pvalue)=colnames(voomNoNormDupEfit)
-# for (i in 1:ncol(voomNoNormDupEfit)){
-#     # get significant genes over a logFC of 1 for all Island comparisons
-#     topTable <- topTable(voomNoNormDupEfit, coef=i, n=Inf)
-#     for(j in favEnsembl){
-#         # input the adjusted p.value for each gene
-#         topGenes.pvalue[j,i]=topTable[j,"adj.P.Val"]
-#     }
-# }
-
-# # make pvalues into scientific notation with max 3 digits
-# topGenes.pvalue=formatC(topGenes.pvalue, format="e", digits=2, drop0trailing=T)
-# # convert e notation to base 10 notation
-# topGenes.pvalue=sub("e", "x10^", topGenes.pvalue)
-
-# # We can make the violin plots using ggpubr
-# counter=0
-# for(ensembl in favEnsembl){
-#     counter=counter+1
-#     # pdf(paste0("FavouriteGenes_ggboxplot_",favGenes[counter],".pdf"), height=8, width=10)
-#     gene.df <- data.frame(vDup$E[which(vDup$genes$ENSEMBL==ensembl),],Island)
-#     colnames(gene.df)=c("CPM", "Island")
-#     annotation_df <- data.frame(start=c("Sumba","Sumba", "Mentawai"), end=c("Mentawai","West Papua","West Papua"), y=c(max(gene.df[,1]+4),max(gene.df[,1]+5),max(gene.df[,1]+6)), label=paste("limma p-value =",topGenes.pvalue[ensembl,],sep=" "))
-#     # print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=favGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
-#     assign(favGenes[counter], ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=favGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 3, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
-# }
-
-# pdf(paste0(outputdir,"favouriteTopGenes_distribution_Island.pdf"), height=12, width=15)
-# ggarrange(SIGLEC6,SIGLEC7,MARCO)
-# #AIM2,TNFSF4,RSAD2)
-# dev.off()
-
-# # finally, get logFC thresholds
-# logFC.df=matrix(nrow=3,ncol=3)
-# colnames(logFC.df)=colnames(voomNoNormDupEfit)
-# counter=0
-# for (number in c(0,0.5,1)){
-#     counter=counter+1
-#     dt <- decideTests(voomNoNormDupEfit, p.value=0.01, lfc=number)
-#     values=c(sum(abs(dt[,1])), sum(abs(dt[,2])), sum(abs(dt[,3])))
-#     logFC.df[counter,]=values
-# }
-# logFC.df=cbind(logFC = c(0,0.5,1), logFC.df)
-# write.table(logFC.df, file=paste0(outputdir,"logFC_thresholds.txt"))
-
-
 ##############################################################################################################
 ### 7. Quick check of variance by village, to see what drives the weird distribution of DE results. ------ ###
 ##############################################################################################################
@@ -723,7 +630,40 @@ signif(tTestOut, digits=3)
 
 # Similar plots of pairwise correlations within each village, to see if anything is as noisy as Mappi. But then how do you reconcile the CoV observations?
 
-# Good old plot of pairwise correlations within each village and level etc etc... 
+
+# And then, for a bit of overkill, plots of CoVs across all villages subset by genes that are only DE in a single village.
+# Add row names so you can subset by genes:
+rownames(perVillageCoVDF) <- rownames(perVillageCoV)[-1]
+
+# Define plotting function
+plotCoV <- function(inputDF, comparison){
+    dataForPlotting <- melt(inputDF)
+
+    covOverkill <- ggplot(dataForPlotting, aes(x=variable, y=value, fill=variable)) +
+            geom_violin(trim=T) + 
+            geom_boxplot(width=0.05, fill="white") + 
+            scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
+            scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+            theme_bw() + 
+            labs(title=paste0("DE ", comparison, " (", nrow(inputDF), " genes)"), y="CoV CPM", x="") + 
+            theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            guides(fill=F)
+    print(covOverkill)
+}
+
+pdf(paste0(edaoutput, "cov_by_single_village_DE.pdf"))
+    plotCoV(perVillageCoVDF[wngOnly$genes,], "WNGvsMPI not ANKvsMPI")
+    plotCoV(perVillageCoVDF[ankOnly$genes,], "ANKvsMPI not WNGvsMPI")
+    plotCoV(perVillageCoVDF[mdbOnly$genes,], "MDBvsMPI not TLLvsMPI")
+    plotCoV(perVillageCoVDF[tllOnly$genes,], "TLLvsMPI not MDBvsMPI")
+dev.off()
+
+
+#############################################################################################################
+### 8. Good old plot of pairwise correlations within each village and level etc etc... ------------------ ###
+#############################################################################################################
+
+# Define hideous function
 plot.reproducibility <- function(data.to.test, metadata, method){
     corMat <- cor(data.to.test, method=method, use="pairwise.complete.obs")
 
