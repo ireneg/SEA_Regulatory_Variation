@@ -115,7 +115,7 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
     # [1] 0.6835068
     median(voomNoNorm$weights) # another sanity check:
     # [1] 23.90951
-    save(voomNoNorm, file=paste0(outputdir, "voomNoNorm.tmm.filtered.indoRNA.Rda"))
+    save(voomNoNorm, file=paste0(outputdir, "voomNoNorm.tmm.filtered.indoRNA.village.Rda"))
 
     # Second round:
     voomNoNormDup <- voom(yVillage, design, plot=TRUE, block=yVillage$samples$ind, correlation=dupcorNone$consensus)
@@ -125,11 +125,11 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
     median(voomNoNormDup$weights) # another sanity check, pt 2 
     # [1] 23.35687
 
-    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.densities.pdf"))
+    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.densities.villages.pdf"))
         plotDensities(voomNoNormDup, group=yVillage$samples$batch)
         plotDensities(voomNoNormDup, group=yVillage$samples$Island)
     dev.off()
-    save(voomNoNormDup, file=paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+    save(voomNoNormDup, file=paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.village.Rda"))
 
     # DE testing:
     # the inter-subject correlation is input into the linear model fit
@@ -137,7 +137,7 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
     voomNoNormDupVfit <- contrasts.fit(voomNoNormDupVfit, contrasts=contr.matrix)
     voomNoNormDupEfit <- eBayes(voomNoNormDupVfit, robust=T)
 
-    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
+    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.mean-variance-trend.village.pdf"))
         plotSA(voomNoNormDupEfit, main="Mean-variance trend elimination with duplicate correction")
     dev.off()
 
@@ -179,7 +179,7 @@ for (i in 1:10){
     voomNoNormVfit <- contrasts.fit(voomNoNormVfit, contrasts=contr.matrix)
     voomNoNormEfit <- eBayes(voomNoNormVfit, robust=T)
 
-pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.no_dup_correction.mean-variance-trend.pdf"))
+pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.no_dup_correction.mean-variance-trend.village.pdf"))
     plotSA(voomNoNormEfit, main="Mean-variance trend elimination without duplicate correction")
 dev.off()
 
@@ -246,7 +246,7 @@ for (i in 1:10){
 ######################################################################################################
 
 # check to see p-value distribution is normal
-pdf(paste0(edaoutput,"PvalueDist_NotAdjusted_dupCor_villages.pdf"), height=15, width=10)
+pdf(paste0(edaoutput,"PvalueDist_NotAdjusted_dupCor.village.pdf"), height=15, width=10)
     par(mfrow=c(3,1))
     for (i in 1:ncol(voomNoNormDupEfit)){
         hist(voomNoNormDupEfit$p.value[,i], main=colnames(voomNoNormDupEfit)[i], ylim=c(0,max(table(round(voomNoNormDupEfit$p.value[,i], 1)))+1000), xlab="p-value")
@@ -254,7 +254,7 @@ pdf(paste0(edaoutput,"PvalueDist_NotAdjusted_dupCor_villages.pdf"), height=15, w
 dev.off()
 
 # check p-value distribution for adjusted p-values
-pdf(paste0(edaoutput,"PvalueDist_Adjusted_dupCor.pdf_villages"), height=15, width=10)
+pdf(paste0(edaoutput,"PvalueDist_Adjusted_dupCor.village.pdf"), height=15, width=10)
     par(mfrow=c(3,1))
     for (i in 1:ncol(voomNoNormDupEfit)){
         topTable <- topTable(voomNoNormDupEfit, coef=i, n=Inf)
@@ -291,7 +291,7 @@ dev.off()
 #################################################################################################
 
 # plot log2 fold change between islands
-pdf(paste0(edaoutput,"log2FC_VillageComparisons_pval01_dupCor.pdf"))
+pdf(paste0(edaoutput,"log2FC_VillageComparisons_pval01_dupCor.village.pdf"))
 # note 'p.value' is the cutoff value for adjusted p-values
     topTable <- topTable(voomNoNormDupEfit, coef=1, n=Inf, p.value=0.01)
     plot(density(topTable$logFC), col=9, xlim=c(-2,2), main="LogFC Density", xlab="LogFC", ylab="Density", lwd=3, ylim=c(0,1))
@@ -306,7 +306,7 @@ pdf(paste0(edaoutput,"log2FC_VillageComparisons_pval01_dupCor.pdf"))
 dev.off()
 
 # graphical representation of DE results through MD plot
-pdf(paste0(edaoutput,"MD_Plots_pval01_lfc1_dupCor_village.pdf"))
+pdf(paste0(edaoutput,"MD_Plots_pval01_lfc1_dupCor.village.pdf"))
     for(i in 1:ncol(voomNoNormDupEfit)){
         plotMD(voomNoNormDupEfit, column = i, array = NULL, xlab = "Average log-expression", ylab = "Expression log-ratio",
            main = colnames(voomNoNormDupEfit)[i], status=voomNoNormDupEfit$genes$Status, zero.weights = FALSE)
@@ -486,7 +486,91 @@ dev.off()
 ### 6. Looking at the top ranked genes ------------------------------------------------- ###
 ############################################################################################
 
-# # Let's see how the expression levels of all of the significantly DE genes in population comparisons with Mappi are distributed within each island. First, assign our top genes and ensembl IDs to variables
+# Let's look at signal across some of the genes that are DE between WNG and MPI, and between SMB and MPI and ANK and MPI, to check what's going there with the villages
+
+# Define plotting function:
+singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
+    for (i in 1:nGenes){
+        cpmSingle <- voomNoNormDup$E[singleVillageDF$genes[i],]
+        singleGene <- data.frame(cpmSingle, yVillage$samples$Sampling.Site)
+        names(singleGene)[2] <- "Sampling.Site"
+
+        singleGenePlot <- ggplot(singleGene, aes(x=Sampling.Site, y=cpmSingle, fill=Sampling.Site)) +
+            geom_violin(trim=T) + 
+            geom_boxplot(width=0.1, fill="white") + 
+            geom_jitter(colour = "black", width = 0.2) +
+            scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
+            scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+            theme_bw() + 
+            labs(title=paste0(singleVillageDF$genes[i], ": p = ", signif(singleVillageDF[i,6], 3), " ", comp1, ",\np = ", signif(singleVillageDF[i,12], 3), " ", comp2), y="log CPM", x="") + 
+            theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            guides(fill=F)
+
+        print(singleGenePlot)
+    }
+}
+
+# Sumba vs Mappi:
+    AnkMpi <- allDEresults[[2]]
+    WngMpi <- allDEresults[[9]]
+
+    smbVillageMpi <- merge(AnkMpi, WngMpi, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
+    smbVillageMpi <- smbVillageMpi[order(smbVillageMpi$adj.P.Val.wng),]
+
+    # cor(smbVillageMpi[,6], smbVillageMpi[,12], method="pearson")
+    # # [1] 0.5513258
+    # cor(smbVillageMpi[,6], smbVillageMpi[,12], method="spearman")
+    # # [1] 0.7113743
+
+    wngOnly <- smbVillageMpi[smbVillageMpi$adj.P.Val.wng <= 0.01 & smbVillageMpi$adj.P.Val.ank > 0.01,]
+    wngOnly <- wngOnly[order(wngOnly$adj.P.Val.wng),] # Too lazy to order inside function...
+
+    ankOnly <- smbVillageMpi[smbVillageMpi$adj.P.Val.ank <= 0.01 & smbVillageMpi$adj.P.Val.wng > 0.01,]
+    ankOnly <- ankOnly[order(ankOnly$adj.P.Val.ank),] # Too lazy to order inside function...
+
+    pdf(file=paste0(edaoutput, "wng_mpi_only_top_genes.pdf"))
+        singleVillageGenes(wngOnly, 30, "ANKvsMPI", "WNGvsMPI")
+    dev.off()
+
+    pdf(file=paste0(edaoutput, "ank_mpi_only_top_genes.pdf"))
+        singleVillageGenes(ankOnly, 30, "ANKvsMPI", "WNGvsMPI")
+    dev.off()
+
+# Mentawai Mappi:
+    tllMpi <- allDEresults[[8]]
+    mdbMpi <- allDEresults[[5]]
+
+    mtwVillageMpi <- merge(tllMpi, mdbMpi, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
+    mtwVillageMpi <- mtwVillageMpi[order(mtwVillageMpi$adj.P.Val.mdb),]
+
+    # cor(mtwVillageMpi[,6], mtwVillageMpi[,12], method="pearson")
+    # # [1] 0.5513258
+    # cor(mtwVillageMpi[,6], mtwVillageMpi[,12], method="spearman")
+    # # [1] 0.7113743
+
+    mdbOnly <- mtwVillageMpi[mtwVillageMpi$adj.P.Val.mdb <= 0.01 & mtwVillageMpi$adj.P.Val.tll > 0.01,]
+    mdbOnly <- mdbOnly[order(mdbOnly$adj.P.Val.mdb),] # Too lazy to order inside function...
+
+    tllOnly <- mtwVillageMpi[mtwVillageMpi$adj.P.Val.tll <= 0.01 & mtwVillageMpi$adj.P.Val.mdb > 0.01,]
+    tllOnly <- tllOnly[order(tllOnly$adj.P.Val.tll),] # Too lazy to order inside function...
+
+    pdf(file=paste0(edaoutput, "mdb_mpi_only_top_genes.pdf"))
+        singleVillageGenes(mdbOnly, 30, "TLLvsMPI", "MDBvsMPI")
+    dev.off()
+
+    pdf(file=paste0(edaoutput, "tll_mpi_only_top_genes.pdf"))
+        singleVillageGenes(tllOnly, 30, "TLLvsMPI", "MDBvsMPI")
+    dev.off()
+
+
+
+
+# This is just here so I can remember the positions in the contrast matrix...
+# contr.matrix <- makeContrasts(ANKvsMDB=Anakalung-Madobag, ANKvsMPI=Anakalung-Mappi, ANKvsTLL=Anakalung-Taileleu, ANKvsWNG=Anakalung-Wunga, MDBvsMPI=Madobag-Mappi, MDBvsTLL=Madobag-Taileleu, WNGvsMDB=Wunga-Madobag, TLLvsMPI=Taileleu-Mappi, WNGvsMPI=Wunga-Mappi, WNGvsTLL=Wunga-Taileleu, levels=colnames(design)) # Contrasts are ordered in the same order as the island ones, in case we want to look at directional effects
+
+
+
+
 # topGenes=de.common.MPI[,2]
 # topEnsembl=de.common.MPI[,1]
 
