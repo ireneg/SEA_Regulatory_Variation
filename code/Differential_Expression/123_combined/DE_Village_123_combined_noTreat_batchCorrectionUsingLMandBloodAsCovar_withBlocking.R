@@ -1,8 +1,8 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-### Last edit: IGR 2019.04.12 
-### Cleaned up Kat's code, moved some functions around, organised things a bit better.
+### Last edit: IGR 2019.05.07 
+### Cosmetic edits to upsetR plots while trying to decide on figure 4 for the paper. Colours match Heini's choices. 
 
 ### 0. Load dependencies and functions and set input paths -------------------------- ###
 ### 1. Begin analyses and initial QC ---------------------------------------------------------------------------------- ###
@@ -36,6 +36,7 @@ library(circlize)
 library(ComplexHeatmap)
 library(VennDiagram)
 library(UpSetR)
+library(wesanderson)
 
 
 # Set paths:
@@ -51,15 +52,21 @@ if (file.exists(outputdir) == FALSE){
     dir.create(edaoutput, recursive=T)
 }
 
-# Load colour schemes:
-wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
-palette(c(wes, brewer.pal(8,"Dark2")))
-# set up colour palette for batch
-batch.col=electronic_night(n=3)
+# Load colour schemes (updated 2019.05.07, concordant with Heini's assignments:
+# wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
+# palette(c(wes, brewer.pal(8,"Dark2")))
+# # set up colour palette for batch
+# batch.col=electronic_night(n=3)
 
 #Colour schemes:
-# wes 1-3 <- Mentawai, Sumba, Taileleu
-# dark2 1-3 <- MTW-SMB, SMB-MPI, MTW-MPI
+mappi <- wes_palette("Zissou1", 20, type = "continuous")[20]
+mentawai <- wes_palette("Zissou1", 20, type = "continuous")[1]
+sumba <- wes_palette("Zissou1", 20, type = "continuous")[11]
+
+smb_mtw <- wes_palette("Darjeeling1", 9, type = "continuous")[3]
+smb_mpi <- wes_palette("Darjeeling1", 9, type = "continuous")[7]
+mtw_mpi <- "darkorchid4"
+
 
 # Load log CPM matrix and y object:
 # lcpm
@@ -381,6 +388,9 @@ dev.off()
 # Bring in the by Island tests:
 # First some temporary renaming so things don't become messed up:
 
+#    load(voomNoNormDupEfit, file=paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+
+
 villageVoomNoNormDupEfit <- voomNoNormDupEfit
 rm(voomNoNormDupEfit)
 load(paste0(outputdir, "voomNoNorm.tmm.filtered.dup_corrected.Efit_object.Rda"))
@@ -408,43 +418,45 @@ allTogether1 <- data.frame(byVillages1, byIslands1)
 ### Consider using the group.by approach if figures become too messy, but this is neat.
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_village_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",4), rep("#d95f02", 2), rep("#7570b3", 2), wes[2], wes[1]), nintersects=50,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",4), rep("#d95f02", 2), rep("#7570b3", 2), wes[2], wes[1]), nintersects=50,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",4), rep("#d95f02", 2), rep("#7570b3", 2), wes[2], wes[1]), nintersects=50,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_island_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c("#1b9e77", "#d95f02", "#7570b3"), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c("#1b9e77", "#d95f02", "#7570b3"), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c("#1b9e77", "#d95f02", "#7570b3"), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), rep("#d95f02", 3), rep("#7570b3", 3), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), rep("#d95f02", 3), rep("#7570b3", 3), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), rep("#d95f02", 3), rep("#7570b3", 3), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-dev.off()
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=40,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+dev.off()i
 
 ### And now, focusing only on each inter-island comparison:
 ### SMB-MTW
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_MTW.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep("#1b9e77",5), wes[2], wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
 ### SMB-MPI
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_MPI.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep("#d95f02", 3), wes[2]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep("#d95f02", 3), wes[2]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep("#d95f02", 3), wes[2]), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
 ###MTW-MPI
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_MTW_MPI.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep("#7570b3", 3), wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep("#7570b3", 3), wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep("#7570b3", 3), wes[1]), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
 
