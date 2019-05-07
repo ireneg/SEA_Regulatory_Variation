@@ -11,6 +11,9 @@
 ### 4. Visual QC of duplicate correlation voom output after fitting linear models ---------------- ###
 ### 5. Summary and visualisation of gene trends --------------------------------------------- ###
 ### 6. Looking at the top ranked genes ------------------------------------------------- ###
+### 7. Quick check of variance by village, to see what drives the weird distribution of DE results. ------ ###
+### 8. Good old plot of pairwise correlations within each village and level etc etc... ------------------ ###
+
 
 ### TO DO:
 ### Fix everything that's commented out (just figures)
@@ -36,6 +39,8 @@ library(circlize)
 library(ComplexHeatmap)
 library(VennDiagram)
 library(UpSetR)
+library(matrixStats)
+library(reshape)
 library(wesanderson)
 
 
@@ -52,12 +57,6 @@ if (file.exists(outputdir) == FALSE){
     dir.create(edaoutput, recursive=T)
 }
 
-# Load colour schemes (updated 2019.05.07, concordant with Heini's assignments:
-# wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
-# palette(c(wes, brewer.pal(8,"Dark2")))
-# # set up colour palette for batch
-# batch.col=electronic_night(n=3)
-
 #Colour schemes:
 mappi <- wes_palette("Zissou1", 20, type = "continuous")[20]
 mentawai <- wes_palette("Zissou1", 20, type = "continuous")[1]
@@ -66,7 +65,6 @@ sumba <- wes_palette("Zissou1", 20, type = "continuous")[11]
 smb_mtw <- wes_palette("Darjeeling1", 9, type = "continuous")[3]
 smb_mpi <- wes_palette("Darjeeling1", 9, type = "continuous")[7]
 mtw_mpi <- "darkorchid4"
-
 
 # Load log CPM matrix and y object:
 # lcpm
@@ -119,7 +117,7 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
     # [1] 0.6835068
     median(voomNoNorm$weights) # another sanity check:
     # [1] 23.90951
-    save(voomNoNorm, file=paste0(outputdir, "voomNoNorm.tmm.filtered.indoRNA.Rda"))
+    save(voomNoNorm, file=paste0(outputdir, "voomNoNorm.tmm.filtered.indoRNA.village.Rda"))
 
     # Second round:
     voomNoNormDup <- voom(yVillage, design, plot=TRUE, block=yVillage$samples$ind, correlation=dupcorNone$consensus)
@@ -129,11 +127,11 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
     median(voomNoNormDup$weights) # another sanity check, pt 2 
     # [1] 23.35687
 
-    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.densities.pdf"))
+    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.densities.villages.pdf"))
         plotDensities(voomNoNormDup, group=yVillage$samples$batch)
         plotDensities(voomNoNormDup, group=yVillage$samples$Island)
     dev.off()
-    save(voomNoNormDup, file=paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+    save(voomNoNormDup, file=paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.village.Rda"))
 
     # DE testing:
     # the inter-subject correlation is input into the linear model fit
@@ -141,7 +139,7 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
     voomNoNormDupVfit <- contrasts.fit(voomNoNormDupVfit, contrasts=contr.matrix)
     voomNoNormDupEfit <- eBayes(voomNoNormDupVfit, robust=T)
 
-    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
+    pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.mean-variance-trend.village.pdf"))
         plotSA(voomNoNormDupEfit, main="Mean-variance trend elimination with duplicate correction")
     dev.off()
 
@@ -183,7 +181,7 @@ for (i in 1:10){
     voomNoNormVfit <- contrasts.fit(voomNoNormVfit, contrasts=contr.matrix)
     voomNoNormEfit <- eBayes(voomNoNormVfit, robust=T)
 
-pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.no_dup_correction.mean-variance-trend.pdf"))
+pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.no_dup_correction.mean-variance-trend.village.pdf"))
     plotSA(voomNoNormEfit, main="Mean-variance trend elimination without duplicate correction")
 dev.off()
 
@@ -250,7 +248,7 @@ for (i in 1:10){
 ######################################################################################################
 
 # check to see p-value distribution is normal
-pdf(paste0(edaoutput,"PvalueDist_NotAdjusted_dupCor_villages.pdf"), height=15, width=10)
+pdf(paste0(edaoutput,"PvalueDist_NotAdjusted_dupCor.village.pdf"), height=15, width=10)
     par(mfrow=c(3,1))
     for (i in 1:ncol(voomNoNormDupEfit)){
         hist(voomNoNormDupEfit$p.value[,i], main=colnames(voomNoNormDupEfit)[i], ylim=c(0,max(table(round(voomNoNormDupEfit$p.value[,i], 1)))+1000), xlab="p-value")
@@ -258,7 +256,7 @@ pdf(paste0(edaoutput,"PvalueDist_NotAdjusted_dupCor_villages.pdf"), height=15, w
 dev.off()
 
 # check p-value distribution for adjusted p-values
-pdf(paste0(edaoutput,"PvalueDist_Adjusted_dupCor.pdf_villages"), height=15, width=10)
+pdf(paste0(edaoutput,"PvalueDist_Adjusted_dupCor.village.pdf"), height=15, width=10)
     par(mfrow=c(3,1))
     for (i in 1:ncol(voomNoNormDupEfit)){
         topTable <- topTable(voomNoNormDupEfit, coef=i, n=Inf)
@@ -295,7 +293,7 @@ dev.off()
 #################################################################################################
 
 # plot log2 fold change between islands
-pdf(paste0(edaoutput,"log2FC_VillageComparisons_pval01_dupCor.pdf"))
+pdf(paste0(edaoutput,"log2FC_VillageComparisons_pval01_dupCor.village.pdf"))
 # note 'p.value' is the cutoff value for adjusted p-values
     topTable <- topTable(voomNoNormDupEfit, coef=1, n=Inf, p.value=0.01)
     plot(density(topTable$logFC), col=9, xlim=c(-2,2), main="LogFC Density", xlab="LogFC", ylab="Density", lwd=3, ylim=c(0,1))
@@ -310,7 +308,7 @@ pdf(paste0(edaoutput,"log2FC_VillageComparisons_pval01_dupCor.pdf"))
 dev.off()
 
 # graphical representation of DE results through MD plot
-pdf(paste0(edaoutput,"MD_Plots_pval01_lfc1_dupCor_village.pdf"))
+pdf(paste0(edaoutput,"MD_Plots_pval01_lfc1_dupCor.village.pdf"))
     for(i in 1:ncol(voomNoNormDupEfit)){
         plotMD(voomNoNormDupEfit, column = i, array = NULL, xlab = "Average log-expression", ylab = "Expression log-ratio",
            main = colnames(voomNoNormDupEfit)[i], status=voomNoNormDupEfit$genes$Status, zero.weights = FALSE)
@@ -435,7 +433,7 @@ pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs.pdf"), wi
     upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=40,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
     upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
     upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-dev.off()i
+dev.off()
 
 ### And now, focusing only on each inter-island comparison:
 ### SMB-MTW
@@ -454,12 +452,10 @@ dev.off()
 
 ###MTW-MPI
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_MTW_MPI.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
 dev.off()
-
-
 
 
     ###################################################################################################
@@ -497,93 +493,330 @@ dev.off()
 ### 6. Looking at the top ranked genes ------------------------------------------------- ###
 ############################################################################################
 
-# # Let's see how the expression levels of all of the significantly DE genes in population comparisons with Mappi are distributed within each island. First, assign our top genes and ensembl IDs to variables
-# topGenes=de.common.MPI[,2]
-# topEnsembl=de.common.MPI[,1]
+# Let's look at signal across some of the genes that are DE between WNG and MPI, and between SMB and MPI and ANK and MPI, to check what's going there with the villages
 
-# # To visualise distributions, we'll be making violin plots using ggpubr which needs p-value labels. Let's go ahead and make a matrix to input this into ggpubr
-# # first set up matrix
-# topGenes.pvalue=matrix(nrow=length(topEnsembl), ncol=ncol(voomNoNormDupEfit))
-# rownames(topGenes.pvalue)=topEnsembl
-# colnames(topGenes.pvalue)=colnames(voomNoNormDupEfit)
-# for (i in 1:ncol(voomNoNormDupEfit)){
-#     # get significant genes over a logFC of 1 for all Island comparisons
-#     topTable <- topTable(voomNoNormDupEfit, coef=i, n=Inf)
-#     for(j in topEnsembl){
-#         # input the adjusted p.value for each gene
-#         topGenes.pvalue[j,i]=topTable[j,"adj.P.Val"]
-#     }
-# }
+# Define plotting function:
+singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
+    for (i in 1:nGenes){
+        cpmSingle <- voomNoNormDup$E[singleVillageDF$genes[i],]
+        singleGene <- data.frame(cpmSingle, yVillage$samples$Sampling.Site)
+        names(singleGene)[2] <- "Sampling.Site"
 
-# # make pvalues into scientific notation with max 3 digits
-# topGenes.pvalue=formatC(topGenes.pvalue, format="e", digits=2, drop0trailing=T)
-# # convert e notation to base 10 notation
-# topGenes.pvalue=sub("e", "x10^", topGenes.pvalue)
+        singleGenePlot <- ggplot(singleGene, aes(x=Sampling.Site, y=cpmSingle, fill=Sampling.Site)) +
+            geom_violin(trim=T) + 
+            geom_boxplot(width=0.1, fill="white") + 
+            geom_jitter(colour = "black", width = 0.2) +
+            scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
+            scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+            theme_bw() + 
+            labs(title=paste0(singleVillageDF$genes[i], ": p = ", signif(singleVillageDF[i,6], 3), " ", comp1, ",\np = ", signif(singleVillageDF[i,12], 3), " ", comp2), y="log CPM", x="") + 
+            theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            guides(fill=F)
 
-# # We can make the violin plots using ggpubr
-# pdf(paste0(outputdir,"TopGenes_ggboxplot_Island.pdf"), height=8, width=10)
-# counter=0
-# for(ensembl in topEnsembl){
-#     counter=counter+1
-#     gene.df <- data.frame(vDup$E[which(vDup$genes$ENSEMBL==ensembl),],Island)
-#     colnames(gene.df)=c("CPM", "Island")
-#     annotation_df <- data.frame(start=c("Sumba","Sumba", "Mentawai"), end=c("Mentawai","West Papua","West Papua"), y=c(max(gene.df[,1]+4),max(gene.df[,1]+5),max(gene.df[,1]+6)), label=paste("limma p-value =",topGenes.pvalue[ensembl,],sep=" "))
-#     print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=topGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
-# }
-# dev.off()
+        print(singleGenePlot)
+    }
+}
 
-# # after analysing the distributions and reading up on some of the genes, my three favourite genes are Siglec6, Siglec7, and MARCO. Lets plot out the distribution solely for these three genes
-# favGenes=c("SIGLEC6","SIGLEC7","MARCO")
-# #"RSAD2","AIM2","TNFSF4")
-# favEnsembl=de.common.MPI[,1][sapply(1:length(favGenes), function(x) grep(favGenes[x],de.common.MPI[,2]))]
+# Sumba vs Mappi:
+    AnkMpi <- allDEresults[[2]]
+    WngMpi <- allDEresults[[9]]
 
-# # set up pvalue matrix
-# topGenes.pvalue=matrix(nrow=length(favEnsembl), ncol=ncol(voomNoNormDupEfit))
-# rownames(topGenes.pvalue)=favEnsembl
-# colnames(topGenes.pvalue)=colnames(voomNoNormDupEfit)
-# for (i in 1:ncol(voomNoNormDupEfit)){
-#     # get significant genes over a logFC of 1 for all Island comparisons
-#     topTable <- topTable(voomNoNormDupEfit, coef=i, n=Inf)
-#     for(j in favEnsembl){
-#         # input the adjusted p.value for each gene
-#         topGenes.pvalue[j,i]=topTable[j,"adj.P.Val"]
-#     }
-# }
+    smbVillageMpi <- merge(AnkMpi, WngMpi, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
+    smbVillageMpi <- smbVillageMpi[order(smbVillageMpi$adj.P.Val.wng),]
 
-# # make pvalues into scientific notation with max 3 digits
-# topGenes.pvalue=formatC(topGenes.pvalue, format="e", digits=2, drop0trailing=T)
-# # convert e notation to base 10 notation
-# topGenes.pvalue=sub("e", "x10^", topGenes.pvalue)
+    # cor(smbVillageMpi[,6], smbVillageMpi[,12], method="pearson")
+    # # [1] 0.5513258
+    # cor(smbVillageMpi[,6], smbVillageMpi[,12], method="spearman")
+    # # [1] 0.7113743
 
-# # We can make the violin plots using ggpubr
-# counter=0
-# for(ensembl in favEnsembl){
-#     counter=counter+1
-#     # pdf(paste0("FavouriteGenes_ggboxplot_",favGenes[counter],".pdf"), height=8, width=10)
-#     gene.df <- data.frame(vDup$E[which(vDup$genes$ENSEMBL==ensembl),],Island)
-#     colnames(gene.df)=c("CPM", "Island")
-#     annotation_df <- data.frame(start=c("Sumba","Sumba", "Mentawai"), end=c("Mentawai","West Papua","West Papua"), y=c(max(gene.df[,1]+4),max(gene.df[,1]+5),max(gene.df[,1]+6)), label=paste("limma p-value =",topGenes.pvalue[ensembl,],sep=" "))
-#     # print(ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=favGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 5, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
-#     assign(favGenes[counter], ggviolin(gene.df, x = "Island", y = "CPM", fill="Island", add=c("jitter","boxplot"), main=favGenes[counter], palette=1:3, add.params = c(list(fill = "white"), list(width=0.05))) + geom_signif(data=annotation_df,aes(xmin=start, xmax=end, annotations=label, y_position=y),textsize = 3, vjust = -0.2,manual=TRUE) + ylim(NA, max(gene.df[,1])+7))
-# }
+    wngOnly <- smbVillageMpi[smbVillageMpi$adj.P.Val.wng <= 0.01 & smbVillageMpi$adj.P.Val.ank > 0.01,]
+    wngOnly <- wngOnly[order(wngOnly$adj.P.Val.wng),] # Too lazy to order inside function...
 
-# pdf(paste0(outputdir,"favouriteTopGenes_distribution_Island.pdf"), height=12, width=15)
-# ggarrange(SIGLEC6,SIGLEC7,MARCO)
-# #AIM2,TNFSF4,RSAD2)
-# dev.off()
+    ankOnly <- smbVillageMpi[smbVillageMpi$adj.P.Val.ank <= 0.01 & smbVillageMpi$adj.P.Val.wng > 0.01,]
+    ankOnly <- ankOnly[order(ankOnly$adj.P.Val.ank),] # Too lazy to order inside function...
 
-# # finally, get logFC thresholds
-# logFC.df=matrix(nrow=3,ncol=3)
-# colnames(logFC.df)=colnames(voomNoNormDupEfit)
-# counter=0
-# for (number in c(0,0.5,1)){
-#     counter=counter+1
-#     dt <- decideTests(voomNoNormDupEfit, p.value=0.01, lfc=number)
-#     values=c(sum(abs(dt[,1])), sum(abs(dt[,2])), sum(abs(dt[,3])))
-#     logFC.df[counter,]=values
-# }
-# logFC.df=cbind(logFC = c(0,0.5,1), logFC.df)
-# write.table(logFC.df, file=paste0(outputdir,"logFC_thresholds.txt"))
+    pdf(file=paste0(edaoutput, "wng_mpi_only_top_genes.pdf"))
+        singleVillageGenes(wngOnly, 30, "ANKvsMPI", "WNGvsMPI")
+    dev.off()
+
+    pdf(file=paste0(edaoutput, "ank_mpi_only_top_genes.pdf"))
+        singleVillageGenes(ankOnly, 30, "ANKvsMPI", "WNGvsMPI")
+    dev.off()
+
+# Mentawai Mappi:
+    tllMpi <- allDEresults[[8]]
+    mdbMpi <- allDEresults[[5]]
+
+    mtwVillageMpi <- merge(tllMpi, mdbMpi, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
+    mtwVillageMpi <- mtwVillageMpi[order(mtwVillageMpi$adj.P.Val.mdb),]
+
+    # cor(mtwVillageMpi[,6], mtwVillageMpi[,12], method="pearson")
+    # # [1] 0.5513258
+    # cor(mtwVillageMpi[,6], mtwVillageMpi[,12], method="spearman")
+    # # [1] 0.7113743
+
+    mdbOnly <- mtwVillageMpi[mtwVillageMpi$adj.P.Val.mdb <= 0.01 & mtwVillageMpi$adj.P.Val.tll > 0.01,]
+    mdbOnly <- mdbOnly[order(mdbOnly$adj.P.Val.mdb),] # Too lazy to order inside function...
+
+    tllOnly <- mtwVillageMpi[mtwVillageMpi$adj.P.Val.tll <= 0.01 & mtwVillageMpi$adj.P.Val.mdb > 0.01,]
+    tllOnly <- tllOnly[order(tllOnly$adj.P.Val.tll),] # Too lazy to order inside function...
+
+    pdf(file=paste0(edaoutput, "mdb_mpi_only_top_genes.pdf"))
+        singleVillageGenes(mdbOnly, 30, "TLLvsMPI", "MDBvsMPI")
+    dev.off()
+
+    pdf(file=paste0(edaoutput, "tll_mpi_only_top_genes.pdf"))
+        singleVillageGenes(tllOnly, 30, "TLLvsMPI", "MDBvsMPI")
+    dev.off()
 
 
+##############################################################################################################
+### 7. Quick check of variance by village, to see what drives the weird distribution of DE results. ------ ###
+##############################################################################################################
 
+# load(paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+
+# Define CoV function:
+calcCoV <- function(x){
+     (sd(x)/mean(x) )
+ }
+
+# Can't use CoV with the log transformation, need to undo it: (wikipedia said so, and yes, the negative numbers were probably messing things up)
+normLCPM <- data.frame(t(voomNoNormDup$E))
+normCPM <- normLCPM^2
+
+perVillageCoV <- t(ddply(normCPM, .(yVillage$samples$Sampling.Site), function(x) apply(as.matrix(x), 2, function(x) calcCoV(x)))) # That's a lot of transposing, but I checked it manually.
+
+# Clean up all that messy output...
+perVillageCoVDF <- data.frame(perVillageCoV[-1,], stringsAsFactors=F)
+names(perVillageCoVDF) <- perVillageCoV[1,]
+perVillageCoVDF <- as.data.frame(lapply(perVillageCoVDF, as.numeric)) # Worked fine when checking lines manually.
+summary(perVillageCoVDF)
+
+dataForPlotting <- melt(perVillageCoVDF)
+
+pdf(paste0(edaoutput, "cov_by_village.pdf"))
+    ggplot(dataForPlotting, aes(x=variable, y=value, fill=variable)) +
+        geom_violin(trim=T) + 
+        geom_boxplot(width=0.05, fill="white") + 
+        scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
+        scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+        theme_bw() + 
+        labs(title="", y="CoV CPM", x="") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(fill=F)
+dev.off()
+
+# Well that doesn't look too different... so why that DE trend?
+
+# Lots of t.tests:
+
+tTestOut <- matrix(0, nrow=5, ncol=5)
+colnames(tTestOut) <- names(perVillageCoVDF)
+rownames(tTestOut) <- names(perVillageCoVDF)
+
+for (i in 1:5){
+    for (j in 1:5){
+        if(j > i){
+            tTestOut[i,j] <- t.test(perVillageCoVDF[,i], perVillageCoVDF[,j])$p.value
+        }
+    }
+}
+
+# They are different, as they were of course going to be, but not THAT different, surely, to explain the difference in power? Also from the plot the effect size does not go in the direction you would expect. The things that are different are not different 
+signif(tTestOut, digits=3)
+#           Anakalung  Madobag    Mappi Taileleu    Wunga
+# Anakalung         0 2.73e-08 1.26e-02 2.66e-01 4.36e-04
+# Madobag           0 0.00e+00 2.29e-16 9.70e-06 4.30e-02
+# Mappi             0 0.00e+00 0.00e+00 2.89e-04 1.07e-09
+# Taileleu          0 0.00e+00 0.00e+00 0.00e+00 1.66e-02
+# Wunga             0 0.00e+00 0.00e+00 0.00e+00 0.00e+00
+
+# Similar plots of pairwise correlations within each village, to see if anything is as noisy as Mappi. But then how do you reconcile the CoV observations?
+
+
+# And then, for a bit of overkill, plots of CoVs across all villages subset by genes that are only DE in a single village.
+# Add row names so you can subset by genes:
+rownames(perVillageCoVDF) <- rownames(perVillageCoV)[-1]
+
+# Define plotting function
+plotCoV <- function(inputDF, comparison){
+    dataForPlotting <- melt(inputDF)
+
+    covOverkill <- ggplot(dataForPlotting, aes(x=variable, y=value, fill=variable)) +
+            geom_violin(trim=T) + 
+            geom_boxplot(width=0.05, fill="white") + 
+            scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
+            scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+            theme_bw() + 
+            labs(title=paste0("DE ", comparison, " (", nrow(inputDF), " genes)"), y="CoV CPM", x="") + 
+            theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            guides(fill=F)
+    print(covOverkill)
+}
+
+pdf(paste0(edaoutput, "cov_by_single_village_DE.pdf"))
+    plotCoV(perVillageCoVDF[wngOnly$genes,], "WNGvsMPI not ANKvsMPI")
+    plotCoV(perVillageCoVDF[ankOnly$genes,], "ANKvsMPI not WNGvsMPI")
+    plotCoV(perVillageCoVDF[mdbOnly$genes,], "MDBvsMPI not TLLvsMPI")
+    plotCoV(perVillageCoVDF[tllOnly$genes,], "TLLvsMPI not MDBvsMPI")
+dev.off()
+
+
+#############################################################################################################
+### 8. Good old plot of pairwise correlations within each village and level etc etc... ------------------ ###
+#############################################################################################################
+
+# Define hideous function
+plot.reproducibility <- function(data.to.test, metadata, method){
+    corMat <- cor(data.to.test, method=method, use="pairwise.complete.obs")
+
+    indRep <- vector()
+    villageBatchRep <- vector()
+    islandBatchRep <- vector()
+    batchRep <- vector()
+    villageNoBatchRep <- vector()
+    islandNoBatchRep <- vector()
+    betweenBatch <- vector()
+
+    for (i in 1:ncol(data.to.test)){
+        for (j in 1:ncol(data.to.test)){
+            if (j > i){
+                if (metadata$ID[i] == metadata$ID[j]) {
+                    indRep <- c(indRep, corMat[i,j])
+                } else if (metadata$batch[i] == metadata$batch[j]){
+                    if (metadata$Sampling.Site[i] == metadata$Sampling.Site[j]){
+                        villageBatchRep <- c(villageBatchRep, corMat[i,j])
+                    } else if (metadata$Island[i] == metadata$Island[j]){
+                        islandBatchRep <- c(islandBatchRep, corMat[i,j])
+                    } else
+                        batchRep <- c(batchRep, corMat[i,j])
+                } else if (metadata$batch[i] != metadata$batch[j]){
+                    if (metadata$Sampling.Site[i] == metadata$Sampling.Site[j]){
+                        villageNoBatchRep <- c(villageNoBatchRep, corMat[i,j])
+                    } else if (metadata$Island[i] == metadata$Island[j]){
+                        islandNoBatchRep <- c(islandNoBatchRep, corMat[i,j])
+                    } else {betweenBatch <- c(betweenBatch, corMat[i,j])}
+                }
+            }
+        }
+    }
+
+    forPlot <- melt(list(indRep, villageBatchRep, villageNoBatchRep, islandBatchRep, islandNoBatchRep, batchRep, betweenBatch))
+    forPlot$L1 <- as.factor(forPlot$L1)
+
+    ggplot(forPlot, aes(x=L1, y=value, fill=L1)) +
+        geom_violin(trim=T) + 
+        geom_boxplot(width=0.05, fill="white") + 
+        scale_x_discrete(labels=c("Individual reps", "within village\nand batch", "within island\nand batch", "diff island\nwithin batch", "within village\ndiff batch", "within island\ndiff batch", "diff island\ndiff batch")) +
+        theme_bw() + 
+        labs(title="", y=paste0(method, " pairwise correlation"), x="") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(fill=F)
+
+}
+
+# And now, by village and by island plots (separed by batch)
+plotWithinSite <- function(data.to.test, metadata, method){
+    corMat <- cor(data.to.test, method=method, use="pairwise.complete.obs")
+
+    indRep <- vector()
+    smbBatchRep <- vector()
+    wngBatchRep <- vector()
+    ankBatchRep <- vector()
+    mtwBatchRep <- vector()
+    mdbBatchRep <- vector()
+    tllBatchRep <- vector()
+    mpiBatchRep <- vector()
+    smbNoBatchRep <- vector()
+    wngNoBatchRep <- vector()
+    ankNoBatchRep <- vector()
+    mtwNoBatchRep <- vector()
+    mdbNoBatchRep <- vector()
+    tllNoBatchRep <- vector()
+    mpiNoBatchRep <- vector()
+
+    for (i in 1:ncol(data.to.test)){
+        for (j in 1:ncol(data.to.test)){
+            if (j > i){
+                if (metadata$ID[i] == metadata$ID[j]) {
+                    indRep <- c(indRep, corMat[i,j])
+                } else if (metadata$batch[i] == metadata$batch[j]){
+                    if (metadata$Sampling.Site[i] == metadata$Sampling.Site[j]){
+                        if(metadata$Sampling.Site[i] == "Wunga"){
+                            wngBatchRep <- c(wngBatchRep, corMat[i,j])
+                            smbBatchRep <- c(smbBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Anakalung"){
+                            ankBatchRep <- c(ankBatchRep, corMat[i,j])
+                            smbBatchRep <- c(smbBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Madobag"){
+                            mdbBatchRep <- c(mdbBatchRep, corMat[i,j])
+                            mtwBatchRep <- c(mtwBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Taileleu"){
+                            tllBatchRep <- c(tllBatchRep, corMat[i,j])
+                            mtwBatchRep <- c(mtwBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Mappi"){
+                            mpiBatchRep <- c(mpiBatchRep, corMat[i,j])
+                        }
+                    }
+                } else if (metadata$batch[i] != metadata$batch[j]){
+                    if (metadata$Sampling.Site[i] == metadata$Sampling.Site[j]){
+                        if(metadata$Sampling.Site[i] == "Wunga"){
+                            wngNoBatchRep <- c(wngNoBatchRep, corMat[i,j])
+                            smbNoBatchRep <- c(smbNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Anakalung"){
+                            ankNoBatchRep <- c(ankNoBatchRep, corMat[i,j])
+                            smbNoBatchRep <- c(smbNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Madobag"){
+                            mdbNoBatchRep <- c(mdbNoBatchRep, corMat[i,j])
+                            mtwNoBatchRep <- c(mtwNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Taileleu"){
+                            tllNoBatchRep <- c(tllNoBatchRep, corMat[i,j])
+                            mtwNoBatchRep <- c(mtwNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Mappi"){
+                            mpiNoBatchRep <- c(mpiNoBatchRep, corMat[i,j])
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    forPlot <- melt(list(ankBatchRep, ankNoBatchRep, wngBatchRep, wngNoBatchRep, mdbBatchRep, mdbNoBatchRep, tllBatchRep, tllNoBatchRep, mpiBatchRep, mpiNoBatchRep))
+    forPlot$L1 <- as.factor(forPlot$L1)
+
+    forPlotIsland <- melt(list(smbBatchRep, mtwBatchRep, mpiBatchRep, smbNoBatchRep, mtwNoBatchRep, mpiNoBatchRep))
+    forPlotIsland$L1 <- as.factor(forPlotIsland$L1)
+
+    byVillagePlot <- ggplot(forPlot, aes(x=L1, y=value, fill=L1)) +
+        geom_violin(trim=T) + 
+        geom_boxplot(width=0.05, fill="white") + 
+        scale_x_discrete(labels=c("ANK within batch", "ANK bw batch", "WNG within batch", "WNG bw batch", "MDB within batch", "MDB bw batch", "TLL within batch", "TLL bw batch", "MPI within batch", "MPI bw batch")) +
+        theme_bw() + 
+        labs(title="", y=paste0(method, "pairwise correlation"), x="") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(fill=F)
+
+    byIslandPlot <- ggplot(forPlotIsland, aes(x=L1, y=value, fill=L1)) +
+        geom_violin(trim=T) + 
+        geom_boxplot(width=0.05, fill="white") + 
+        scale_x_discrete(labels=c("SMB within batch", "MTW within batch", "MPI within batch", "SMB bw batch", "MTW bw batch", "MPI bw batch")) +
+        theme_bw() + 
+        labs(title="", y=paste0(method, " pairwise correlation"), x="") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(fill=F)
+
+    print(byVillagePlot)
+    print(byIslandPlot)
+
+}
+
+pdf(file=paste0(edaoutput, "reproducibility_by_levels.pdf"))
+    plot.reproducibility(voomNoNormDup$E, yVillage$samples, "spearman")
+    plot.reproducibility(voomNoNormDup$E, yVillage$samples, "pearson")
+dev.off()
+
+pdf(file=paste0(edaoutput, "correlation_within_sites.pdf"))
+    plotWithinSite(voomNoNormDup$E, yVillage$samples, "spearman")
+    plotWithinSite(voomNoNormDup$E, yVillage$samples, "pearson")
+dev.off()
