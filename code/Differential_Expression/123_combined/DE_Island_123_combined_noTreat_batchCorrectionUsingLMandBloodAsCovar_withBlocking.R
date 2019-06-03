@@ -1,8 +1,8 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-### Last edit: IGR 2019.04.12 
-### Cleaned up Kat's code, moved some functions around, organised things a bit better.
+### Last edit: IGR 2019.06.03 
+### Changed references to Mappi into Korowai, kept West_Papua in there for downstream uses and better nomenclature.
 
 ### 0. Load dependencies and functions and set input paths -------------------------- ###
 ### 1. Begin analyses and initial QC ---------------------------------------------------------------------------------- ###
@@ -51,15 +51,16 @@ if (file.exists(outputdir) == FALSE){
 }
 
 # Load colour schemes:
-wes=c("#3B9AB2", "#EBCC2A", "#F21A00", "#00A08A", "#ABDDDE", "#000000", "#FD6467","#5B1A18")
-palette(c(wes, brewer.pal(8,"Dark2")))
+#Colour schemes:
+korowai <- wes_palette("Zissou1", 20, type = "continuous")[20]
+mentawai <- wes_palette("Zissou1", 20, type = "continuous")[1]
+sumba <- wes_palette("Zissou1", 20, type = "continuous")[11]
+
+smb_mtw <- wes_palette("Darjeeling1", 9, type = "continuous")[3]
+smb_kor <- wes_palette("Darjeeling1", 9, type = "continuous")[7]
+mtw_kor <- "darkorchid4"
 # set up colour palette for batch
 batch.col=electronic_night(n=3)
-
-#Colour schemes:
-# wes 1-3 <- Mentawai, Sumba, Taileleu
-# dark2 1-3 <- MTW-SMB, SMB-MPI, MTW-MPI
-
 
 # Venn diagram plotting figure:
 make.venn.triple <- function(geneset1, geneset2, geneset3, prefix, geneset1.label, geneset2.label, geneset3.label, universe){
@@ -88,7 +89,6 @@ load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 ### 1. Begin analyses and initial QC ---------------------------------------------------------------------------------- ###
 ###########################################################################################################################
 
-
 # We don't know what the age is for SMB-PTB028 (#116) so we will just add in the median age of Sumba (44.5)
 yFilt$samples$Age[which(is.na(yFilt$samples$Age) == T)]=45
 
@@ -98,10 +98,13 @@ colnames(design)=gsub("Island", "", colnames(design))
 
 # rename columns to exclude spaces and unrecognised characters
 colnames(design)=gsub("yFilt\\$samples\\$", "", colnames(design))
-colnames(design)=gsub("West Papua", "Mappi", colnames(design))
+colnames(design)=gsub("West Papua", "West_Papua", colnames(design))
+
+# Rename Mappi to Korowai for downstream processing:
+yFilt$samples$Sampling.Site <- gsub("Mappi", "Korowai", yFilt$samples$Sampling.Site)
 
 # set up contrast matrix
-contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsMPI=Sumba - Mappi, MTWvsMPI=Mentawai - Mappi, levels=colnames(design))
+contr.matrix <- makeContrasts(SMBvsMTW=Sumba - Mentawai, SMBvsKOR=Sumba - West_Papua, MTWvsKOR=Mentawai - West_Papua, levels=colnames(design))
 
 yFilt <- calcNormFactors(yFilt, method="TMM")
 
@@ -162,8 +165,8 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
 
     # get top genes using toptable
     voomNoNormDupTopTableSMB.MTW <- topTable(voomNoNormDupEfit, coef=1, n=Inf, sort.by="p")
-    voomNoNormDupTopTableSMB.MPI <- topTable(voomNoNormDupEfit, coef=2, n=Inf, sort.by="p")
-    voomNoNormDupTopTableMTW.MPI <- topTable(voomNoNormDupEfit, coef=3, n=Inf, sort.by="p")
+    voomNoNormDupTopTableSMB.KOR <- topTable(voomNoNormDupEfit, coef=2, n=Inf, sort.by="p")
+    voomNoNormDupTopTableMTW.KOR <- topTable(voomNoNormDupEfit, coef=3, n=Inf, sort.by="p")
 
 # Quantile normalisation between samples and tmm and voom:
     voomQuant <- voom(yFilt, design, normalize.method="quantile", plot=F) 
@@ -201,8 +204,8 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
 
     # get top genes using toptable
     voomQuantDupTopTableSMB.MTW <- topTable(voomQuantDupEfit, coef=1, n=Inf, sort.by="p")
-    voomQuantDupTopTableSMB.MPI <- topTable(voomQuantDupEfit, coef=2, n=Inf, sort.by="p")
-    voomQuantDupTopTableMTW.MPI <- topTable(voomQuantDupEfit, coef=3, n=Inf, sort.by="p")
+    voomQuantDupTopTableSMB.KOR <- topTable(voomQuantDupEfit, coef=2, n=Inf, sort.by="p")
+    voomQuantDupTopTableMTW.KOR <- topTable(voomQuantDupEfit, coef=3, n=Inf, sort.by="p")
 
 
 # Loess normalisation between samples and tmm and voom:
@@ -241,63 +244,63 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
 
     # get top genes using toptable
     voomLoessDupTopTableSMB.MTW <- topTable(voomLoessDupEfit, coef=1, n=Inf, sort.by="p")
-    voomLoessDupTopTableSMB.MPI <- topTable(voomLoessDupEfit, coef=2, n=Inf, sort.by="p")
-    voomLoessDupTopTableMTW.MPI <- topTable(voomLoessDupEfit, coef=3, n=Inf, sort.by="p")
+    voomLoessDupTopTableSMB.KOR <- topTable(voomLoessDupEfit, coef=2, n=Inf, sort.by="p")
+    voomLoessDupTopTableMTW.KOR <- topTable(voomLoessDupEfit, coef=3, n=Inf, sort.by="p")
 
 # LOL omg what was the point? On the basis of this, going with no norm so there's no need to think about it any deeper.
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down        898     2325     2102
 # NotSig    11430     8479     8887
 # Up          647     2171     1986
 summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down        896     2324     2102
 # NotSig    11432     8480     8887
 # Up          647     2171     1986
 summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down        898     2325     2102
 # NotSig    11430     8479     8887
 # Up          647     2171     1986
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down         96      606      536
 # NotSig    12661    11577    11958
 # Up          218      792      481
 summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down         96      606      536
 # NotSig    12661    11577    11958
 # Up          218      792      481
 summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down         96      606      536
 # NotSig    12661    11577    11958
 # Up          218      792      481
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down          6       87       96
 # NotSig    12940    12662    12748
 # Up           29      226      131
 
 summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down          6       87       96
 # NotSig    12940    12662    12748
 # Up           29      226      131
 
 summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-#        SMBvsMTW SMBvsMPI MTWvsMPI
+#        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down          6       87       96
 # NotSig    12940    12662    12748
 # Up           29      226      131
 
 write.table(voomNoNormDupTopTableSMB.MTW, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.SMB-MTW.txt"))
-write.table(voomNoNormDupTopTableSMB.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.SMB-MPI.txt"))
-write.table(voomNoNormDupTopTableMTW.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.MTW-MPI.txt"))
+write.table(voomNoNormDupTopTableSMB.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.SMB-KOR.txt"))
+write.table(voomNoNormDupTopTableMTW.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.MTW-KOR.txt"))
 
 # For easily combining with the villages:
 save(voomNoNormDupEfit, file=paste0(outputdir, "voomNoNorm.tmm.filtered.dup_corrected.Efit_object.Rda"))
@@ -326,37 +329,37 @@ dev.off()
 
 # get top genes using toptable
 topTableSMB.MTW <- topTable(voomNoNormEfit, coef=1, n=Inf, sort.by="p")
-topTableSMB.MPI <- topTable(voomNoNormEfit, coef=2, n=Inf, sort.by="p")
-topTableMTW.MPI <- topTable(voomNoNormEfit, coef=3, n=Inf, sort.by="p")
+topTableSMB.KOR <- topTable(voomNoNormEfit, coef=2, n=Inf, sort.by="p")
+topTableMTW.KOR <- topTable(voomNoNormEfit, coef=3, n=Inf, sort.by="p")
 
 # no LFC threshold
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-#       SMBvsMTW SMBvsMPI MTWvsMPI
+#       SMBvsMTW SMBvsKOR MTWvsKOR
 #Down       1032     2569     2228
 #NotSig    11183     8106     8669
 #Up          760     2300     2078
 
 # LFC of 0.05
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-#       SMBvsMTW SMBvsMPI MTWvsMPI
+#       SMBvsMTW SMBvsKOR MTWvsKOR
 #Down        112      654      558
 #NotSig    12603    11492    11920
 #Up          260      829      497
 
 # LFC of 1
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-#       SMBvsMTW SMBvsMPI MTWvsMPI
+#       SMBvsMTW SMBvsKOR MTWvsKOR
 #Down          6       93      103
 #NotSig    12923    12643    12737
 #Up           46      239      135
 
 # Let's check the correlation between those two approaches - sort by gene first, then cor test on adjusted p-value
-MTW.MPI <- join(voomNoNormDupTopTableMTW.MPI, topTableMTW.MPI, by="genes")
-cor(MTW.MPI[,6], MTW.MPI[,12], method="spearman"    )
+MTW.KOR <- join(voomNoNormDupTopTableMTW.KOR, topTableMTW.KOR, by="genes")
+cor(MTW.KOR[,6], MTW.KOR[,12], method="spearman"    )
 # [1] 0.9884076
 
-SMB.MPI <- join(voomNoNormDupTopTableSMB.MPI, topTableSMB.MPI, by="genes")
-cor(SMB.MPI[,6], SMB.MPI[,12], method="spearman", use="complete")
+SMB.KOR <- join(voomNoNormDupTopTableSMB.KOR, topTableSMB.KOR, by="genes")
+cor(SMB.KOR[,6], SMB.KOR[,12], method="spearman", use="complete")
 # [1] 0.9771854
 
 SMB.MTW <- join(voomNoNormDupTopTableSMB.MTW, topTableSMB.MTW, by="genes")
@@ -364,8 +367,8 @@ cor(SMB.MTW[,6], SMB.MTW[,12], method="spearman", use="complete")
 # [1] 0.955927
 
 write.table(topTableSMB.MTW, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-MTW.txt"))
-write.table(topTableSMB.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-MPI.txt"))
-write.table(topTableMTW.MPI, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.MTW-MPI.txt"))
+write.table(topTableSMB.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-KOR.txt"))
+write.table(topTableMTW.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.MTW-KOR.txt"))
 
 
 ######################################################################################################
@@ -513,40 +516,40 @@ counter <- 0
 
 
 # Some Venn diagrams
-make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01,]$genes, paste0(edaoutput, "all_islands.fdr_0.01"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01,]$genes, paste0(edaoutput, "all_islands.fdr_0.01"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
 
-make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 0.5,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MPI$logFC)>= 0.5,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.MPI$logFC)>= 0.5,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_0.5"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 0.5,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.KOR$logFC)>= 0.5,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.KOR$logFC)>= 0.5,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_0.5"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
 
-make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 1,]$genes, voomNoNormDupTopTableSMB.MPI[voomNoNormDupTopTableSMB.MPI$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MPI$logFC)>= 1,]$genes, voomNoNormDupTopTableMTW.MPI[voomNoNormDupTopTableMTW.MPI$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.MPI$logFC)>= 1,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_1"), "Sumba vs\nMentawai", "Sumba vs\nMappi", "Mentawai\nvs Mappi", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 1,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.KOR$logFC)>= 1,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.KOR$logFC)>= 1,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_1"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
 
 
     ###################################################################################################
     ### IGR NOTE 2019.04.12 - I BELIEVE HEINI IS NOW MAKING THIS FIGURE, WILL REVISIT IT OTHERWISE. ###
     ###################################################################################################
 
-# get DE genes in common with populations compared to Mappi, i.e., SMBvsMPI and MTWvsMPI (since we think this is an interesting island comparison)
-allGenes <- merge(voomNoNormDupTopTableSMB.MTW, voomNoNormDupTopTableSMB.MPI, by.x="genes", by.y="genes", suffixes=c(".SMB.MTW", ".SMB.MPI"))
-allGenes <- merge(allGenes, voomNoNormDupTopTableMTW.MPI, by.x="genes", by.y="genes")
-names(allGenes)[13:19] <- paste0(names(allGenes)[13:19], ".MTW.MPI")
+# get DE genes in common with populations compared to Korowai, i.e., SMBvsKOR and MTWvsKOR (since we think this is an interesting island comparison)
+allGenes <- merge(voomNoNormDupTopTableSMB.MTW, voomNoNormDupTopTableSMB.KOR, by.x="genes", by.y="genes", suffixes=c(".SMB.MTW", ".SMB.KOR"))
+allGenes <- merge(allGenes, voomNoNormDupTopTableMTW.KOR, by.x="genes", by.y="genes")
+names(allGenes)[13:19] <- paste0(names(allGenes)[13:19], ".MTW.KOR")
 
 deSummaryAll <- decideTests(voomNoNormDupEfit, p.value=0.01)
 deSummary05 <- decideTests(voomNoNormDupEfit, p.value=0.01, lfc=0.5)
 deSummary1 <- decideTests(voomNoNormDupEfit, p.value=0.01, lfc=1)
 
-deCommonMPI = which(deSummaryAll[,2]!=0 & deSummaryAll[,3]!=0)
-deCommonMPI05 = which(deSummary05[,2]!=0 & deSummary05[,3]!=0)
-deCommonMPI1 = which(deSummary1[,2]!=0 & deSummary1[,3]!=0)
+deCommonKOR = which(deSummaryAll[,2]!=0 & deSummaryAll[,3]!=0)
+deCommonKOR05 = which(deSummary05[,2]!=0 & deSummary05[,3]!=0)
+deCommonKOR1 = which(deSummary1[,2]!=0 & deSummary1[,3]!=0)
 
 # get what these genes are doing and save them to a file
-# commonGenes.MPI <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.MPI), filters="ensembl_gene_id")
-# write.table(de.common.MPI, file=paste0(outputdir,"allCommonGenes_MPI_dupcor.txt"))
+# commonGenes.KOR <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.KOR), filters="ensembl_gene_id")
+# write.table(de.common.KOR, file=paste0(outputdir,"allCommonGenes_KOR_dupcor.txt"))
 # # save the common gene names 
-# de.common.MPI=voomNoNormDupEfit$genes[names(de.common.MPI),]
+# de.common.KOR=voomNoNormDupEfit$genes[names(de.common.KOR),]
 
 # now plot the common genes to see if they're being regulated in the same direction
-pdf(paste0(edaoutput,"logFC_commonMPIgenes_dupCor.pdf"))
-    plot(voomNoNormDupTopTableSMB.MPI[rownames(deCommonMPI), "logFC"], voomNoNormDupTopTableMTW.MPI[rownames(deCommonMPI), "logFC"], xlab="logFC SMBvsMPI", ylab="logFC MTWvsMPI", pch=20, main="Common DE Genes", xlim=c(-5,5), ylim=c(-6,6))
-    # text(tt.SMBvsMPI[rownames(de.common.MPI),"logFC"], tt.MTWvsMPI[rownames(de.common.MPI),"logFC"], labels=tt.SMBvsMPI[rownames(de.common.MPI),"SYMBOL"], pos=3)
+pdf(paste0(edaoutput,"logFC_commonKORgenes_dupCor.pdf"))
+    plot(voomNoNormDupTopTableSMB.KOR[rownames(deCommonKOR), "logFC"], voomNoNormDupTopTableMTW.KOR[rownames(deCommonKOR), "logFC"], xlab="logFC SMBvsKOR", ylab="logFC MTWvsKOR", pch=20, main="Common DE Genes", xlim=c(-5,5), ylim=c(-6,6))
+    # text(tt.SMBvsKOR[rownames(de.common.KOR),"logFC"], tt.MTWvsKOR[rownames(de.common.KOR),"logFC"], labels=tt.SMBvsKOR[rownames(de.common.KOR),"SYMBOL"], pos=3)
     abline(h=0,v=0, lty=2)
 dev.off()
 
@@ -555,9 +558,9 @@ dev.off()
 ### 6. Looking at the top ranked genes ------------------------------------------------- ###
 ############################################################################################
 
-# # Let's see how the expression levels of all of the significantly DE genes in population comparisons with Mappi are distributed within each island. First, assign our top genes and ensembl IDs to variables
-# topGenes=de.common.MPI[,2]
-# topEnsembl=de.common.MPI[,1]
+# # Let's see how the expression levels of all of the significantly DE genes in population comparisons with Korowai are distributed within each island. First, assign our top genes and ensembl IDs to variables
+# topGenes=de.common.KOR[,2]
+# topEnsembl=de.common.KOR[,1]
 
 # # To visualise distributions, we'll be making violin plots using ggpubr which needs p-value labels. Let's go ahead and make a matrix to input this into ggpubr
 # # first set up matrix
@@ -593,7 +596,7 @@ dev.off()
 # # after analysing the distributions and reading up on some of the genes, my three favourite genes are Siglec6, Siglec7, and MARCO. Lets plot out the distribution solely for these three genes
 # favGenes=c("SIGLEC6","SIGLEC7","MARCO")
 # #"RSAD2","AIM2","TNFSF4")
-# favEnsembl=de.common.MPI[,1][sapply(1:length(favGenes), function(x) grep(favGenes[x],de.common.MPI[,2]))]
+# favEnsembl=de.common.KOR[,1][sapply(1:length(favGenes), function(x) grep(favGenes[x],de.common.KOR[,2]))]
 
 # # set up pvalue matrix
 # topGenes.pvalue=matrix(nrow=length(favEnsembl), ncol=ncol(voomNoNormDupEfit))
