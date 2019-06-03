@@ -1,8 +1,8 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-### Last edit: IGR 2019.05.07 
-### Cosmetic edits to upsetR plots while trying to decide on figure 4 for the paper. Colours match Heini's choices. 
+### Last edit: IGR 2019.06.03 
+### Changed MPI to KOR, Mappi to Korowai throughout - see line 81. Reran all figures; file names will differ between old and new versions but the contents should be identical. 
 
 ### 0. Load dependencies and functions and set input paths -------------------------- ###
 ### 1. Begin analyses and initial QC ---------------------------------------------------------------------------------- ###
@@ -26,7 +26,7 @@
 # Load dependencies:
 library(edgeR)
 library(plyr)
-library(NineteenEightyR)
+# library(NineteenEightyR)
 library(RColorBrewer)
 # library(biomaRt)
 # library(ggpubr)
@@ -58,13 +58,13 @@ if (file.exists(outputdir) == FALSE){
 }
 
 #Colour schemes:
-mappi <- wes_palette("Zissou1", 20, type = "continuous")[20]
+korowai <- wes_palette("Zissou1", 20, type = "continuous")[20]
 mentawai <- wes_palette("Zissou1", 20, type = "continuous")[1]
 sumba <- wes_palette("Zissou1", 20, type = "continuous")[11]
 
 smb_mtw <- wes_palette("Darjeeling1", 9, type = "continuous")[3]
-smb_mpi <- wes_palette("Darjeeling1", 9, type = "continuous")[7]
-mtw_mpi <- "darkorchid4"
+smb_kor <- wes_palette("Darjeeling1", 9, type = "continuous")[7]
+mtw_kor <- "darkorchid4"
 
 # Load log CPM matrix and y object:
 # lcpm
@@ -77,12 +77,13 @@ load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 ### 1. Begin analyses and initial QC ---------------------------------------------------------------------------------- ###
 ###########################################################################################################################
 
+# Rename Mappi to Korowai for downstream processing:
+yFilt$samples$Sampling.Site <- gsub("Mappi", "Korowai", yFilt$samples$Sampling.Site)
+
 # First, remove samples that have less than ten individuals per village
 table(yFilt$samples$Sampling.Site)
-    #    Anakalung    Bilarenge    Hupu Mada      Madobag        Mappi  Padira Tana 
-    #           20            1            5           17           21            3 
-    # Patiala Bawa        Rindi     Taileleu        Wunga   Wura Homba 
-    #            1            5           32           17            1 
+# Anakalung    Bilarenge    Hupu Mada      Korowai      Madobag  Padira Tana Patiala Bawa        Rindi     Taileleu        Wunga   Wura Homba 
+#       20            1            5           21           17            3            1            5           32           17            1 
 
 # remove Bilarenge, Hupu Mada, Padira Tana, Patiala Bawa, Rindi, and Wura Homba
 yVillage <- yFilt[,-grep("Bilarenge|Hupu Mada|Padira Tana|Patiala Bawa|Rindi|Wura Homba", yFilt$samples$Sampling.Site)]
@@ -96,7 +97,7 @@ colnames(design)=gsub("yVillage\\$samples\\$", "", colnames(design))
 colnames(design)=gsub("Sampling.Site", "", colnames(design))
 
 # set up contrast matrix
-contr.matrix <- makeContrasts(ANKvsMDB=Anakalung-Madobag, ANKvsMPI=Anakalung-Mappi, ANKvsTLL=Anakalung-Taileleu, ANKvsWNG=Anakalung-Wunga, MDBvsMPI=Madobag-Mappi, MDBvsTLL=Madobag-Taileleu, WNGvsMDB=Wunga-Madobag, TLLvsMPI=Taileleu-Mappi, WNGvsMPI=Wunga-Mappi, WNGvsTLL=Wunga-Taileleu, levels=colnames(design)) # Contrasts are ordered in the same order as the island ones, in case we want to look at directional effects
+contr.matrix <- makeContrasts(ANKvsMDB=Anakalung-Madobag, ANKvsKOR=Anakalung-Korowai, ANKvsTLL=Anakalung-Taileleu, ANKvsWNG=Anakalung-Wunga, MDBvsKOR=Madobag-Korowai, MDBvsTLL=Madobag-Taileleu, WNGvsMDB=Wunga-Madobag, TLLvsKOR=Taileleu-Korowai, WNGvsKOR=Wunga-Korowai, WNGvsTLL=Wunga-Taileleu, levels=colnames(design)) # Contrasts are ordered in the same order as the island ones, in case we want to look at directional effects
 
 yVillage <- calcNormFactors(yVillage, method="TMM")
 
@@ -111,7 +112,7 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
 
 # No normalisation between samples beyond tmm and voom:
     voomNoNorm <- voom(yVillage, design, normalize.method="none", plot=F) 
-    dupcorNone <- duplicateCorrelation(voomNoNorm, design, block=yVillage$samples$ind) # 22 non-convergences
+    dupcorNone <- duplicateCorrelation(voomNoNorm, design, block=yVillage$samples$ind) # 24 non-convergences
     # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
     dupcorNone$consensus # sanity check
     # [1] 0.6835068
@@ -151,7 +152,7 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
     }
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-#        ANKvsMDB ANKvsMPI ANKvsTLL ANKvsWNG MDBvsMPI MDBvsTLL WNGvsMDB TLLvsMPI WNGvsMPI WNGvsTLL
+#        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
 # Down         45     1078      407        1      405      137      482     2098     2039      647
 # NotSig    12852    10847    12106    12973    12026    12483    12034     8985     8907    11774
 # Up           78     1050      462        1      544      355      459     1892     2029      554
@@ -162,7 +163,7 @@ summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", 
 # Up           54      560      212        1      323       43      178      446      920      233
 
  summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-#        ANKvsMDB ANKvsMPI ANKvsTLL ANKvsWNG MDBvsMPI MDBvsTLL WNGvsMDB TLLvsMPI WNGvsMPI WNGvsTLL
+#        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
 # Down          4       47        9        0       52        2       17      121      125        8
 # NotSig    12947    12717    12911    12974    12800    12969    12906    12723    12546    12913
 # Up           24      211       55        1      123        4       52      131      304       54
@@ -193,19 +194,19 @@ dev.off()
     }
 
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-#        ANKvsMDB ANKvsMPI ANKvsTLL ANKvsWNG MDBvsMPI MDBvsTLL WNGvsMDB TLLvsMPI WNGvsMPI WNGvsTLL
+#        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
 # Down         67     1441      483        1      517      133      564     2161     2340      792
 # NotSig    12801    10212    11959    12973    11849    12511    11844     8905     8413    11435
 # Up          107     1322      533        1      609      331      567     1909     2222      748
  
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-#        ANKvsMDB ANKvsMPI ANKvsTLL ANKvsWNG MDBvsMPI MDBvsTLL WNGvsMDB TLLvsMPI WNGvsMPI WNGvsTLL
+#        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
 # Down         19      408       93        1      191       10      159      719      784      166
 # NotSig    12886    11911    12637    12973    12432    12924    12597    11789    11205    12494
 # Up           70      656      245        1      352       41      219      467      986      315
 
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-#        ANKvsMDB ANKvsMPI ANKvsTLL ANKvsWNG MDBvsMPI MDBvsTLL WNGvsMDB TLLvsMPI WNGvsMPI WNGvsTLL
+#        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
 # Down          3       58        9        1       61        2       21      119      142       13
 # NotSig    12946    12674    12902    12973    12782    12969    12881    12727    12501    12891
 # Up           26      243       64        1      132        4       73      129      332       71
@@ -222,21 +223,21 @@ for (i in 1:10){
 
 # [1] "Spearman correlation between methods in ANKvsMDB:"
 # [1] 0.9723409
-# [1] "Spearman correlation between methods in ANKvsMPI:"
+# [1] "Spearman correlation between methods in ANKvsKOR:"
 # [1] 0.9721176
 # [1] "Spearman correlation between methods in ANKvsTLL:"
 # [1] 0.9588628
 # [1] "Spearman correlation between methods in ANKvsWNG:"
 # [1] 0.9775763
-# [1] "Spearman correlation between methods in MDBvsMPI:"
+# [1] "Spearman correlation between methods in MDBvsKOR:"
 # [1] 0.9868406
 # [1] "Spearman correlation between methods in MDBvsTLL:"
 # [1] 0.9800908
 # [1] "Spearman correlation between methods in WNGvsMDB:"
 # [1] 0.9866404
-# [1] "Spearman correlation between methods in TLLvsMPI:"
+# [1] "Spearman correlation between methods in TLLvsKOR:"
 # [1] 0.984165
-# [1] "Spearman correlation between methods in WNGvsMPI:"
+# [1] "Spearman correlation between methods in WNGvsKOR:"
 # [1] 0.9826641
 # [1] "Spearman correlation between methods in WNGvsTLL:"
 # [1] 0.9747141
@@ -416,23 +417,23 @@ allTogether1 <- data.frame(byVillages1, byIslands1)
 ### Consider using the group.by approach if figures become too messy, but this is neat.
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_village_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsMPI", "WNGvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_mpi, 2), rep(mtw_mpi, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_island_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsMPI", "MTWvsMPI"), sets.bar.color = c(smb_mtw, smb_mpi, mtw_mpi), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=40,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_mpi, 3), rep(mtw_mpi, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=40,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
 ### And now, focusing only on each inter-island comparison:
@@ -443,48 +444,85 @@ pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_MTW.p
     upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
-### SMB-MPI
-pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_MPI.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMPI", "ANKvsMPI", "WNGvsMPI", "ANKvsWNG"), sets.bar.color = c(rep(smb_mpi, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+### SMB-KOR
+pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_KOR.pdf"), width=12)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "ANKvsWNG"), sets.bar.color = c(rep(smb_kor, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "ANKvsWNG"), sets.bar.color = c(rep(smb_kor, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "ANKvsWNG"), sets.bar.color = c(rep(smb_kor, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
 dev.off()
 
-###MTW-MPI
-pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_MTW_MPI.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsMPI", "MDBvsMPI", "TLLvsMPI", "MDBvsTLL"), sets.bar.color = c(rep(mtw_mpi, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+###MTW-KOR
+pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_MTW_KOR.pdf"), width=12)
+    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "MDBvsTLL"), sets.bar.color = c(rep(mtw_kor, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "MDBvsTLL"), sets.bar.color = c(rep(mtw_kor, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
+    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "MDBvsTLL"), sets.bar.color = c(rep(mtw_kor, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
 dev.off()
+
+
+# Making the final figure:
+pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_fc05_testers.pdf"), width=12)
+    # Sort by Frequency of set, only
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=10,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+
+    # Sort by number of intersects
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=10,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+
+    # Sort by number of intersects, decreasing = F - here the set number has to be higher, because 10 is useless
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=10,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
+
+
+    # Sort by number of intersects without the island level comparisons, out of curiosity (16 total comparisons, so show only that one).
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+
+    # Sort by both things without the island level comparisons, out of curiosity (16 total comparisons, so lose the 30)
+    # Dropped because for some reason it replicates some of the intersects
+    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+
+    # Sort by number of intersects without the island level comparisons, out of curiosity, decreasing = F
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
+
+    # Group by sets, no island-level:
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  group.by = "sets", cutoff=5, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+
+    # Sort by number of intersects and height of bars (decreasing doesn't work here, which makes it look terrible.)
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = c("degree", "freq"), keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+dev.off()
+
 
 
     ###################################################################################################
     ### IGR NOTE 2019.04.12 - I BELIEVE HEINI IS NOW MAKING THIS FIGURE, WILL REVISIT IT OTHERWISE. ###
     ###################################################################################################
 
-# # get DE genes in common with populations compared to Mappi, i.e., SMBvsMPI and MTWvsMPI (since we think this is an interesting island comparison)
-# allGenes <- merge(voomNoNormDupTopTableSMB.MTW, voomNoNormDupTopTableSMB.MPI, by.x="genes", by.y="genes", suffixes=c(".SMB.MTW", ".SMB.MPI"))
-# allGenes <- merge(allGenes, voomNoNormDupTopTableMTW.MPI, by.x="genes", by.y="genes")
-# names(allGenes)[13:19] <- paste0(names(allGenes)[13:19], ".MTW.MPI")
+# # get DE genes in common with populations compared to Korowai, i.e., SMBvsKOR and MTWvsKOR (since we think this is an interesting island comparison)
+# allGenes <- merge(voomNoNormDupTopTableSMB.MTW, voomNoNormDupTopTableSMB.KOR, by.x="genes", by.y="genes", suffixes=c(".SMB.MTW", ".SMB.KOR"))
+# allGenes <- merge(allGenes, voomNoNormDupTopTableMTW.KOR, by.x="genes", by.y="genes")
+# names(allGenes)[13:19] <- paste0(names(allGenes)[13:19], ".MTW.KOR")
 
 # deSummaryAll <- decideTests(voomNoNormDupEfit, p.value=0.01)
 # deSummary05 <- decideTests(voomNoNormDupEfit, p.value=0.01, lfc=0.5)
 # deSummary1 <- decideTests(voomNoNormDupEfit, p.value=0.01, lfc=1)
 
-# deCommonMPI = which(deSummaryAll[,2]!=0 & deSummaryAll[,3]!=0)
-# deCommonMPI05 = which(deSummary05[,2]!=0 & deSummary05[,3]!=0)
-# deCommonMPI1 = which(deSummary1[,2]!=0 & deSummary1[,3]!=0)
+# deCommonKOR = which(deSummaryAll[,2]!=0 & deSummaryAll[,3]!=0)
+# deCommonKOR05 = which(deSummary05[,2]!=0 & deSummary05[,3]!=0)
+# deCommonKOR1 = which(deSummary1[,2]!=0 & deSummary1[,3]!=0)
 
 # # get what these genes are doing and save them to a file
-# # commonGenes.MPI <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.MPI), filters="ensembl_gene_id")
-# # write.table(de.common.MPI, file=paste0(outputdir,"allCommonGenes_MPI_dupcor.txt"))
+# # commonGenes.KOR <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.KOR), filters="ensembl_gene_id")
+# # write.table(de.common.KOR, file=paste0(outputdir,"allCommonGenes_KOR_dupcor.txt"))
 # # # save the common gene names 
-# # de.common.MPI=voomNoNormDupEfit$genes[names(de.common.MPI),]
+# # de.common.KOR=voomNoNormDupEfit$genes[names(de.common.KOR),]
 
 # # now plot the common genes to see if they're being regulated in the same direction
-# pdf(paste0(edaoutput,"logFC_commonMPIgenes_dupCor.pdf"))
-#     plot(voomNoNormDupTopTableSMB.MPI[rownames(deCommonMPI), "logFC"], voomNoNormDupTopTableMTW.MPI[rownames(deCommonMPI), "logFC"], xlab="logFC SMBvsMPI", ylab="logFC MTWvsMPI", pch=20, main="Common DE Genes", xlim=c(-5,5), ylim=c(-6,6))
-#     # text(tt.SMBvsMPI[rownames(de.common.MPI),"logFC"], tt.MTWvsMPI[rownames(de.common.MPI),"logFC"], labels=tt.SMBvsMPI[rownames(de.common.MPI),"SYMBOL"], pos=3)
+# pdf(paste0(edaoutput,"logFC_commonKORgenes_dupCor.pdf"))
+#     plot(voomNoNormDupTopTableSMB.KOR[rownames(deCommonKOR), "logFC"], voomNoNormDupTopTableMTW.KOR[rownames(deCommonKOR), "logFC"], xlab="logFC SMBvsKOR", ylab="logFC MTWvsKOR", pch=20, main="Common DE Genes", xlim=c(-5,5), ylim=c(-6,6))
+#     # text(tt.SMBvsKOR[rownames(de.common.KOR),"logFC"], tt.MTWvsKOR[rownames(de.common.KOR),"logFC"], labels=tt.SMBvsKOR[rownames(de.common.KOR),"SYMBOL"], pos=3)
 #     abline(h=0,v=0, lty=2)
 # dev.off()
 
@@ -493,7 +531,7 @@ dev.off()
 ### 6. Looking at the top ranked genes ------------------------------------------------- ###
 ############################################################################################
 
-# Let's look at signal across some of the genes that are DE between WNG and MPI, and between SMB and MPI and ANK and MPI, to check what's going there with the villages
+# Let's look at signal across some of the genes that are DE between WNG and KOR, and between SMB and KOR and ANK and KOR, to check what's going there with the villages
 
 # Define plotting function:
 singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
@@ -506,8 +544,8 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
             geom_violin(trim=T) + 
             geom_boxplot(width=0.1, fill="white") + 
             geom_jitter(colour = "black", width = 0.2) +
-            scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
-            scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+            scale_fill_manual(values=c(sumba, mentawai, korowai, mentawai, sumba)) + 
+            scale_x_discrete(labels=c("Anakalung", "Madobag", "Korowai", "Taileleu", "Wunga")) +
             theme_bw() + 
             labs(title=paste0(singleVillageDF$genes[i], ": p = ", signif(singleVillageDF[i,6], 3), " ", comp1, ",\np = ", signif(singleVillageDF[i,12], 3), " ", comp2), y="log CPM", x="") + 
             theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
@@ -517,56 +555,56 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     }
 }
 
-# Sumba vs Mappi:
-    AnkMpi <- allDEresults[[2]]
-    WngMpi <- allDEresults[[9]]
+# Sumba vs Korowai:
+    AnkKor <- allDEresults[[2]]
+    WngKor <- allDEresults[[9]]
 
-    smbVillageMpi <- merge(AnkMpi, WngMpi, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
-    smbVillageMpi <- smbVillageMpi[order(smbVillageMpi$adj.P.Val.wng),]
+    smbVillageKor <- merge(AnkKor, WngKor, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
+    smbVillageKor <- smbVillageKor[order(smbVillageKor$adj.P.Val.wng),]
 
-    # cor(smbVillageMpi[,6], smbVillageMpi[,12], method="pearson")
+    # cor(smbVillageKor[,6], smbVillageKor[,12], method="pearson")
     # # [1] 0.5513258
-    # cor(smbVillageMpi[,6], smbVillageMpi[,12], method="spearman")
+    # cor(smbVillageKor[,6], smbVillageKor[,12], method="spearman")
     # # [1] 0.7113743
 
-    wngOnly <- smbVillageMpi[smbVillageMpi$adj.P.Val.wng <= 0.01 & smbVillageMpi$adj.P.Val.ank > 0.01,]
+    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01,]
     wngOnly <- wngOnly[order(wngOnly$adj.P.Val.wng),] # Too lazy to order inside function...
 
-    ankOnly <- smbVillageMpi[smbVillageMpi$adj.P.Val.ank <= 0.01 & smbVillageMpi$adj.P.Val.wng > 0.01,]
+    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01,]
     ankOnly <- ankOnly[order(ankOnly$adj.P.Val.ank),] # Too lazy to order inside function...
 
-    pdf(file=paste0(edaoutput, "wng_mpi_only_top_genes.pdf"))
-        singleVillageGenes(wngOnly, 30, "ANKvsMPI", "WNGvsMPI")
+    pdf(file=paste0(edaoutput, "wng_kor_only_top_genes.pdf"))
+        singleVillageGenes(wngOnly, 30, "ANKvsKOR", "WNGvsKOR")
     dev.off()
 
-    pdf(file=paste0(edaoutput, "ank_mpi_only_top_genes.pdf"))
-        singleVillageGenes(ankOnly, 30, "ANKvsMPI", "WNGvsMPI")
+    pdf(file=paste0(edaoutput, "ank_kor_only_top_genes.pdf"))
+        singleVillageGenes(ankOnly, 30, "ANKvsKOR", "WNGvsKOR")
     dev.off()
 
-# Mentawai Mappi:
-    tllMpi <- allDEresults[[8]]
-    mdbMpi <- allDEresults[[5]]
+# Mentawai Korowai:
+    tllKor <- allDEresults[[8]]
+    mdbKor <- allDEresults[[5]]
 
-    mtwVillageMpi <- merge(tllMpi, mdbMpi, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
-    mtwVillageMpi <- mtwVillageMpi[order(mtwVillageMpi$adj.P.Val.mdb),]
+    mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
+    mtwVillageKor <- mtwVillageKor[order(mtwVillageKor$adj.P.Val.mdb),]
 
-    # cor(mtwVillageMpi[,6], mtwVillageMpi[,12], method="pearson")
+    # cor(mtwVillageKor[,6], mtwVillageKor[,12], method="pearson")
     # # [1] 0.5513258
-    # cor(mtwVillageMpi[,6], mtwVillageMpi[,12], method="spearman")
+    # cor(mtwVillageKor[,6], mtwVillageKor[,12], method="spearman")
     # # [1] 0.7113743
 
-    mdbOnly <- mtwVillageMpi[mtwVillageMpi$adj.P.Val.mdb <= 0.01 & mtwVillageMpi$adj.P.Val.tll > 0.01,]
+    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01,]
     mdbOnly <- mdbOnly[order(mdbOnly$adj.P.Val.mdb),] # Too lazy to order inside function...
 
-    tllOnly <- mtwVillageMpi[mtwVillageMpi$adj.P.Val.tll <= 0.01 & mtwVillageMpi$adj.P.Val.mdb > 0.01,]
+    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01,]
     tllOnly <- tllOnly[order(tllOnly$adj.P.Val.tll),] # Too lazy to order inside function...
 
-    pdf(file=paste0(edaoutput, "mdb_mpi_only_top_genes.pdf"))
-        singleVillageGenes(mdbOnly, 30, "TLLvsMPI", "MDBvsMPI")
+    pdf(file=paste0(edaoutput, "mdb_kor_only_top_genes.pdf"))
+        singleVillageGenes(mdbOnly, 30, "TLLvsKOR", "MDBvsKOR")
     dev.off()
 
-    pdf(file=paste0(edaoutput, "tll_mpi_only_top_genes.pdf"))
-        singleVillageGenes(tllOnly, 30, "TLLvsMPI", "MDBvsMPI")
+    pdf(file=paste0(edaoutput, "tll_kor_only_top_genes.pdf"))
+        singleVillageGenes(tllOnly, 30, "TLLvsKOR", "MDBvsKOR")
     dev.off()
 
 
@@ -599,8 +637,8 @@ pdf(paste0(edaoutput, "cov_by_village.pdf"))
     ggplot(dataForPlotting, aes(x=variable, y=value, fill=variable)) +
         geom_violin(trim=T) + 
         geom_boxplot(width=0.05, fill="white") + 
-        scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
-        scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+        scale_fill_manual(values=c(sumba, mentawai, korowai, mentawai, sumba)) + 
+        scale_x_discrete(labels=c("Anakalung", "Madobag", "Korowai", "Taileleu", "Wunga")) +
         theme_bw() + 
         labs(title="", y="CoV CPM", x="") + 
         theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
@@ -625,14 +663,14 @@ for (i in 1:5){
 
 # They are different, as they were of course going to be, but not THAT different, surely, to explain the difference in power? Also from the plot the effect size does not go in the direction you would expect. The things that are different are not different 
 signif(tTestOut, digits=3)
-#           Anakalung  Madobag    Mappi Taileleu    Wunga
+#           Anakalung  Madobag    Korowai Taileleu    Wunga
 # Anakalung         0 2.73e-08 1.26e-02 2.66e-01 4.36e-04
 # Madobag           0 0.00e+00 2.29e-16 9.70e-06 4.30e-02
-# Mappi             0 0.00e+00 0.00e+00 2.89e-04 1.07e-09
+# Korowai             0 0.00e+00 0.00e+00 2.89e-04 1.07e-09
 # Taileleu          0 0.00e+00 0.00e+00 0.00e+00 1.66e-02
 # Wunga             0 0.00e+00 0.00e+00 0.00e+00 0.00e+00
 
-# Similar plots of pairwise correlations within each village, to see if anything is as noisy as Mappi. But then how do you reconcile the CoV observations?
+# Similar plots of pairwise correlations within each village, to see if anything is as noisy as Korowai. But then how do you reconcile the CoV observations?
 
 
 # And then, for a bit of overkill, plots of CoVs across all villages subset by genes that are only DE in a single village.
@@ -646,8 +684,8 @@ plotCoV <- function(inputDF, comparison){
     covOverkill <- ggplot(dataForPlotting, aes(x=variable, y=value, fill=variable)) +
             geom_violin(trim=T) + 
             geom_boxplot(width=0.05, fill="white") + 
-            scale_fill_manual(values=c(sumba, mentawai, mappi, mentawai, sumba)) + 
-            scale_x_discrete(labels=c("Anakalung", "Madobag", "Mappi", "Taileleu", "Wunga")) +
+            scale_fill_manual(values=c(sumba, mentawai, korowai, mentawai, sumba)) + 
+            scale_x_discrete(labels=c("Anakalung", "Madobag", "Korowai", "Taileleu", "Wunga")) +
             theme_bw() + 
             labs(title=paste0("DE ", comparison, " (", nrow(inputDF), " genes)"), y="CoV CPM", x="") + 
             theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
@@ -656,10 +694,10 @@ plotCoV <- function(inputDF, comparison){
 }
 
 pdf(paste0(edaoutput, "cov_by_single_village_DE.pdf"))
-    plotCoV(perVillageCoVDF[wngOnly$genes,], "WNGvsMPI not ANKvsMPI")
-    plotCoV(perVillageCoVDF[ankOnly$genes,], "ANKvsMPI not WNGvsMPI")
-    plotCoV(perVillageCoVDF[mdbOnly$genes,], "MDBvsMPI not TLLvsMPI")
-    plotCoV(perVillageCoVDF[tllOnly$genes,], "TLLvsMPI not MDBvsMPI")
+    plotCoV(perVillageCoVDF[wngOnly$genes,], "WNGvsKOR not ANKvsKOR")
+    plotCoV(perVillageCoVDF[ankOnly$genes,], "ANKvsKOR not WNGvsKOR")
+    plotCoV(perVillageCoVDF[mdbOnly$genes,], "MDBvsKOR not TLLvsKOR")
+    plotCoV(perVillageCoVDF[tllOnly$genes,], "TLLvsKOR not MDBvsKOR")
 dev.off()
 
 
@@ -727,14 +765,14 @@ plotWithinSite <- function(data.to.test, metadata, method){
     mtwBatchRep <- vector()
     mdbBatchRep <- vector()
     tllBatchRep <- vector()
-    mpiBatchRep <- vector()
+    korBatchRep <- vector()
     smbNoBatchRep <- vector()
     wngNoBatchRep <- vector()
     ankNoBatchRep <- vector()
     mtwNoBatchRep <- vector()
     mdbNoBatchRep <- vector()
     tllNoBatchRep <- vector()
-    mpiNoBatchRep <- vector()
+    korNoBatchRep <- vector()
 
     for (i in 1:ncol(data.to.test)){
         for (j in 1:ncol(data.to.test)){
@@ -755,8 +793,8 @@ plotWithinSite <- function(data.to.test, metadata, method){
                         } else if(metadata$Sampling.Site[i] == "Taileleu"){
                             tllBatchRep <- c(tllBatchRep, corMat[i,j])
                             mtwBatchRep <- c(mtwBatchRep, corMat[i,j])
-                        } else if(metadata$Sampling.Site[i] == "Mappi"){
-                            mpiBatchRep <- c(mpiBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Korowai"){
+                            korBatchRep <- c(korBatchRep, corMat[i,j])
                         }
                     }
                 } else if (metadata$batch[i] != metadata$batch[j]){
@@ -773,8 +811,8 @@ plotWithinSite <- function(data.to.test, metadata, method){
                         } else if(metadata$Sampling.Site[i] == "Taileleu"){
                             tllNoBatchRep <- c(tllNoBatchRep, corMat[i,j])
                             mtwNoBatchRep <- c(mtwNoBatchRep, corMat[i,j])
-                        } else if(metadata$Sampling.Site[i] == "Mappi"){
-                            mpiNoBatchRep <- c(mpiNoBatchRep, corMat[i,j])
+                        } else if(metadata$Sampling.Site[i] == "Korowai"){
+                            korNoBatchRep <- c(korNoBatchRep, corMat[i,j])
                         }
                     }
                 }
@@ -782,16 +820,16 @@ plotWithinSite <- function(data.to.test, metadata, method){
         }
     }
 
-    forPlot <- melt(list(ankBatchRep, ankNoBatchRep, wngBatchRep, wngNoBatchRep, mdbBatchRep, mdbNoBatchRep, tllBatchRep, tllNoBatchRep, mpiBatchRep, mpiNoBatchRep))
+    forPlot <- melt(list(ankBatchRep, ankNoBatchRep, wngBatchRep, wngNoBatchRep, mdbBatchRep, mdbNoBatchRep, tllBatchRep, tllNoBatchRep, korBatchRep, korNoBatchRep))
     forPlot$L1 <- as.factor(forPlot$L1)
 
-    forPlotIsland <- melt(list(smbBatchRep, mtwBatchRep, mpiBatchRep, smbNoBatchRep, mtwNoBatchRep, mpiNoBatchRep))
+    forPlotIsland <- melt(list(smbBatchRep, mtwBatchRep, korBatchRep, smbNoBatchRep, mtwNoBatchRep, korNoBatchRep))
     forPlotIsland$L1 <- as.factor(forPlotIsland$L1)
 
     byVillagePlot <- ggplot(forPlot, aes(x=L1, y=value, fill=L1)) +
         geom_violin(trim=T) + 
         geom_boxplot(width=0.05, fill="white") + 
-        scale_x_discrete(labels=c("ANK within batch", "ANK bw batch", "WNG within batch", "WNG bw batch", "MDB within batch", "MDB bw batch", "TLL within batch", "TLL bw batch", "MPI within batch", "MPI bw batch")) +
+        scale_x_discrete(labels=c("ANK within batch", "ANK bw batch", "WNG within batch", "WNG bw batch", "MDB within batch", "MDB bw batch", "TLL within batch", "TLL bw batch", "KOR within batch", "KOR bw batch")) +
         theme_bw() + 
         labs(title="", y=paste0(method, "pairwise correlation"), x="") + 
         theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
@@ -800,7 +838,7 @@ plotWithinSite <- function(data.to.test, metadata, method){
     byIslandPlot <- ggplot(forPlotIsland, aes(x=L1, y=value, fill=L1)) +
         geom_violin(trim=T) + 
         geom_boxplot(width=0.05, fill="white") + 
-        scale_x_discrete(labels=c("SMB within batch", "MTW within batch", "MPI within batch", "SMB bw batch", "MTW bw batch", "MPI bw batch")) +
+        scale_x_discrete(labels=c("SMB within batch", "MTW within batch", "KOR within batch", "SMB bw batch", "MTW bw batch", "KOR bw batch")) +
         theme_bw() + 
         labs(title="", y=paste0(method, " pairwise correlation"), x="") + 
         theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
