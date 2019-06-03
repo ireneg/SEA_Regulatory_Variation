@@ -35,7 +35,7 @@ library(viridis)
 library(circlize)
 library(ComplexHeatmap)
 library(VennDiagram)
-
+library(wesanderson)
 
 # Set paths:
 inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
