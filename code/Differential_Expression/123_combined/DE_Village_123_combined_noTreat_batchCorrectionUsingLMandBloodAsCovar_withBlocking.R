@@ -417,15 +417,15 @@ allTogether1 <- data.frame(byVillages1, byIslands1)
 ### Consider using the group.by approach if figures become too messy, but this is neat.
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_village_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
 dev.off()
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_island_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
+    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
 dev.off()
 
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs.pdf"), width=12)
@@ -462,27 +462,22 @@ dev.off()
 # Making the final figure:
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_fc05_testers.pdf"), width=12)
     # Sort by Frequency of set, only
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=10,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
     upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
     upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
 
     # Sort by number of intersects
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=10,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
     upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
     upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
 
-    # Sort by number of intersects, decreasing = F - here the set number has to be higher, because 10 is useless
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=10,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
+    # Sort by number of intersects, decreasing = F - here the set number has to be higher, because 10 and 20 are useless
     upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
 
-
     # Sort by number of intersects without the island level comparisons, out of curiosity (16 total comparisons, so show only that one).
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) # This one is my fav so far, but it could just as well be a Venn diagram
 
-    # Sort by both things without the island level comparisons, out of curiosity (16 total comparisons, so lose the 30)
-    # Dropped because for some reason it replicates some of the intersects
-    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    # Sort by number of intersects without the island level comparisons, out of curiosity, include all pairwise comparisons
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) 
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
 
     # Sort by number of intersects without the island level comparisons, out of curiosity, decreasing = F
     upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
@@ -494,6 +489,35 @@ pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_fc05_testers.pdf
     upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = c("degree", "freq"), keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
 dev.off()
 
+
+# And now let's give up and make a four way Venn diagram instead:
+
+# First the function:
+make.venn.quad <- function(geneset1, geneset2, geneset3, geneset4, prefix, geneset1.label, geneset2.label, geneset3.label, geneset4.label, universe){
+    universe$g1 <- universe$genes %in% geneset1
+    universe$g2 <- universe$genes %in% geneset2
+    universe$g3 <- universe$genes %in% geneset3
+    universe$g4 <- universe$genes %in% geneset4
+    pdf(file=paste(prefix, ".pdf", sep=""), width=7, height=7)
+    venn.placeholder <- draw.quad.venn(length(geneset1), length(geneset2), length(geneset3), length(geneset4), 
+        dim(universe[universe$g1 == T & universe$g2 == T,])[1], dim(universe[universe$g1 == T & universe$g3 == T,])[1], dim(universe[universe$g1 == T & universe$g4 == T,])[1], 
+        dim(universe[universe$g2 == T & universe$g3 == T,])[1], dim(universe[universe$g2 == T & universe$g4 == T,])[1], dim(universe[universe$g3 == T & universe$g4 == T,])[1], 
+        dim(universe[universe$g1 == T & universe$g2 == T & universe$g3 == T,])[1], dim(universe[universe$g1 == T & universe$g2 == T & universe$g4 == T,])[1], dim(universe[universe$g1 == T & universe$g3 == T & universe$g4 == T,])[1], dim(universe[universe$g2 == T & universe$g3 == T & universe$g4 == T,])[1], dim(universe[universe$g1 == T & universe$g2 == T & universe$g3 == T & universe$g4 == T,])[1], 
+        c(paste(geneset1.label, length(geneset1), sep="\n"), paste(geneset2.label, length(geneset2), sep="\n"), paste(geneset3.label, length(geneset3), sep="\n"), paste(geneset4.label, length(geneset4), sep="\n")), fill=c(smb_kor, smb_kor, mtw_kor, mtw_kor), alpha=c(0.4, 0.6, 0.4, 0.6),col=NA, euler.d=T)
+    complement.size <- dim(universe[universe$g1 == F & universe$g2 == F & universe$g3 == F & universe$g4 == F,][1])
+    grid.text(paste(complement.size, " not DM\nin any", sep=""), x=0.1, y=0.1)
+    dev.off()
+    print(paste("Genes in a: ", length(geneset1), sep=""))
+    print(paste("Genes in b: ", length(geneset2), sep=""))
+    print(paste("Genes in c: ", length(geneset3), sep=""))
+    print(paste("Genes in d: ", length(geneset4), sep=""))
+    print(paste("Common Genes: ", dim(universe[universe$g1 == T & universe$g2 == T & universe$g3 == T & universe$g4 == T,])[1], sep=""))
+}
+
+allTogether05Venn <- allTogether05
+allTogether05Venn$genes <- rownames(allTogether05)
+
+    make.venn.quad(allTogether05Venn[allTogether05Venn$ANKvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$WNGvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$MDBvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$TLLvsKOR != 0,]$genes, paste0(edaoutput, "venn_SamplingSiteComparison_all_levels_fc05_testers"), "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", allTogether05Venn)
 
 
     ###################################################################################################
