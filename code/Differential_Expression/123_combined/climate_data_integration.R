@@ -12,14 +12,14 @@
 
 
 
-
-
 ##########################################
 ### 0. Load dependencies and set paths ###
 ##########################################
 
 library(raster)
 library(WorldClimTiles)
+library(ggplot2)
+library(reshape)
 
 # Set output directory and create it if it does not exist:
 outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/spatial_testing/"
@@ -54,19 +54,20 @@ dev.off()
 ### The example in the post from emilypiche.github.io is perfect:
 indoVillages <- data.frame(site=c("Madobag", "Taileleu", "Anakalung", "Wunga", "Korowai"), long=c(99.0837, 99.1371, 119.575, 119.958, 139.673002), lat=c(-1.594, -1.7878, -9.588, -9.385, -5.480278))
 
-# downloading and processing the data from worlclim, a function:
-getWC <- function(dataset){
+# downloading and processing the data from worlclim, a function: 
+# only needs two tiles at 0.5 minute resolution, but that's ok. 
+getWC <- function(dataset, resolution){
     #pull data
-    r2EastIndonesia <- getData("worldclim", var=dataset, res=0.5, lat=-1, lon=120) 
-    r2WestIndonesia <- getData("worldclim", var=dataset, res=0.5, lat=-1, lon=99) 
+    r2EastIndonesia <- getData("worldclim", var=dataset, res=resolution, lat=-1, lon=120) 
+    r2WestIndonesia <- getData("worldclim", var=dataset, res=resolution, lat=-1, lon=99) 
 
     #configure points
     pointsEast <- SpatialPoints(indoVillages[,2:3], proj4string = r2EastIndonesia@crs)
     pointsWest <- SpatialPoints(indoVillages[,2:3], proj4string = r2WestIndonesia@crs)
 
     # extracting the values for our city coordinates
-    wcDataEast <- extract(r2EastIndonesiawcData, pointsEast) #only Korowai is in this tile
-    wcDataWest <- extract(r2WestIndonesiawcData, pointsWest) 
+    wcDataEast <- extract(r2EastIndonesia, pointsEast) #only Korowai is in this tile
+    wcDataWest <- extract(r2WestIndonesia, pointsWest) 
 
     wcDataNA <- which(is.na(wcDataWest))
     wcDataWest[wcDataNA] <- wcDataEast[wcDataNA]
@@ -76,40 +77,80 @@ getWC <- function(dataset){
     return(wcDataAll)
 }
 
-tMax <- getWC("tmax")
-tMin <- getWC("tmin")
-Prec <- getWC("prec")
+tMax <- getWC("tmax", 2.5) # in 10xdegree, need to divide
+tMin <- getWC("tmin", 2.5) # in 10xdegree, need to divide
+precip <- getWC("prec", 2.5) # in mm
+alt <- getWC("alt", 0.5) # more specific because I don't want to average out the altitude gains
 
-# # Tmax
-# r2EastIndonesiaTmax <- getData("worldclim", var="tmax", res=0.5, lat=-1, lon=120) 
-# r2WestIndonesiaTmax <- getData("worldclim", var="tmax", res=0.5, lat=-1, lon=99) 
+tMax[,4:15] <- tMax[,4:15]/10
+tMin[,4:15] <- tMin[,4:15]/10
 
-# # Tmin
-# r2EastIndonesiaTmin <- getData("worldclim", var="tmin", res=0.5, lat=-1, lon=120) 
-# r2WestIndonesiaTmin <- getData("worldclim", var="tmin", res=0.5, lat=-1, lon=99) 
+tMaxPlot <- melt(tMax[,c(1,4:15)])
+tMinPlot <- melt(tMin[,c(1,4:15)])
+precipPlot <- melt(precip[,c(1,4:15)])
+# altPlot <- melt(alt[,c(1,4:15)])
 
-# # Rainfall
-# r2EastIndonesiaRain <- getData("worldclim", var="prec", res=0.5, lat=-1, lon=120) 
-# r2WestIndonesiaRain <- getData("worldclim", var="prec", res=0.5, lat=-1, lon=99) 
+pdf(file="climate_vars.pdf")
+    tMaxgg <- ggplot(tMaxPlot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
+        geom_line() +
+        geom_point() +
+        theme_bw() +
+        scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+        labs(title="", y="mean monthly max temperature (1970-2015), 2.5 arc min res", x="")
 
-# # putting our coordinates into the format r::raster likes
-# pointsEast <- SpatialPoints(indoVillages[,2:3], proj4string = r2EastIndonesia@crs)
-# pointsWest <- SpatialPoints(indoVillages[,2:3], proj4string = r2WestIndonesia@crs)
+    tMingg <- ggplot(tMinPlot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
+        geom_line() +
+        geom_point() +
+        theme_bw() +
+        scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+        labs(title="", y="mean monthly min temperature (1970-2015), 2.5 arc min res", x="")
 
-# # extracting the values for our city coordinates
-# TmaxEast <- extract(r2EastIndonesiaTmax, pointsEast) #only Korowai is in this tile
-# TmaxWest <- extract(r2WestIndonesiaTmax, pointsWest) 
+    precipgg <- ggplot(precipPlot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
+        geom_line() +
+        geom_point() +
+        theme_bw() +
+        scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+        labs(title="", y="mean monthly precipitation (mm; 1970-2015), 2.5 arc min res", x="")
 
-# TminEast <- extract(r2EastIndonesiaTmin, pointsEast) #only Korowai is in this tile
-# TminWest <- extract(r2WestIndonesiaTmin, pointsWest) 
+    print(tMaxgg)
+    print(tMingg)
+    print(precipgg)
+dev.off()
 
-# RainEast <- extract(r2EastIndonesiaRain, pointsEast) #only Korowai is in this tile
-# RainWest <- extract(r2WestIndonesiaRain, pointsWest) 
+tMax05 <- getWC("tmax", 0.5) # in 10xdegree, need to divide
+tMin05 <- getWC("tmin", 0.5) # in 10xdegree, need to divide
+precip05 <- getWC("prec", 0.5)
 
-# # Combina data the two dataframes, since we needed different tiles above. Could bruteforce it, but let's be elegant here
-# RainNA <- which(is.na(RainWest))
-# RainWest[RainNA] <- RainEast[RainNA]
+tMax05[,4:15] <- tMax05[,4:15]/10
+tMin05[,4:15] <- tMin05[,4:15]/10
 
-# # creating a dataframe with our results
-# RainAll <- cbind.data.frame(indoVillages, RainWest)
-# print(Rain2)
+tMax05Plot <- melt(tMax05[,c(1,4:15)])
+tMin05Plot <- melt(tMin05[,c(1,4:15)])
+precip05Plot <- melt(precip05[,c(1,4:15)])
+
+pdf(file="climate_vars_0.5.pdf")
+    tMaxgg <- ggplot(tMax05Plot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
+        geom_line() +
+        geom_point() +
+        theme_bw() +
+        scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+        labs(title="", y="mean monthly max temperature (1970-2015), 0.5 arc min res", x="")
+
+    tMingg <- ggplot(tMin05Plot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
+        geom_line() +
+        geom_point() +
+        theme_bw() +
+        scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+        labs(title="", y="mean monthly min temperature (1970-2015), 0.5 arc min res", x="")
+
+    precipgg <- ggplot(precip05Plot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
+        geom_line() +
+        geom_point() +
+        theme_bw() +
+        scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+        labs(title="", y="mean monthly precipitation (mm; 1970-2015), 0.5 arc min res", x="")
+
+    print(tMaxgg)
+    print(tMingg)
+    print(precipgg)
+dev.off()
