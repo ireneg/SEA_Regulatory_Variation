@@ -20,15 +20,10 @@
 # Load dependencies:
 library(edgeR)
 library(plyr)
-library(NineteenEightyR)
 library(RColorBrewer)
-# library(biomaRt)
-# library(ggpubr)
 library(ggplot2)
 library(ggsignif)
-# library(pheatmap)
 library(viridis)
-# library(gplots)
 library(circlize)
 library(ComplexHeatmap)
 library(VennDiagram)
@@ -173,9 +168,16 @@ yVillage5 <- yVillage[,-grep("Padira Tana", yVillage$samples$Sampling.Site)]
 yVillage5$samples <- droplevels(yVillage5$samples) # drop unused levels
 
 # Now randomly grab 5 from each population... 
-set.seed(110584)
+# Seeds in the order I tried them:
+# set.seed(110584) # ANK27 duplicate, no good
+# set.seed(840511) # no duplicates, but wacky batching - although is it better to simply subsample from within batch 1?
+# set.seed(0511) # WNG21 duplicate
+# set.seed(1105) # this one finally gives us one without duplicate samples in there... and very limited DE. 
+set.seed(123456) # also no duplicate samples, but it looks very different from the one above, so hard to draw conclusions. Would have to systematically subsample 1000 times or similar. 
 toKeep <- by(yVillage5$samples, yVillage5$samples$Sampling.Site, function(x) sample(x$samples, 5, replace=F))
 yVillage5 <- yVillage5[,grepl(paste(unlist(toKeep), collapse= '|'), yVillage5$samples$samples)]
+
+# write.table(yVillage5$samples$samples, file="subset_individuals.txt", col.names=F, row.names=F, quote=F, sep="\t", eol="\n") # For Heini
 
 # Set up design matrix
 design5 <- model.matrix(~0 + yVillage5$samples$Sampling.Site + yVillage5$samples$Age + yVillage5$samples$batch + yVillage5$samples$RIN + yVillage5$samples$CD8T + yVillage5$samples$CD4T + yVillage5$samples$NK + yVillage5$samples$Bcell + yVillage5$samples$Mono + yVillage5$samples$Gran)
