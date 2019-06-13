@@ -26,15 +26,10 @@
 # Load dependencies:
 library(edgeR)
 library(plyr)
-# library(NineteenEightyR)
 library(RColorBrewer)
-# library(biomaRt)
-# library(ggpubr)
 library(ggplot2)
 library(ggsignif)
-# library(pheatmap)
 library(viridis)
-# library(gplots)
 library(circlize)
 library(ComplexHeatmap)
 library(VennDiagram)
@@ -42,6 +37,7 @@ library(UpSetR)
 library(matrixStats)
 library(reshape)
 library(wesanderson)
+#library(GenomicRanges)
 
 
 # Set paths:
@@ -491,65 +487,7 @@ dev.off()
 
 
 # And now let's give up and make a four way Venn diagram instead:
-
-# First the function:
-make.venn.quad <- function(geneset1, geneset2, geneset3, geneset4, prefix, geneset1.label, geneset2.label, geneset3.label, geneset4.label, universe){
-    universe$g1 <- universe$genes %in% geneset1
-    universe$g2 <- universe$genes %in% geneset2
-    universe$g3 <- universe$genes %in% geneset3
-    universe$g4 <- universe$genes %in% geneset4
-    pdf(file=paste(prefix, ".pdf", sep=""), width=7, height=7)
-    venn.placeholder <- draw.quad.venn(length(geneset1), length(geneset2), length(geneset3), length(geneset4), 
-        dim(universe[universe$g1 == T & universe$g2 == T,])[1], dim(universe[universe$g1 == T & universe$g3 == T,])[1], dim(universe[universe$g1 == T & universe$g4 == T,])[1], 
-        dim(universe[universe$g2 == T & universe$g3 == T,])[1], dim(universe[universe$g2 == T & universe$g4 == T,])[1], dim(universe[universe$g3 == T & universe$g4 == T,])[1], 
-        dim(universe[universe$g1 == T & universe$g2 == T & universe$g3 == T,])[1], dim(universe[universe$g1 == T & universe$g2 == T & universe$g4 == T,])[1], dim(universe[universe$g1 == T & universe$g3 == T & universe$g4 == T,])[1], dim(universe[universe$g2 == T & universe$g3 == T & universe$g4 == T,])[1], dim(universe[universe$g1 == T & universe$g2 == T & universe$g3 == T & universe$g4 == T,])[1], 
-        c(paste(geneset1.label, length(geneset1), sep="\n"), paste(geneset2.label, length(geneset2), sep="\n"), paste(geneset3.label, length(geneset3), sep="\n"), paste(geneset4.label, length(geneset4), sep="\n")), fill=c(smb_kor, smb_kor, mtw_kor, mtw_kor), alpha=c(0.4, 0.6, 0.4, 0.6),col=NA, euler.d=T)
-    complement.size <- dim(universe[universe$g1 == F & universe$g2 == F & universe$g3 == F & universe$g4 == F,][1])
-    grid.text(paste(complement.size, " not DM\nin any", sep=""), x=0.1, y=0.1)
-    dev.off()
-    print(paste("Genes in a: ", length(geneset1), sep=""))
-    print(paste("Genes in b: ", length(geneset2), sep=""))
-    print(paste("Genes in c: ", length(geneset3), sep=""))
-    print(paste("Genes in d: ", length(geneset4), sep=""))
-    print(paste("Common Genes: ", dim(universe[universe$g1 == T & universe$g2 == T & universe$g3 == T & universe$g4 == T,])[1], sep=""))
-}
-
-allTogether05Venn <- allTogether05
-allTogether05Venn$genes <- rownames(allTogether05)
-
-    make.venn.quad(allTogether05Venn[allTogether05Venn$ANKvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$WNGvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$MDBvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$TLLvsKOR != 0,]$genes, paste0(edaoutput, "venn_SamplingSiteComparison_all_levels_fc05_testers"), "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", allTogether05Venn)
-
-
-    ###################################################################################################
-    ### IGR NOTE 2019.04.12 - I BELIEVE HEINI IS NOW MAKING THIS FIGURE, WILL REVISIT IT OTHERWISE. ###
-    ###################################################################################################
-
-# # get DE genes in common with populations compared to Korowai, i.e., SMBvsKOR and MTWvsKOR (since we think this is an interesting island comparison)
-# allGenes <- merge(voomNoNormDupTopTableSMB.MTW, voomNoNormDupTopTableSMB.KOR, by.x="genes", by.y="genes", suffixes=c(".SMB.MTW", ".SMB.KOR"))
-# allGenes <- merge(allGenes, voomNoNormDupTopTableMTW.KOR, by.x="genes", by.y="genes")
-# names(allGenes)[13:19] <- paste0(names(allGenes)[13:19], ".MTW.KOR")
-
-# deSummaryAll <- decideTests(voomNoNormDupEfit, p.value=0.01)
-# deSummary05 <- decideTests(voomNoNormDupEfit, p.value=0.01, lfc=0.5)
-# deSummary1 <- decideTests(voomNoNormDupEfit, p.value=0.01, lfc=1)
-
-# deCommonKOR = which(deSummaryAll[,2]!=0 & deSummaryAll[,3]!=0)
-# deCommonKOR05 = which(deSummary05[,2]!=0 & deSummary05[,3]!=0)
-# deCommonKOR1 = which(deSummary1[,2]!=0 & deSummary1[,3]!=0)
-
-# # get what these genes are doing and save them to a file
-# # commonGenes.KOR <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.KOR), filters="ensembl_gene_id")
-# # write.table(de.common.KOR, file=paste0(outputdir,"allCommonGenes_KOR_dupcor.txt"))
-# # # save the common gene names 
-# # de.common.KOR=voomNoNormDupEfit$genes[names(de.common.KOR),]
-
-# # now plot the common genes to see if they're being regulated in the same direction
-# pdf(paste0(edaoutput,"logFC_commonKORgenes_dupCor.pdf"))
-#     plot(voomNoNormDupTopTableSMB.KOR[rownames(deCommonKOR), "logFC"], voomNoNormDupTopTableMTW.KOR[rownames(deCommonKOR), "logFC"], xlab="logFC SMBvsKOR", ylab="logFC MTWvsKOR", pch=20, main="Common DE Genes", xlim=c(-5,5), ylim=c(-6,6))
-#     # text(tt.SMBvsKOR[rownames(de.common.KOR),"logFC"], tt.MTWvsKOR[rownames(de.common.KOR),"logFC"], labels=tt.SMBvsKOR[rownames(de.common.KOR),"SYMBOL"], pos=3)
-#     abline(h=0,v=0, lty=2)
-# dev.off()
-
+### UPDATE 2019.06.13: We hate Venn Diagrams. Dropped this section. See below for more replacements.
 
 ############################################################################################
 ### 6. Looking at the top ranked genes ------------------------------------------------- ###
@@ -630,6 +568,71 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     pdf(file=paste0(edaoutput, "tll_kor_only_top_genes.pdf"))
         singleVillageGenes(tllOnly, 30, "TLLvsKOR", "MDBvsKOR")
     dev.off()
+
+
+### Decided on phone call that we want to pull maybe top 100 genes or so showing DE between some villages but not others, so testing this out here now:
+# pull top 100 genes:
+
+
+        smbCPM <- voomNoNormDup$E[smbVillageKor$genes,]
+        singleGene <- data.frame(cpmSingle, yVillage$samples$Sampling.Site)
+
+smbVillageKor
+cpmGenes <- voomNoNormDup$E
+
+
+
+# Annotation columns - 1. DA p-value; 2. expressed (ternary, DE/expressed/no); 3. bivalently modified
+sigGenesGO <- sigGenes[rownames(termGenesCPM),]
+loessGO <- loess.base[rownames(termGenesCPM),]
+loessGO$DE <- loessGO$adj.P.Val <= 0.01
+bivalentTSS <- daTssRanges$V4 # All the bivalent genes
+
+# Annotation rows:
+
+# Defining clustering on the basis of expression levels - ternary variable:
+clusteringMatrix <- data.frame(rownames(termGenesCPM), factor(ifelse(is.na(loessGO$DE), "Not Expressed", ifelse(loessGO$DE == TRUE, "DE", "Expressed"))), rownames(termGenesCPM) %in% bivalentTSS, -log10(sigGenesGO$adj.P.Val))
+names(clusteringMatrix) <- c("genes", "expression", "bivalent", "pval")
+
+rowMatrix <- clusteringMatrix[,3:4]
+rowCols <- HeatmapAnnotation(rowMatrix, col = list(bivalent = c("TRUE" = "black", "FALSE" = "white"), pval=colorRamp2(c(min(rowMatrix$pval), max(rowMatrix$pval)), c("white", "steelblue4"))), which="row", annotation_legend_param = list(pval = list(color_bar="continuous", title="-log10 p")))
+
+# Swapping Ensembl out for gene symbols is far easier to do in the termGenes matrix than anywhere else, but best done right before plotting, just to be sure. 
+geneSymbols <- GOannotBM[,c(1,6)]
+geneSymbols <- unique(geneSymbols)
+geneSymbols <- geneSymbols[order(geneSymbols$ensembl_gene_id),]$hgnc_symbol
+
+termGenesCPM2 <- termGenesCPM
+rownames(termGenesCPM2) <- geneSymbols
+
+pdf(file="go_all_genes_accessibility_heatmap.pdf", height=12, width=6)
+    mainMap <- Heatmap(termGenesCPM2, col=magma(100), name="log2 CPM", column_names_side="top", row_names_gp = gpar(fontsize = 3), split = clusteringMatrix$expression, heatmap_legend_param = list(color_bar = "continuous"))
+    draw(rowCols + mainMap, row_dend_side = "left")
+dev.off()
+
+pdf(file="go_all_genes_accessibility_heatmap_unclustered.pdf", height=12, width=6)
+    mainMap <- Heatmap(termGenesCPM2, col=magma(100), name="log2 CPM", column_names_side="top", row_names_gp = gpar(fontsize = 3))
+    draw(rowCols + mainMap, row_dend_side = "left", , heatmap_legend_param = list(color_bar = "continuous"))
+dev.off()
+
+
+# And now we want a legible one of only the unexpressed genes, which we can accomplish by simply subsetting everything above:
+unexprsGenesCPM <- termGenesCPM[is.na(loessGO$DE),]
+unclusterMatrix <- clusteringMatrix[is.na(loessGO$DE),]
+unrowMatrix <- unclusterMatrix[,3:4]
+unrowCols <- HeatmapAnnotation(unrowMatrix, col = list(bivalent = c("TRUE" = "black", "FALSE" = "white"), pval=colorRamp2(c(min(unrowMatrix$pval), max(rowMatrix$pval)), c("white", "steelblue4"))), which="row", annotation_legend_param = list(pval = list(color_bar="continuous", title="-log10 p")))
+ungeneSymbols <- geneSymbols[is.na(loessGO$DE)]
+unexprsGenesCPM2 <- unexprsGenesCPM
+rownames(unexprsGenesCPM2) <- ungeneSymbols
+
+pdf(file="go_unexprs_genes_accessibility_heatmap.pdf", height=12, width=6)
+    unmainMap <- Heatmap(unexprsGenesCPM2, col=magma(100), name="log2 CPM", column_names_side="top", row_names_gp = gpar(fontsize = 8),, heatmap_legend_param = list(color_bar = "continuous"))
+    draw(unrowCols + unmainMap, row_dend_side = "left")
+dev.off()
+
+
+
+
 
 
 ##############################################################################################################
