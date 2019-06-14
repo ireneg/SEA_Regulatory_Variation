@@ -1,27 +1,27 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-### Last edit: IGR 2019.06.03 
-### Changed MPI to KOR, Mappi to Korowai throughout - see line 81. Reran all figures; file names will differ between old and new versions but the contents should be identical. 
+### Last edit: IGR 2019.06.14 
+### Heatmaps for figure 4
 
-### 0. Load dependencies and functions and set input paths -------------------------- ###
-### 1. Begin analyses and initial QC ---------------------------------------------------------------------------------- ###
-### 2. DE testing with duplicate correlation and blocking ----------------------------------------------------- ###
-### 3. DE testing without duplicate correlation ------------------------------------------------- ###
-### 4. Visual QC of duplicate correlation voom output after fitting linear models ---------------- ###
-### 5. Summary and visualisation of gene trends --------------------------------------------- ###
-### 6. Looking at the top ranked genes ------------------------------------------------- ###
-### 7. Quick check of variance by village, to see what drives the weird distribution of DE results. ------ ###
-### 8. Good old plot of pairwise correlations within each village and level etc etc... ------------------ ###
-
+### 0. Load dependencies and functions and set input paths ###
+### 1. Begin analyses and initial QC ###
+### 2. DE testing with duplicate correlation and blocking ###
+### 3. DE testing without duplicate correlation ###
+### 4. Visual QC of duplicate correlation voom output after fitting linear models ###
+### 5. Summary and visualisation of gene trends  ###
+### 6. UpsetR plots and merging island and village. ###
+### 7. Looking at the top ranked genes ###
+### 8. Heatmaps of top DE genes between some villages but not others. ###
+### 9. Quick check of variance by village, to see what drives the weird distribution of DE results. ###
+### 10. Good old plot of pairwise correlations within each village and level etc etc... ###
 
 ### TO DO:
 ### Fix everything that's commented out (just figures)
-### Triple check all numbers.
 
-#########################################################################################
-### 0. Load dependencies and functions and set input paths -------------------------- ###
-#########################################################################################
+##############################################################
+### 0. Load dependencies and functions and set input paths ###
+##############################################################
 
 # Load dependencies:
 library(edgeR)
@@ -37,6 +37,7 @@ library(UpSetR)
 library(matrixStats)
 library(reshape)
 library(wesanderson)
+library(dplyr)
 #library(GenomicRanges)
 
 
@@ -69,9 +70,9 @@ load(paste0(inputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
 load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 
 
-###########################################################################################################################
-### 1. Begin analyses and initial QC ---------------------------------------------------------------------------------- ###
-###########################################################################################################################
+########################################
+### 1. Begin analyses and initial QC ###
+########################################
 
 # Rename Mappi to Korowai for downstream processing:
 yFilt$samples$Sampling.Site <- gsub("Mappi", "Korowai", yFilt$samples$Sampling.Site)
@@ -97,9 +98,9 @@ contr.matrix <- makeContrasts(ANKvsMDB=Anakalung-Madobag, ANKvsKOR=Anakalung-Kor
 
 yVillage <- calcNormFactors(yVillage, method="TMM")
 
-###################################################################################################################
-### 2. DE testing with duplicate correlation and blocking ----------------------------------------------------- ###
-###################################################################################################################
+#############################################################
+### 2. DE testing with duplicate correlation and blocking ###
+#############################################################
 
 # create a new variable for blocking using sample IDs
 yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), "[_.]"), `[`, 1)
@@ -169,9 +170,9 @@ for (i in 1:10){
 }
 
 
-#####################################################################################################
-### 3. DE testing without duplicate correlation ------------------------------------------------- ###
-#####################################################################################################
+###################################################
+### 3. DE testing without duplicate correlation ###
+###################################################
 
 ### Only doing the nonorm one, because why bother with the others?
     voomNoNormVfit <- lmFit(voomNoNorm, design)
@@ -240,9 +241,9 @@ for (i in 1:10){
 
 
 
-######################################################################################################
-### 4. Visual QC of duplicate correlation voom output after fitting linear models ---------------- ###
-######################################################################################################
+#####################################################################################
+### 4. Visual QC of duplicate correlation voom output after fitting linear models ###
+#####################################################################################
 
 # check to see p-value distribution is normal
 pdf(paste0(edaoutput,"PvalueDist_NotAdjusted_dupCor.village.pdf"), height=15, width=10)
@@ -285,9 +286,9 @@ dev.off()
                                             #     }
                                             # dev.off()
 
-#################################################################################################
-### 5. Summary and visualisation of gene trends --------------------------------------------- ###
-#################################################################################################
+####################################################
+### 5. Summary and visualisation of gene trends. ###
+####################################################
 
 # plot log2 fold change between islands
 pdf(paste0(edaoutput,"log2FC_VillageComparisons_pval01_dupCor.village.pdf"))
@@ -317,75 +318,13 @@ dev.off()
 
 # We can also look at the top ten DE genes with a heatmap of logCPM values for the top 100 genes. Each gene (or row) is scaled so that mean expression is zero and the standard deviation is one (we're using 'E' from the voom object which is a numeric matrix of normalized expression values on the log2 scale). Samples with relatively high expression of a given gene are marked in red and samples with relatively low expression are marked in blue. Lighter shades and white represent genes with intermediate expression levels. Samples and genes are reordered by the method of hierarchical clustering
 
-#######################################################################################
-### IGR NOTE 2019.04.12 - THIS TO BE REPLACED WITH A CLEANER CALL TO COMPLEXHEATMAP ###
-#######################################################################################
+#######################################################
+### 6. UpsetR plots and merging island and village. ###
+#######################################################
 
-
-                    # first, make a heatmap of all top genes in one pdf
-
-                    # reset ensemble row names to gene symbols
-                    # rownames(vDup$E)=vDup$genes$SYMBOL
-
-                    # # set up annotation
-                    # col_fun = colorRamp2(c(-4, 0, 4), c("blue", "white", "red"))
-
-                    # df1=data.frame(island = as.character(Island))
-                    # df2=data.frame(batch = as.numeric(batch))
-                    # ha1 = HeatmapAnnotation(df = df1, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3)))
-
-                    # pdf(paste0(outputdir,"HeatmapAllPops_dupCor.pdf"), height=15, width=15)
-                    # grid.newpage()
-                    # pushViewport(viewport(layout = grid.layout(nr = 2, nc = 2)))
-                    # # set up layout row position
-                    # layout.row=c(1,1,2)
-                    # # set up column position
-                    # layout.col=c(1,2,1)
-
-                    # for (i in 1:ncol(voomNoNormDupEfit)){
-                    #     topTable <- topTable(voomNoNormDupEfit, coef=i, p.value=0.01, lfc=1, n=Inf, sort.by="p")
-                    #     index <- which(voomNoNormDupEfit$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
-                    #     pushViewport(viewport(layout.pos.row = layout.row[i], layout.pos.col = layout.col[i]))
-                    #     draw(Heatmap(t(scale(t(vDup$E[index,]))), col=col_fun, column_title = colnames(voomNoNormDupEfit)[i], top_annotation = ha1, show_row_names = T, show_heatmap_legend = F, show_column_names = F, name = "Z-Score"),show_annotation_legend = FALSE,newpage=F)
-                    #     upViewport()
-
-                    # }
-
-                    # lgd = Legend(at = c(-4,0,4), title = "Row Z-Score", col_fun = col_fun, grid_height = unit(1, "cm"), grid_width = unit(10, "mm"))
-                    # lgd2 = Legend(at = c(1,2,3), legend_gp = gpar(fill = 1:3), labels=c("Mentawai", "Sumba","West Papua"),title = "Island", grid_height = unit(1, "cm"), grid_width = unit(10, "mm"))
-                    # pd = packLegend(lgd, lgd2, direction = "horizontal")
-
-                    # pushViewport(viewport(layout.pos.row = 2, layout.pos.col = 2))
-                    # grid.draw(pd)
-                    # upViewport()
-                    # dev.off()
-
-# # We can also make individual pdfs of the top genes
-# island1 <- c("Sumba","Mentawai","West Papua")
-# island2 <- c("Sumba","Mentawai","West Papua")
-
-# counter <- 0
-
-# for (i1 in island1){
-#     island2=island2[-1]
-#     for (i2 in island2){
-#         counter=counter+1
-#         topTable <- topTable(voomNoNormDupEfit, coef=counter, p.value=0.01, lfc=1, n=Inf, sort.by="p")
-#         index <- which(vDup$genes$ENSEMBL %in% topTable$ENSEMBL[1:10])
-#         df=data.frame(island = as.character(Island[grep(paste(i1,i2,sep="|"), Island)]))
-#         ha =  HeatmapAnnotation(df = df, col = list(island = c("Mentawai" =  1, "Sumba" = 2, "West Papua" = 3)))
-#         pdf(paste0(outputdir,"HeatmapTopeGenes_",i1,"_vs_",i2,"_dupCor.pdf"), height=10, width=15)
-#         draw(Heatmap(t(scale(t(vDup$E[index,])))[,grep(paste(i1,i2,sep="|"), Island)], col=col_fun, column_title = colnames(voomNoNormDupEfit)[counter], top_annotation = ha, show_row_names = T, show_heatmap_legend = T, show_column_names = F, name = "Z-Score"),show_annotation_legend = TRUE,newpage=F)
-#         dev.off()
-#     }
-# }
 
 # Bring in the by Island tests:
-# First some temporary renaming so things don't become messed up:
-
-#    load(voomNoNormDupEfit, file=paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
-
-
+# First some temporary renaming so things don't become messed up
 villageVoomNoNormDupEfit <- voomNoNormDupEfit
 rm(voomNoNormDupEfit)
 load(paste0(outputdir, "voomNoNorm.tmm.filtered.dup_corrected.Efit_object.Rda"))
@@ -410,88 +349,47 @@ allTogether05 <- data.frame(byVillages05, byIslands05)
 allTogether1 <- data.frame(byVillages1, byIslands1)
 
 # Look at which genes are in common using UpsetR
+# IGR 2019.06.14: Cleaned most of these plots out, they were just cluttering the script. Check repo for past versions.
 ### Consider using the group.by approach if figures become too messy, but this is neat.
-
-pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_village_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(byVillages)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-    upset(as.data.frame(abs(byVillages05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-    upset(as.data.frame(abs(byVillages1)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-dev.off()
-
-pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_by_island_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "SMBvsKOR", "MTWvsKOR"), sets.bar.color = c(smb_mtw, smb_kor, mtw_kor), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-dev.off()
-
-pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=40,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), rep(smb_kor, 3), rep(mtw_kor, 3), sumba, mentawai), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-dev.off()
-
-### And now, focusing only on each inter-island comparison:
-### SMB-MTW
-pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_MTW.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsMTW", "ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsWNG", "MDBvsTLL"), sets.bar.color = c(rep(smb_mtw,5), sumba, mentawai), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-dev.off()
-
-### SMB-KOR
-pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_SMB_KOR.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "ANKvsWNG"), sets.bar.color = c(rep(smb_kor, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "ANKvsWNG"), sets.bar.color = c(rep(smb_kor, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-    upset(as.data.frame(abs(allTogether1)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "ANKvsWNG"), sets.bar.color = c(rep(smb_kor, 3), sumba), nintersects=50,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2)
-dev.off()
-
-###MTW-KOR
-pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_allfcs_MTW_KOR.pdf"), width=12)
-    upset(as.data.frame(abs(allTogether)), sets = c("MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "MDBvsTLL"), sets.bar.color = c(rep(mtw_kor, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "MDBvsTLL"), sets.bar.color = c(rep(mtw_kor, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
-    upset(as.data.frame(abs(allTogether1)), sets = c("MTWvsKOR", "MDBvsKOR", "TLLvsKOR", "MDBvsTLL"), sets.bar.color = c(rep(mtw_kor, 3), mentawai), nintersects=100,  order.by = "freq", keep.order=T)
-dev.off()
 
 
 # Making the final figure:
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_fc05_testers.pdf"), width=12)
     # Sort by Frequency of set, only
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
 
-    # Sort by number of intersects
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    # # Sort by number of intersects
+    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
 
-    # Sort by number of intersects, decreasing = F - here the set number has to be higher, because 10 and 20 are useless
-    upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
+    # # Sort by number of intersects, decreasing = F - here the set number has to be higher, because 10 and 20 are useless
+    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
 
-    # Sort by number of intersects without the island level comparisons, out of curiosity (16 total comparisons, so show only that one).
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) # This one is my fav so far, but it could just as well be a Venn diagram
+    # # Sort by number of intersects without the island level comparisons, out of curiosity (16 total comparisons, so show only that one).
+    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) # This one is my fav so far, but it could just as well be a Venn diagram
 
     # Sort by number of intersects without the island level comparisons, out of curiosity, include all pairwise comparisons
     upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) 
     upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
 
-    # Sort by number of intersects without the island level comparisons, out of curiosity, decreasing = F
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
+    # # Sort by number of intersects without the island level comparisons, out of curiosity, decreasing = F
+    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
 
-    # Group by sets, no island-level:
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  group.by = "sets", cutoff=5, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+    # # Group by sets, no island-level:
+    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  group.by = "sets", cutoff=5, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
 
-    # Sort by number of intersects and height of bars (decreasing doesn't work here, which makes it look terrible.)
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = c("degree", "freq"), keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+    # # Sort by number of intersects and height of bars (decreasing doesn't work here, which makes it look terrible.)
+    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = c("degree", "freq"), keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
 dev.off()
 
 
 # And now let's give up and make a four way Venn diagram instead:
 ### UPDATE 2019.06.13: We hate Venn Diagrams. Dropped this section. See below for more replacements.
 
-############################################################################################
-### 6. Looking at the top ranked genes ------------------------------------------------- ###
-############################################################################################
+##########################################
+### 7. Looking at the top ranked genes ###
+##########################################
 
 # Let's look at signal across some of the genes that are DE between WNG and KOR, and between SMB and KOR and ANK and KOR, to check what's going there with the villages
 
@@ -518,16 +416,11 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
 }
 
 # Sumba vs Korowai:
-    AnkKor <- allDEresults[[2]]
-    WngKor <- allDEresults[[9]]
+    ankKor <- allDEresults[[2]]
+    wngKor <- allDEresults[[9]]
 
-    smbVillageKor <- merge(AnkKor, WngKor, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
+    smbVillageKor <- merge(ankKor, wngKor, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
     smbVillageKor <- smbVillageKor[order(smbVillageKor$adj.P.Val.wng),]
-
-    # cor(smbVillageKor[,6], smbVillageKor[,12], method="pearson")
-    # # [1] 0.5513258
-    # cor(smbVillageKor[,6], smbVillageKor[,12], method="spearman")
-    # # [1] 0.7113743
 
     wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01,]
     wngOnly <- wngOnly[order(wngOnly$adj.P.Val.wng),] # Too lazy to order inside function...
@@ -550,11 +443,6 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
     mtwVillageKor <- mtwVillageKor[order(mtwVillageKor$adj.P.Val.mdb),]
 
-    # cor(mtwVillageKor[,6], mtwVillageKor[,12], method="pearson")
-    # # [1] 0.5513258
-    # cor(mtwVillageKor[,6], mtwVillageKor[,12], method="spearman")
-    # # [1] 0.7113743
-
     mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01,]
     mdbOnly <- mdbOnly[order(mdbOnly$adj.P.Val.mdb),] # Too lazy to order inside function...
 
@@ -569,75 +457,133 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
         singleVillageGenes(tllOnly, 30, "TLLvsKOR", "MDBvsKOR")
     dev.off()
 
+# What's the rank correlation across the two villages in each island? does it get worse as you go down quintiles/deciles?
+    smbKorIslandDE <- topTable(islandVoomNoNormDupEfit, coef=2, n=Inf, sort.by="p")
+    mtwKorIslandDE <- topTable(islandVoomNoNormDupEfit, coef=3, n=Inf, sort.by="p")
+
+    # Merge island info with village info, pt 2:
+    smbAllKor <- merge(smbVillageKor, smbKorIslandDE, by.x="genes", by.y="genes")
+    smbAllKor <- smbAllKor[order(smbAllKor$adj.P.Val),]
+
+    mtwAllKor <- merge(mtwVillageKor, mtwKorIslandDE, by.x="genes", by.y="genes")
+    mtwAllKor <- mtwAllKor[order(mtwAllKor$adj.P.Val),]
+
+    cor(smbAllKor[,c(6,12,18)], method="spearman")
+    #               adj.P.Val.ank adj.P.Val.wng adj.P.Val
+    # adj.P.Val.ank     1.0000000     0.7113743 0.8436221
+    # adj.P.Val.wng     0.7113743     1.0000000 0.9171904
+    # adj.P.Val         0.8436221     0.9171904 1.0000000
+
+    cor(mtwAllKor[,c(6,12,18)], method="spearman")
+    #               adj.P.Val.tll adj.P.Val.mdb adj.P.Val
+    # adj.P.Val.tll     1.0000000     0.4735451 0.9053022
+    # adj.P.Val.mdb     0.4735451     1.0000000 0.6829288
+    # adj.P.Val         0.9053022     0.6829288 1.0000000
+
+    # And now, by quintiles/deciles, determined on the island-wide p-value? mean expression?:
+
+    mtwAllKor$quintile <- ntile(mtwAllKor$adj.P.Val, 5)
+    smbAllKor$quintile <- ntile(smbAllKor$adj.P.Val, 5)
+
+    by(mtwAllKor, mtwAllKor$quintile, function(x) cor(x[,c(6,12,18)], method="spearman")) # These are DISMAL
+    by(smbAllKor, smbAllKor$quintile, function(x) cor(x[,c(6,12,18)], method="spearman")) # These are not much better
+
+    pdf(file=paste0(edaoutput, "pvalues_by_decile.pdf"), width=18, height=4)
+        # define plotting function:
+        ggplot(mtwAllKor, aes(y=-log10(adj.P.Val.tll), x=-log10(adj.P.Val.mdb), group=quintile)) +
+            geom_point(size= 0.5, alpha=0.5) + 
+            theme_bw() + 
+            labs(title="", y="-log10 pval TLLvsKOR", x="-log10 pval MDBvsKOR") + 
+            theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            guides(fill=F) +
+            coord_equal(ratio=1) +
+            facet_grid(. ~ quintile)
+
+        ggplot(smbAllKor, aes(y=-log10(adj.P.Val.wng), x=-log10(adj.P.Val.ank), group=quintile)) +
+            geom_point(size= 0.5, alpha=0.5) + 
+            theme_bw() + 
+            labs(title="", y="-log10 pval WNGvsKOR", x="-log10 pval ANKvsKOR") + 
+            theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            guides(fill=F) +
+            coord_equal(ratio=1) +
+            facet_grid(. ~ quintile)
+    dev.off()    
+
+
+#########################################################################
+### 8. Heatmaps of top DE genes between some villages but not others. ###
+#########################################################################
 
 ### Decided on phone call that we want to pull maybe top 100 genes or so showing DE between some villages but not others, so testing this out here now:
-# pull top 100 genes:
+# pull top 100 genes... but how do we define them?
+# top 100 from wng-kor comparison
+
+allCPM <- voomNoNormDup$E
+
+# Sumba vs Korowai
+    # Remove Mentawai
+    wngKorCPM <- allCPM[wngOnly$genes[1:200],]
+    wngKorCPM <- wngKorCPM[,grepl("MPI|SMB", colnames(wngKorCPM))]
+
+    # Column annotation
+    colMetadata <- yVillage$samples[,c(4,6,7)]
+    islandCols <- c("West Papua" = korowai, "Sumba" = sumba, "Mentawai" = mentawai)
+    villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
+
+    colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|SMB", colMetadata$samples),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
+
+    # Rows: 
+    rowMetadata <- data.frame(rownames(wngKorCPM), -log10(wngOnly$adj.P.Val.wng[1:100]), -log10(wngOnly$adj.P.Val.ank[1:100]))
+    names(rowMetadata) <- c("genes", "wngKorpval", "ankKorpval")
+    rowColsSmb <- HeatmapAnnotation(rowMetadata[,2:3], col = list(wngKorpval=colorRamp2(c(min(rowMetadata$ankKorpval), max(rowMetadata$wngKorpval)), c("white", "black")), ankKorpval=colorRamp2(c(min(rowMetadata$ankKorpval), max(rowMetadata$wngKorpval)), c("white", "black"))), which="row", annotation_legend_param = list(wngKorpval = list(color_bar="continuous", title="-log10 p")))
+
+    # Heatmap:
+    pdf(file=paste0(edaoutput, "wng_kor_heatmap_test.pdf"), height=8, width=6)
+    smbMap <- Heatmap(t(scale(t(wngKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(wngKorCPM)), cluster_columns=F)
+        draw(rowColsSmb + smbMap, row_dend_side = "left")
+    dev.off()
 
 
-        smbCPM <- voomNoNormDup$E[smbVillageKor$genes,]
-        singleGene <- data.frame(cpmSingle, yVillage$samples$Sampling.Site)
+### Now Taileleu vs Korowai:
+# Remove Sumba
+    tllKorCPM <- allCPM[tllOnly$genes[1:200],]
+    tllKorCPM <- tllKorCPM[,grepl("MPI|MTW", colnames(tllKorCPM))]
 
-smbVillageKor
-cpmGenes <- voomNoNormDup$E
+    # Column annotation
+    colMetadata <- yVillage$samples[,c(4,6,7)]
+    islandCols <- c("West Papua" = korowai, "Sumba" = sumba, "Mentawai" = mentawai)
+    villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
 
+    colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|MTW", colMetadata$samples),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
 
+    # Rows: 
+    rowMetadata <- data.frame(rownames(tllKorCPM), -log10(tllOnly$adj.P.Val.tll[1:100]), -log10(tllOnly$adj.P.Val.mdb[1:100]))
+    names(rowMetadata) <- c("genes", "tllKorpval", "mdbKorpval")
+    rowColsMtw <- HeatmapAnnotation(rowMetadata[,2:3], col = list(tllKorpval=colorRamp2(c(min(rowMetadata$mdbKorpval), max(rowMetadata$tllKorpval)), c("white", "black")), mdbKorpval=colorRamp2(c(min(rowMetadata$mdbKorpval), max(rowMetadata$tllKorpval)), c("white", "black"))), which="row", annotation_legend_param = list(tllKorpval = list(color_bar="continuous", title="-log10 p")))
 
-# Annotation columns - 1. DA p-value; 2. expressed (ternary, DE/expressed/no); 3. bivalently modified
-sigGenesGO <- sigGenes[rownames(termGenesCPM),]
-loessGO <- loess.base[rownames(termGenesCPM),]
-loessGO$DE <- loessGO$adj.P.Val <= 0.01
-bivalentTSS <- daTssRanges$V4 # All the bivalent genes
+    # Heatmap:
+    pdf(file=paste0(edaoutput, "tll_kor_heatmap_test.pdf"), height=8, width=6)
+    mtwMap <- Heatmap(t(scale(t(tllKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(tllKorCPM)), cluster_columns=F)
+    draw(rowColsMtw + mtwMap, row_dend_side = "left")
+    dev.off()
 
-# Annotation rows:
+    # pdf(file=paste0(edaoutput, "both_heatmaps_tests.pdf"), height=6, width=12)
+    #     draw(rowColsSmb + smbMap + rowColsMtw + mtwMap, row_dend_side = "left")
+    # dev.off()
 
-# Defining clustering on the basis of expression levels - ternary variable:
-clusteringMatrix <- data.frame(rownames(termGenesCPM), factor(ifelse(is.na(loessGO$DE), "Not Expressed", ifelse(loessGO$DE == TRUE, "DE", "Expressed"))), rownames(termGenesCPM) %in% bivalentTSS, -log10(sigGenesGO$adj.P.Val))
-names(clusteringMatrix) <- c("genes", "expression", "bivalent", "pval")
-
-rowMatrix <- clusteringMatrix[,3:4]
-rowCols <- HeatmapAnnotation(rowMatrix, col = list(bivalent = c("TRUE" = "black", "FALSE" = "white"), pval=colorRamp2(c(min(rowMatrix$pval), max(rowMatrix$pval)), c("white", "steelblue4"))), which="row", annotation_legend_param = list(pval = list(color_bar="continuous", title="-log10 p")))
-
-# Swapping Ensembl out for gene symbols is far easier to do in the termGenes matrix than anywhere else, but best done right before plotting, just to be sure. 
-geneSymbols <- GOannotBM[,c(1,6)]
-geneSymbols <- unique(geneSymbols)
-geneSymbols <- geneSymbols[order(geneSymbols$ensembl_gene_id),]$hgnc_symbol
-
-termGenesCPM2 <- termGenesCPM
-rownames(termGenesCPM2) <- geneSymbols
-
-pdf(file="go_all_genes_accessibility_heatmap.pdf", height=12, width=6)
-    mainMap <- Heatmap(termGenesCPM2, col=magma(100), name="log2 CPM", column_names_side="top", row_names_gp = gpar(fontsize = 3), split = clusteringMatrix$expression, heatmap_legend_param = list(color_bar = "continuous"))
-    draw(rowCols + mainMap, row_dend_side = "left")
-dev.off()
-
-pdf(file="go_all_genes_accessibility_heatmap_unclustered.pdf", height=12, width=6)
-    mainMap <- Heatmap(termGenesCPM2, col=magma(100), name="log2 CPM", column_names_side="top", row_names_gp = gpar(fontsize = 3))
-    draw(rowCols + mainMap, row_dend_side = "left", , heatmap_legend_param = list(color_bar = "continuous"))
-dev.off()
-
-
-# And now we want a legible one of only the unexpressed genes, which we can accomplish by simply subsetting everything above:
-unexprsGenesCPM <- termGenesCPM[is.na(loessGO$DE),]
-unclusterMatrix <- clusteringMatrix[is.na(loessGO$DE),]
-unrowMatrix <- unclusterMatrix[,3:4]
-unrowCols <- HeatmapAnnotation(unrowMatrix, col = list(bivalent = c("TRUE" = "black", "FALSE" = "white"), pval=colorRamp2(c(min(unrowMatrix$pval), max(rowMatrix$pval)), c("white", "steelblue4"))), which="row", annotation_legend_param = list(pval = list(color_bar="continuous", title="-log10 p")))
-ungeneSymbols <- geneSymbols[is.na(loessGO$DE)]
-unexprsGenesCPM2 <- unexprsGenesCPM
-rownames(unexprsGenesCPM2) <- ungeneSymbols
-
-pdf(file="go_unexprs_genes_accessibility_heatmap.pdf", height=12, width=6)
-    unmainMap <- Heatmap(unexprsGenesCPM2, col=magma(100), name="log2 CPM", column_names_side="top", row_names_gp = gpar(fontsize = 8),, heatmap_legend_param = list(color_bar = "continuous"))
-    draw(unrowCols + unmainMap, row_dend_side = "left")
-dev.off()
-
-
-
+# And now, let's pull top 100 genes at the island level, and plot their village level expression instead
+# Although these are likely to look the same, so is it really worth it? At least the p-value magnitude will be lower, which is also interesting:
 
 
 
-##############################################################################################################
-### 7. Quick check of variance by village, to see what drives the weird distribution of DE results. ------ ###
-##############################################################################################################
+
+
+
+
+
+#######################################################################################################
+### 9. Quick check of variance by village, to see what drives the weird distribution of DE results. ###
+#######################################################################################################
 
 # load(paste0(outputdir, "voomNoNorm.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
 
@@ -728,8 +674,8 @@ pdf(paste0(edaoutput, "cov_by_single_village_DE.pdf"))
 dev.off()
 
 
-#############################################################################################################
-### 8. Good old plot of pairwise correlations within each village and level etc etc... ------------------ ###
+###########################################################################################
+### 10. Good old plot of pairwise correlations within each village and level etc etc... ###
 #############################################################################################################
 
 # Define hideous function
