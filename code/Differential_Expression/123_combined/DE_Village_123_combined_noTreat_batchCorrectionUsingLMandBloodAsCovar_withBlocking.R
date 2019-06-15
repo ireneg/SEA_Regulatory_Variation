@@ -515,17 +515,22 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
 #########################################################################
 
 ### Decided on phone call that we want to pull maybe top 100 genes or so showing DE between some villages but not others, so testing this out here now:
-# pull top 100 genes... but how do we define them?
-# top 100 from wng-kor comparison
+# pull top 100 genes... but how do we define them? Can do it at the island level, or at the focal village level
 
 allCPM <- voomNoNormDup$E
 
 # Sumba vs Korowai
     # Remove Mentawai
-    wngKorCPM <- allCPM[wngOnly$genes[1:200],]
+    wngKorCPM <- allCPM[wngOnly$genes[1:100],]
     wngKorCPM <- wngKorCPM[,grepl("MPI|SMB", colnames(wngKorCPM))]
 
-    # Column annotation
+    ankKorCPM <- allCPM[ankOnly$genes[1:100],]
+    ankKorCPM <- ankKorCPM[,grepl("MPI|SMB", colnames(ankKorCPM))]
+
+    smbKorCPM <- allCPM[smbKorIslandDE$genes[1:100],]
+    smbKorCPM <- smbKorCPM[,grepl("MPI|SMB", colnames(smbKorCPM))]
+
+    # Column annotation - same for all plots
     colMetadata <- yVillage$samples[,c(4,6,7)]
     islandCols <- c("West Papua" = korowai, "Sumba" = sumba, "Mentawai" = mentawai)
     villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
@@ -533,23 +538,57 @@ allCPM <- voomNoNormDup$E
     colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|SMB", colMetadata$samples),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
 
     # Rows: 
-    rowMetadata <- data.frame(rownames(wngKorCPM), -log10(wngOnly$adj.P.Val.wng[1:100]), -log10(wngOnly$adj.P.Val.ank[1:100]))
-    names(rowMetadata) <- c("genes", "wngKorpval", "ankKorpval")
-    rowColsSmb <- HeatmapAnnotation(rowMetadata[,2:3], col = list(wngKorpval=colorRamp2(c(min(rowMetadata$ankKorpval), max(rowMetadata$wngKorpval)), c("white", "black")), ankKorpval=colorRamp2(c(min(rowMetadata$ankKorpval), max(rowMetadata$wngKorpval)), c("white", "black"))), which="row", annotation_legend_param = list(wngKorpval = list(color_bar="continuous", title="-log10 p")))
+    # Wunga-centric:
+    wngOnly <- merge(wngOnly, smbKorIslandDE, by.x="genes", by.y="genes", all=F, sort=F)
+    rowMetadataWng <- data.frame(rownames(wngKorCPM), -log10(wngOnly$adj.P.Val.wng[1:100]), -log10(wngOnly$adj.P.Val.ank[1:100]), -log10(wngOnly$adj.P.Val[1:100]))
+    names(rowMetadataWng) <- c("genes", "wngKorpval", "ankKorpval", "smbKorpval")
+    rowColsWng <- HeatmapAnnotation(rowMetadataWng[,2:4], col = 
+        list(wngKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black")), 
+             ankKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black")), 
+             smbKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black"))), which="row")
 
-    # Heatmap:
-    pdf(file=paste0(edaoutput, "wng_kor_heatmap_test.pdf"), height=8, width=6)
-    smbMap <- Heatmap(t(scale(t(wngKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(wngKorCPM)), cluster_columns=F)
+    # Anakalung
+    ankOnly <- merge(ankOnly, smbKorIslandDE, by.x="genes", by.y="genes", all=F, sort=F)
+    rowMetadataAnk <- data.frame(rownames(ankKorCPM), -log10(ankOnly$adj.P.Val.wng[1:100]), -log10(ankOnly$adj.P.Val.ank[1:100]), -log10(ankOnly$adj.P.Val[1:100]))
+    names(rowMetadataAnk) <- c("genes", "wngKorpval", "ankKorpval", "smbKorpval")
+    rowColsAnk <- HeatmapAnnotation(rowMetadataAnk[,2:4], col = 
+        list(wngKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
+             ankKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
+             smbKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black"))), which="row")
+
+    # For the island-wide one
+    rowMetadataSmb <- data.frame(rownames(smbKorCPM), -log10(smbAllKor$adj.P.Val.wng[1:100]), -log10(smbAllKor$adj.P.Val.ank[1:100]), -log10(smbAllKor$adj.P.Val[1:100]))
+    names(rowMetadataSmb) <- c("genes", "wngKorpval", "ankKorpval", "smbKorpval")
+    rowColsSmb <- HeatmapAnnotation(rowMetadataSmb[,2:4], col = 
+        list(wngKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black")), 
+             ankKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black")), 
+             smbKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black"))), which="row")
+
+    # Heatmaps:
+    pdf(file=paste0(edaoutput, "smb_kor_DE_heatmaps.pdf"), height=8, width=6)
+        wngMap <- Heatmap(t(scale(t(wngKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(wngKorCPM)), cluster_columns=F)
+        draw(rowColsWng + wngMap, row_dend_side = "left")
+
+        ankMap <- Heatmap(t(scale(t(ankKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(ankKorCPM)), cluster_columns=F)
+        draw(rowColsAnk + ankMap, row_dend_side = "left")
+
+        smbMap <- Heatmap(t(scale(t(smbKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(smbKorCPM)), cluster_columns=F)
         draw(rowColsSmb + smbMap, row_dend_side = "left")
     dev.off()
 
 
-### Now Taileleu vs Korowai:
-# Remove Sumba
-    tllKorCPM <- allCPM[tllOnly$genes[1:200],]
+### Now Mentawai vs Korowai:
+    # Remove Sumba
+    tllKorCPM <- allCPM[tllOnly$genes[1:100],]
     tllKorCPM <- tllKorCPM[,grepl("MPI|MTW", colnames(tllKorCPM))]
 
-    # Column annotation
+    mdbKorCPM <- allCPM[mdbOnly$genes[1:100],]
+    mdbKorCPM <- mdbKorCPM[,grepl("MPI|MTW", colnames(mdbKorCPM))]
+
+    mtwKorCPM <- allCPM[mtwKorIslandDE$genes[1:100],]
+    mtwKorCPM <- mtwKorCPM[,grepl("MPI|MTW", colnames(mtwKorCPM))]
+
+    # Column annotation - same for all plots
     colMetadata <- yVillage$samples[,c(4,6,7)]
     islandCols <- c("West Papua" = korowai, "Sumba" = sumba, "Mentawai" = mentawai)
     villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
@@ -557,28 +596,43 @@ allCPM <- voomNoNormDup$E
     colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|MTW", colMetadata$samples),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
 
     # Rows: 
-    rowMetadata <- data.frame(rownames(tllKorCPM), -log10(tllOnly$adj.P.Val.tll[1:100]), -log10(tllOnly$adj.P.Val.mdb[1:100]))
-    names(rowMetadata) <- c("genes", "tllKorpval", "mdbKorpval")
-    rowColsMtw <- HeatmapAnnotation(rowMetadata[,2:3], col = list(tllKorpval=colorRamp2(c(min(rowMetadata$mdbKorpval), max(rowMetadata$tllKorpval)), c("white", "black")), mdbKorpval=colorRamp2(c(min(rowMetadata$mdbKorpval), max(rowMetadata$tllKorpval)), c("white", "black"))), which="row", annotation_legend_param = list(tllKorpval = list(color_bar="continuous", title="-log10 p")))
+    # Taileleu-centric:
+    tllOnly <- merge(tllOnly, mtwKorIslandDE, by.x="genes", by.y="genes", all=F, sort=F)
+    rowMetadataTll <- data.frame(rownames(tllKorCPM), -log10(tllOnly$adj.P.Val.tll[1:100]), -log10(tllOnly$adj.P.Val.mdb[1:100]), -log10(tllOnly$adj.P.Val[1:100]))
+    names(rowMetadataTll) <- c("genes", "tllKorpval", "mdbKorpval", "mtwKorpval")
+    rowColsTll <- HeatmapAnnotation(rowMetadataTll[,2:4], col = 
+        list(tllKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black")), 
+             mdbKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black")), 
+             mtwKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black"))), which="row")
 
-    # Heatmap:
-    pdf(file=paste0(edaoutput, "tll_kor_heatmap_test.pdf"), height=8, width=6)
-    mtwMap <- Heatmap(t(scale(t(tllKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(tllKorCPM)), cluster_columns=F)
-    draw(rowColsMtw + mtwMap, row_dend_side = "left")
+    # Madobag
+    mdbOnly <- merge(mdbOnly, mtwKorIslandDE, by.x="genes", by.y="genes", all=F, sort=F)
+    rowMetadataMdb <- data.frame(rownames(mdbKorCPM), -log10(mdbOnly$adj.P.Val.tll[1:100]), -log10(mdbOnly$adj.P.Val.mdb[1:100]), -log10(mdbOnly$adj.P.Val[1:100]))
+    names(rowMetadataMdb) <- c("genes", "tllKorpval", "mdbKorpval", "mtwKorpval")
+    rowColsMdb <- HeatmapAnnotation(rowMetadataMdb[,2:4], col = 
+        list(tllKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black")), 
+             mdbKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black")), 
+             mtwKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black"))), which="row")
+
+    # Island-wide
+    rowMetadataMtw <- data.frame(rownames(mtwKorCPM), -log10(mtwAllKor$adj.P.Val.tll[1:100]), -log10(mtwAllKor$adj.P.Val.mdb[1:100]), -log10(mtwAllKor$adj.P.Val[1:100]))
+    names(rowMetadataMtw) <- c("genes", "tllKorpval", "mdbKorpval", "mtwKorpval")
+    rowColsMtw <- HeatmapAnnotation(rowMetadataMtw[,2:4], col = 
+        list(tllKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black")), 
+             mdbKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black")), 
+             mtwKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black"))), which="row")
+
+    # Heatmaps:
+    pdf(file=paste0(edaoutput, "mtw_kor_DE_heatmaps.pdf"), height=8, width=6)
+        tllMap <- Heatmap(t(scale(t(tllKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(tllKorCPM)), cluster_columns=F)
+        draw(rowColsTll + tllMap, row_dend_side = "left")
+
+        mdbMap <- Heatmap(t(scale(t(mdbKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(mdbKorCPM)), cluster_columns=F)
+        draw(rowColsMdb + mdbMap, row_dend_side = "left")
+
+        mtwMap <- Heatmap(t(scale(t(mtwKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(mtwKorCPM)), cluster_columns=F)
+        draw(rowColsMtw + mtwMap, row_dend_side = "left")
     dev.off()
-
-    # pdf(file=paste0(edaoutput, "both_heatmaps_tests.pdf"), height=6, width=12)
-    #     draw(rowColsSmb + smbMap + rowColsMtw + mtwMap, row_dend_side = "left")
-    # dev.off()
-
-# And now, let's pull top 100 genes at the island level, and plot their village level expression instead
-# Although these are likely to look the same, so is it really worth it? At least the p-value magnitude will be lower, which is also interesting:
-
-
-
-
-
-
 
 
 #######################################################################################################
