@@ -352,7 +352,6 @@ allTogether1 <- data.frame(byVillages1, byIslands1)
 # IGR 2019.06.14: Cleaned most of these plots out, they were just cluttering the script. Check repo for past versions.
 ### Consider using the group.by approach if figures become too messy, but this is neat.
 
-
 # Making the final figure:
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_fc05_testers.pdf"), width=12)
     # Sort by Frequency of set, only
@@ -370,8 +369,8 @@ pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_fc05_testers.pdf
     # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) # This one is my fav so far, but it could just as well be a Venn diagram
 
     # Sort by number of intersects without the island level comparisons, out of curiosity, include all pairwise comparisons
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) 
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 1.5, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) 
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 1.5, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
 
     # # Sort by number of intersects without the island level comparisons, out of curiosity, decreasing = F
     # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
@@ -383,9 +382,32 @@ pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_fc05_testers.pdf
     # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = c("degree", "freq"), keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
 dev.off()
 
-
 # And now let's give up and make a four way Venn diagram instead:
-### UPDATE 2019.06.13: We hate Venn Diagrams. Dropped this section. See below for more replacements.
+# Venn diagrams only for the supplementary figure, with three comparisons they convey information better than the equivalent upsetR plot:
+
+# Triple:
+make.venn.triple <- function(geneset1, geneset2, geneset3, prefix, geneset1.label, geneset2.label, geneset3.label, universe){
+    universe$g1 <- universe$genes %in% geneset1
+    universe$g2 <- universe$genes %in% geneset2
+    universe$g3 <- universe$genes %in% geneset3
+    pdf(file=paste(prefix, ".pdf", sep=""), width=7, height=7)
+    venn.placeholder <- draw.triple.venn(length(geneset1), length(geneset2), length(geneset3), dim(universe[universe$g1 == T & universe$g2 == T,])[1], dim(universe[universe$g2 == T & universe$g3 == T,])[1], dim(universe[universe$g1 == T & universe$g3 == T,])[1], dim(universe[universe$g1 == T & universe$g2 == T & universe$g3 == T,])[1], c(geneset1.label, geneset2.label, geneset3.label), fill=c("goldenrod", "plum4", "steelblue3"), alpha=c(0.5, 0.5, 0.5),col=NA, euler.d=T)
+    complement.size <- dim(universe[universe$g1 == F & universe$g2 == F & universe$g3 == F,][1])
+    grid.text(paste(complement.size, " not in\nany", sep=""), x=0.1, y=0.1)
+    dev.off()
+    print(paste("Genes in a: ", length(geneset1), sep=""))
+    print(paste("Genes in b: ", length(geneset2), sep=""))
+    print(paste("Genes in c: ", length(geneset3), sep=""))
+    print(paste("Common genes: ", dim(universe[universe$g1 == T & universe$g2 == T & universe$g3 == T,])[1], sep=""))
+}
+
+allTogether05Venn <- allTogether05
+allTogether05Venn$genes <- rownames(allTogether05)
+
+    make.venn.triple(allTogether05Venn[allTogether05Venn$ANKvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$WNGvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$SMBvsKOR != 0,]$genes, paste0(edaoutput, "venn_SMB_vs_KOR_all_levels_fc05"), "ANKvsKOR", "WNGvsKOR", "SMBvsKOR", allTogether05Venn)
+
+    make.venn.triple(allTogether05Venn[allTogether05Venn$MDBvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$TLLvsKOR != 0,]$genes, allTogether05Venn[allTogether05Venn$MTWvsKOR != 0,]$genes, paste0(edaoutput, "venn_MTW_vs_KOR_all_levels_fc05"), "MDBvsKOR", "TLLvsKOR", "MTWvsKOR", allTogether05Venn)
+
 
 ##########################################
 ### 7. Looking at the top ranked genes ###
@@ -728,6 +750,8 @@ pdf(paste0(edaoutput, "cov_by_single_village_DE.pdf"))
 dev.off()
 
 
+# These need the t-test
+
 ###########################################################################################
 ### 10. Good old plot of pairwise correlations within each village and level etc etc... ###
 #############################################################################################################
@@ -885,3 +909,5 @@ pdf(file=paste0(edaoutput, "correlation_within_sites.pdf"))
     plotWithinSite(voomNoNormDup$E, yVillage$samples, "spearman")
     plotWithinSite(voomNoNormDup$E, yVillage$samples, "pearson")
 dev.off()
+
+### Final thought: should we sample everyone down to 15 inds, without reps? 
