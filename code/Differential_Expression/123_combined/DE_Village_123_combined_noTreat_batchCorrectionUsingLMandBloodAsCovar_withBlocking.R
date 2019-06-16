@@ -2,7 +2,7 @@
 # Perform DE analysing relationship between islands
 
 ### Last edit: IGR 2019.06.14 
-### Heatmaps for figure 4
+### Heatmaps for figure 6
 
 ### 0. Load dependencies and functions and set input paths ###
 ### 1. Begin analyses and initial QC ###
@@ -315,13 +315,9 @@ pdf(paste0(edaoutput,"MD_Plots_pval01_lfc1_dupCor.village.pdf"))
 dev.off()
 
 
-
-# We can also look at the top ten DE genes with a heatmap of logCPM values for the top 100 genes. Each gene (or row) is scaled so that mean expression is zero and the standard deviation is one (we're using 'E' from the voom object which is a numeric matrix of normalized expression values on the log2 scale). Samples with relatively high expression of a given gene are marked in red and samples with relatively low expression are marked in blue. Lighter shades and white represent genes with intermediate expression levels. Samples and genes are reordered by the method of hierarchical clustering
-
 #######################################################
 ### 6. UpsetR plots and merging island and village. ###
 #######################################################
-
 
 # Bring in the by Island tests:
 # First some temporary renaming so things don't become messed up
@@ -352,40 +348,15 @@ allTogether1 <- data.frame(byVillages1, byIslands1)
 # IGR 2019.06.14: Cleaned most of these plots out, they were just cluttering the script. Check repo for past versions.
 ### Consider using the group.by approach if figures become too messy, but this is neat.
 
-
 # Making the final figure:
 pdf(paste0(edaoutput, "UpsetR_SamplingSiteComparison_all_levels_fc05_testers.pdf"), width=12)
-    # Sort by Frequency of set, only
-    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
-    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
-
-    # # Sort by number of intersects
-    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-
-    # # Sort by number of intersects, decreasing = F - here the set number has to be higher, because 10 and 20 are useless
-    # upset(as.data.frame(abs(allTogether05)), sets = c("SMBvsKOR", "ANKvsKOR", "WNGvsKOR", "MTWvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 3), rep(mtw_kor, 3)), nintersects=30,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
-
-    # # Sort by number of intersects without the island level comparisons, out of curiosity (16 total comparisons, so show only that one).
-    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) # This one is my fav so far, but it could just as well be a Venn diagram
-
     # Sort by number of intersects without the island level comparisons, out of curiosity, include all pairwise comparisons
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) 
-    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
-
-    # # Sort by number of intersects without the island level comparisons, out of curiosity, decreasing = F
-    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "degree", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=F)
-
-    # # Group by sets, no island-level:
-    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  group.by = "sets", cutoff=5, keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
-
-    # # Sort by number of intersects and height of bars (decreasing doesn't work here, which makes it look terrible.)
-    # upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = c("degree", "freq"), keep.order=T, number.angles = 30, point.size = 3.5, line.size = 2, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3))
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=20,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 1.5, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T) 
+    upset(as.data.frame(abs(allTogether05)), sets = c("ANKvsMDB", "ANKvsTLL", "WNGvsMDB", "WNGvsTLL", "ANKvsKOR", "WNGvsKOR", "MDBvsKOR", "TLLvsKOR"), sets.bar.color = c(rep(smb_mtw,4), rep(smb_kor, 2), rep(mtw_kor, 2)), nintersects=30,  order.by = "freq", keep.order=T, number.angles = 30, point.size = 3.5, line.size = 1.5, sets.x.label="DEG", mainbar.y.label="DEG in common", text.scale=c(1.6, 1.6, 1.6, 1.6, 1.6, 1.3), decreasing=T)
 dev.off()
 
-
 # And now let's give up and make a four way Venn diagram instead:
-### UPDATE 2019.06.13: We hate Venn Diagrams. Dropped this section. See below for more replacements.
+### UPDATE 2019.06.13: We hate Venn Diagrams. Dropped this section. See below for more exploration.
 
 ##########################################
 ### 7. Looking at the top ranked genes ###
@@ -515,11 +486,10 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
 #########################################################################
 
 ### Decided on phone call that we want to pull maybe top 100 genes or so showing DE between some villages but not others, so testing this out here now:
-# pull top 100 genes... but how do we define them?
-# top 100 from wng-kor comparison
 
 allCPM <- voomNoNormDup$E
 
+# pull top 100 genes... but how do we define them?
 # Sumba vs Korowai
     # Remove Mentawai
     wngKorCPM <- allCPM[wngOnly$genes[1:200],]
@@ -542,7 +512,6 @@ allCPM <- voomNoNormDup$E
     smbMap <- Heatmap(t(scale(t(wngKorCPM))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(wngKorCPM)), cluster_columns=F)
         draw(rowColsSmb + smbMap, row_dend_side = "left")
     dev.off()
-
 
 ### Now Taileleu vs Korowai:
 # Remove Sumba
