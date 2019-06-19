@@ -521,7 +521,7 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
             coord_equal(ratio=1) +
             facet_grid(. ~ quintile)
 
-        ggplot(mtwAllKor, aes(y=logFC.tll, x=-logFC.mdb, group=quintile)) +
+        ggplot(mtwAllKor, aes(y=logFC.tll, x=logFC.mdb, group=quintile)) +
             geom_point(size= 0.5, alpha=0.5) + 
             theme_bw() + 
             labs(title="", y="log FC TLLvsKOR", x="log FC MDBvsKOR") + 
