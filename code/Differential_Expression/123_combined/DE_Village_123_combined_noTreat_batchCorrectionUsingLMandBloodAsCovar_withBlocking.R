@@ -501,43 +501,55 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     by(mtwAllKor, mtwAllKor$quintile, function(x) cor(x[,c(2,8,14)], method="spearman")) # These are much improved
     by(smbAllKor, smbAllKor$quintile, function(x) cor(x[,c(2,8,14)], method="spearman")) # Yes indeed
 
+# Labels for the plot
+quintileLabels <- c("0-20% inter-island\np-value", "20-40%", "40-60%", "60-80%", "80-100% inter-island\np-value")
+names(quintileLabels) <- c("1", "2", "3", "4", "5")
+
     pdf(file=paste0(edaoutput, "village_correlations_by_quintile.pdf"), width=18, height=4)
         # define plotting function:
         ggplot(mtwAllKor, aes(y=-log10(adj.P.Val.tll), x=-log10(adj.P.Val.mdb), group=quintile)) +
-            geom_point(size= 0.5, alpha=0.5) + 
+            geom_hline(yintercept=-log10(0.1), linetype=2, colour="grey60") +
+            geom_vline(xintercept=-log10(0.1), linetype=2, colour="grey60") +
+            geom_point(size= 0.7, alpha=0.5) + 
             theme_bw() + 
             labs(title="", y="-log10 pval TLLvsKOR", x="-log10 pval MDBvsKOR") + 
             theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
             guides(fill=F) +
             coord_equal(ratio=1) +
-            facet_grid(. ~ quintile)
+            facet_grid(. ~ quintile, labeller = labeller(quintile = quintileLabels))
 
         ggplot(smbAllKor, aes(y=-log10(adj.P.Val.wng), x=-log10(adj.P.Val.ank), group=quintile)) +
-            geom_point(size= 0.5, alpha=0.5) + 
+            geom_hline(yintercept=-log10(0.1), linetype=2, colour="grey60") +
+            geom_vline(xintercept=-log10(0.1), linetype=2, colour="grey60") +
+            geom_point(size= 0.7, alpha=0.5) + 
             theme_bw() + 
             labs(title="", y="-log10 pval WNGvsKOR", x="-log10 pval ANKvsKOR") + 
             theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
             guides(fill=F) +
             coord_equal(ratio=1) +
-            facet_grid(. ~ quintile)
+            facet_grid(. ~ quintile, labeller = labeller(quintile = quintileLabels))
 
         ggplot(mtwAllKor, aes(y=logFC.tll, x=logFC.mdb, group=quintile)) +
-            geom_point(size= 0.5, alpha=0.5) + 
+            geom_hline(yintercept=0, linetype=2, colour="grey60") +
+            geom_vline(xintercept=0, linetype=2, colour="grey60") +
+            geom_point(size= 0.7, alpha=0.5) + 
             theme_bw() + 
             labs(title="", y="log FC TLLvsKOR", x="log FC MDBvsKOR") + 
             theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
             guides(fill=F) +
             coord_equal(ratio=1) +
-            facet_grid(. ~ quintile)
+            facet_grid(. ~ quintile, labeller = labeller(quintile = quintileLabels))
 
         ggplot(smbAllKor, aes(y=logFC.wng, x=logFC.ank, group=quintile)) +
-            geom_point(size= 0.5, alpha=0.5) + 
+            geom_hline(yintercept=0, linetype=2, colour="grey60") +
+            geom_vline(xintercept=0, linetype=2, colour="grey60") +
+            geom_point(size= 0.7, alpha=0.5) + 
             theme_bw() + 
             labs(title="", y="log FC WNGvsKOR", x="log FC ANKvsKOR") + 
             theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
             guides(fill=F) +
             coord_equal(ratio=1) +
-            facet_grid(. ~ quintile)
+            facet_grid(. ~ quintile, labeller = labeller(quintile = quintileLabels))
 
     dev.off()    
 
