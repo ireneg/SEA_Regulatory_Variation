@@ -484,7 +484,24 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     by(mtwAllKor, mtwAllKor$quintile, function(x) cor(x[,c(6,12,18)], method="spearman")) # These are DISMAL
     by(smbAllKor, smbAllKor$quintile, function(x) cor(x[,c(6,12,18)], method="spearman")) # These are not much better
 
-    pdf(file=paste0(edaoutput, "pvalues_by_decile.pdf"), width=18, height=4)
+    # What about by logFC, is that better?
+    # Condition on DE (look at top quintile etc), consider log FC direction in general, 
+
+    cor(smbAllKor[,c(2,8,14)], method="spearman")
+    #           logFC.ank logFC.wng     logFC
+    # logFC.ank 1.0000000 0.8805480 0.9392975
+    # logFC.wng 0.8805480 1.0000000 0.9701557
+    # logFC     0.9392975 0.9701557 1.0000000
+    cor(mtwAllKor[,c(2,8,14)], method="spearman")
+    #           logFC.tll logFC.mdb     logFC
+    # logFC.tll 1.0000000 0.7821874 0.9671235
+    # logFC.mdb 0.7821874 1.0000000 0.8878783
+    # logFC     0.9671235 0.8878783 1.0000000
+
+    by(mtwAllKor, mtwAllKor$quintile, function(x) cor(x[,c(2,8,14)], method="spearman")) # These are much improved
+    by(smbAllKor, smbAllKor$quintile, function(x) cor(x[,c(2,8,14)], method="spearman")) # Yes indeed
+
+    pdf(file=paste0(edaoutput, "village_correlations_by_quintile.pdf"), width=18, height=4)
         # define plotting function:
         ggplot(mtwAllKor, aes(y=-log10(adj.P.Val.tll), x=-log10(adj.P.Val.mdb), group=quintile)) +
             geom_point(size= 0.5, alpha=0.5) + 
@@ -503,7 +520,28 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
             guides(fill=F) +
             coord_equal(ratio=1) +
             facet_grid(. ~ quintile)
+
+        ggplot(mtwAllKor, aes(y=logFC.tll, x=-logFC.mdb, group=quintile)) +
+            geom_point(size= 0.5, alpha=0.5) + 
+            theme_bw() + 
+            labs(title="", y="log FC TLLvsKOR", x="log FC MDBvsKOR") + 
+            theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            guides(fill=F) +
+            coord_equal(ratio=1) +
+            facet_grid(. ~ quintile)
+
+        ggplot(smbAllKor, aes(y=logFC.wng, x=logFC.ank, group=quintile)) +
+            geom_point(size= 0.5, alpha=0.5) + 
+            theme_bw() + 
+            labs(title="", y="log FC WNGvsKOR", x="log FC ANKvsKOR") + 
+            theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            guides(fill=F) +
+            coord_equal(ratio=1) +
+            facet_grid(. ~ quintile)
+
     dev.off()    
+
+
 
 
 #########################################################################
