@@ -13,9 +13,11 @@
 ### Fix everything that's commented out (just figures)
 ### Triple check all numbers.
 
-#########################################################################################
-### 0. Load dependencies and functions and set input paths -------------------------- ###
-#########################################################################################
+### Repeat this 1000 times.
+
+##############################################################
+### 0. Load dependencies and functions and set input paths ###
+##############################################################
 
 # Load dependencies:
 library(edgeR)
@@ -63,9 +65,9 @@ load(paste0(inputdir, "indoRNA.logCPM.TMM.filtered.Rda"))
 load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 
 
-###########################################################################################################################
-### 1. Begin analyses and initial QC ---------------------------------------------------------------------------------- ###
-###########################################################################################################################
+########################################
+### 1. Begin analyses and initial QC ###
+########################################
 
 # First, remove samples that have less than ten individuals per village
 table(yFilt$samples$Sampling.Site)
@@ -98,9 +100,9 @@ contr.matrix <- makeContrasts(  ANKvsMDB=Anakalung-Madobag, ANKvsMPI=Anakalung-M
 
 yVillage <- calcNormFactors(yVillage, method="TMM")
 
-###################################################################################################################
-### 2. DE testing with duplicate correlation and blocking ----------------------------------------------------- ###
-###################################################################################################################
+#############################################################
+### 2. DE testing with duplicate correlation and blocking ###
+#############################################################
 
 # create a new variable for blocking using sample IDs
 yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), "[_.]"), `[`, 1)
@@ -159,53 +161,57 @@ summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", 
 # }
 
 
-############################################################################################
-### 3. And now with random subsetting for power reasons... ----------------------------- ###
-############################################################################################
+##############################################################
+### 3. And now with random subsetting for power reasons... ###
+##############################################################
 
 # Let's drop PadiraTana because even I agree that three samples is ridiculous. 
 yVillage5 <- yVillage[,-grep("Padira Tana", yVillage$samples$Sampling.Site)]
 yVillage5$samples <- droplevels(yVillage5$samples) # drop unused levels
 
-# Now randomly grab 5 from each population... 
-# Seeds in the order I tried them:
-# set.seed(110584) # ANK27 duplicate, no good
-# set.seed(840511) # no duplicates, but wacky batching - although is it better to simply subsample from within batch 1?
-# set.seed(0511) # WNG21 duplicate
-# set.seed(1105) # this one finally gives us one without duplicate samples in there... and very limited DE. 
-set.seed(123456) # also no duplicate samples, but it looks very different from the one above, so hard to draw conclusions. Would have to systematically subsample 1000 times or similar. 
-toKeep <- by(yVillage5$samples, yVillage5$samples$Sampling.Site, function(x) sample(x$samples, 5, replace=F))
-yVillage5 <- yVillage5[,grepl(paste(unlist(toKeep), collapse= '|'), yVillage5$samples$samples)]
+# Since individual seeds were so dubious, I'm running this using a counter - 1000 random draws without replicates in there. 
+# God bless the internet:
+# https://stackoverflow.com/questions/20507247/r-repeat-function-until-condition-met
 
-# write.table(yVillage5$samples$samples, file="subset_individuals.txt", col.names=F, row.names=F, quote=F, sep="\t", eol="\n") # For Heini
 
-# Set up design matrix
-design5 <- model.matrix(~0 + yVillage5$samples$Sampling.Site + yVillage5$samples$Age + yVillage5$samples$batch + yVillage5$samples$RIN + yVillage5$samples$CD8T + yVillage5$samples$CD4T + yVillage5$samples$NK + yVillage5$samples$Bcell + yVillage5$samples$Mono + yVillage5$samples$Gran)
-# rename columns to exclude spaces and unrecognised characters
-colnames(design5)=gsub("yVillage5\\$samples\\$", "", colnames(design5))
-colnames(design5)=gsub("Sampling.Site", "", colnames(design5))
-colnames(design5)=gsub(" ", "_", colnames(design5))
+deTestingSubsets <- function(testingData) {
+    # draw the sample
+    toKeep <- by(testingData$samples, testingData$samples$Sampling.Site, function(x) sample(x$samples, 5, replace=F))
+    yVillageSub <- testingData[,grepl(paste(unlist(toKeep), collapse= '|'), testingData$samples$samples)]
+    cleanSubset <- length(unique(yVillageSub$samples$ID)) == 35
+    
+    while (!cleanSubset) {
+        toKeep <- by(testingData$samples, testingData$samples$Sampling.Site, function(x) sample(x$samples, 5, replace=F))
+        yVillageSub <- testingData[,grepl(paste(unlist(toKeep), collapse= '|'), testingData$samples$samples)]
+        cleanSubset <- length(unique(yVillageSub$samples$ID)) == 35
+    }
 
-# set up contrast matrix
-contr.matrix5 <- makeContrasts(  ANKvsMDB=Anakalung-Madobag, ANKvsMPI=Anakalung-Mappi, ANKvsTLL=Anakalung-Taileleu, ANKvsWNG=Anakalung-Wunga, ANKvsRIN = Anakalung-Rindi, ANKvsHPM = Anakalung-Hupu_Mada,
-    WNGvsMDB=Wunga-Madobag, WNGvsMPI=Wunga-Mappi, WNGvsTLL=Wunga-Taileleu, WNGvsRIN = Wunga-Rindi, WNGvsHPM = Wunga-Hupu_Mada,
-    RINvsMDB= Rindi-Madobag, RINvsTLL= Rindi-Taileleu, RINvsMPI= Rindi-Mappi, RINvsHPM = Rindi-Hupu_Mada,
-    HPMvsMDB= Hupu_Mada-Madobag, HPMvsTLL= Hupu_Mada-Taileleu, HPMvsMPI= Hupu_Mada-Mappi,
-    MDBvsMPI=Madobag-Mappi, MDBvsTLL=Madobag-Taileleu,   
-    TLLvsMPI=Taileleu-Mappi, 
-    levels=colnames(design5)) # Contrasts are ordered in the same order as the island ones, in case we want to look at directional effects
+    # # A sanity check for debugging - output the list of samples used:
+    # print("doing DE testing with the following samples:")
+    # print(yVillageSub$samples$ID)
 
-yVillage5 <- calcNormFactors(yVillage5, method="TMM")
+    # Once we are happy with our subset, set up design and contrast matrices:
+    design5 <- model.matrix(~0 + yVillageSub$samples$Sampling.Site + yVillageSub$samples$Age + yVillageSub$samples$batch + yVillageSub$samples$RIN + yVillageSub$samples$CD8T + yVillageSub$samples$CD4T + yVillageSub$samples$NK + yVillageSub$samples$Bcell + yVillageSub$samples$Mono + yVillageSub$samples$Gran)
+    # rename columns to exclude spaces and unrecognised characters
+    colnames(design5)=gsub("yVillageSub\\$samples\\$", "", colnames(design5))
+    colnames(design5)=gsub("Sampling.Site", "", colnames(design5))
+    colnames(design5)=gsub(" ", "_", colnames(design5))
 
-# There are not enough reps in here to use blocking, so we'll do it without the blocking:
-    voomNoNorm5 <- voom(yVillage5, design5, normalize.method="none", plot=F) 
-    voomNoNormVfit5 <- lmFit(voomNoNorm5, design5)
-    voomNoNormVfit5 <- contrasts.fit(voomNoNormVfit5, contrasts=contr.matrix5)
-    voomNoNormEfit5 <- eBayes(voomNoNormVfit5, robust=T)
+    contr.matrix5 <- makeContrasts(  ANKvsMDB=Anakalung-Madobag, ANKvsMPI=Anakalung-Mappi, ANKvsTLL=Anakalung-Taileleu, ANKvsWNG=Anakalung-Wunga, ANKvsRIN = Anakalung-Rindi, ANKvsHPM = Anakalung-Hupu_Mada,
+        WNGvsMDB=Wunga-Madobag, WNGvsMPI=Wunga-Mappi, WNGvsTLL=Wunga-Taileleu, WNGvsRIN = Wunga-Rindi, WNGvsHPM = Wunga-Hupu_Mada,
+        RINvsMDB= Rindi-Madobag, RINvsTLL= Rindi-Taileleu, RINvsMPI= Rindi-Mappi, RINvsHPM = Rindi-Hupu_Mada,
+        HPMvsMDB= Hupu_Mada-Madobag, HPMvsTLL= Hupu_Mada-Taileleu, HPMvsMPI= Hupu_Mada-Mappi,
+        MDBvsMPI=Madobag-Mappi, MDBvsTLL=Madobag-Taileleu,   
+        TLLvsMPI=Taileleu-Mappi, 
+        levels=colnames(design5)) # Contrasts are ordered in the same order as the island ones, in case we want to look at directional effects
 
-# pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.no_dup_correction.mean-variance-trend.village.all_villages.pdf"))
-#     plotSA(voomNoNormEfit, main="Mean-variance trend elimination without duplicate correction")
-# dev.off()
+    yVillageSub <- calcNormFactors(yVillageSub, method="TMM")
+
+    # There are not enough reps in here to use blocking, so we'll do it without the blocking:
+        voomNoNorm5 <- voom(yVillageSub, design5, normalize.method="none", plot=F) 
+        voomNoNormVfit5 <- lmFit(voomNoNorm5, design5)
+        voomNoNormVfit5 <- contrasts.fit(voomNoNormVfit5, contrasts=contr.matrix5)
+        voomNoNormEfit5 <- eBayes(voomNoNormVfit5, robust=T)
 
     # get top genes using toptable
     allDEresultsNoDup5 <- list()
@@ -214,9 +220,34 @@ yVillage5 <- calcNormFactors(yVillage5, method="TMM")
         allDEresultsNoDup5[[i]] <- topTable(voomNoNormEfit5, coef=i, n=Inf, sort.by="p")
     }
 
-summary(decideTests(voomNoNormEfit5, method="separate", adjust.method = "BH", p.value = 0.01))
-summary(decideTests(voomNoNormEfit5, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-summary(decideTests(voomNoNormEfit5, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
+    deTesting <- summary(decideTests(voomNoNormEfit5, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
+    return(deTesting)
+}
+
+set.seed(110584) # Let's go with this one. 
+iterations <- 1000
+allDESummaries <- list()
+allDESummaries <- replicate(iterations, deTestingSubsets(yVillage5), simplify=FALSE)
+
+# Now some analyses... 
+# Every entry is three rows, so first is to sum DE genes for every test:
+    
+deGenesTables <- ldply(allDESummaries, function(x) colSums(x[c(1,3),]))
+summary(deGenesTables) # Yeah this is hard to interpret, so probably worth putting aside for now. What about n = 15 instead, and repeating with those? There's no variability in Madobag, though, so maybe 10 is a good compromise
+
+# deGenesPlotting <- melt(deGenesTables)
+# deGenesPlotting[deGenesPlotting == 0] <- NA
+
+# pdf(paste0(edaoutput, "subsampling_densities.pdf"), width=18)
+#     ggplot(deGenesPlotting, aes(x=value, colour=variable, fill=variable, group=variable)) +
+#         geom_density() +
+#         xlim(0,200) + 
+#         theme_bw() + 
+#         # facet_wrap(. ~ variable, nrow = 5, ncol = 5) + 
+#         labs(title="", y="density", x="DE genes") + 
+#         theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+#         guides(colour=F, fill=F)
+# dev.off()
 
 # OK and now that we know what village is weird, let's just plot the RINs out by village, because this is soooo bizarre.
 
@@ -230,9 +261,72 @@ pdf(paste0(edaoutput, "RIN_by_village.pdf"))
         guides(fill=F)
 dev.off()
 
+##########################################
+### 4. Random subsetting to 10 inds... ###
+##########################################
 
+# Let's drop PadiraTana because even I agree that three samples is ridiculous. 
+yVillage10 <- yVillage[,-grep("Padira Tana|Rindi|Hupu Mada", yVillage$samples$Sampling.Site)]
+yVillage10$samples <- droplevels(yVillage10$samples) # drop unused levels
 
+deTestingSubsets10 <- function(testingData) {
+    # draw the sample
+    toKeep <- by(testingData$samples, testingData$samples$Sampling.Site, function(x) sample(x$samples, 10, replace=F))
+    yVillageSub <- testingData[,grepl(paste(unlist(toKeep), collapse= '|'), testingData$samples$samples)]
+    cleanSubset <- length(unique(yVillageSub$samples$ID)) == 50
+    
+    while (!cleanSubset) {
+        toKeep <- by(testingData$samples, testingData$samples$Sampling.Site, function(x) sample(x$samples, 10, replace=F))
+        yVillageSub <- testingData[,grepl(paste(unlist(toKeep), collapse= '|'), testingData$samples$samples)]
+        cleanSubset <- length(unique(yVillageSub$samples$ID)) == 50
+    }
 
+    # # A sanity check for debugging - output the list of samples used:
+    # print("doing DE testing with the following samples:")
+    # print(yVillageSub$samples$ID)
+
+    # Once we are happy with our subset, set up design and contrast matrices:
+    design <- model.matrix(~0 + yVillageSub$samples$Sampling.Site + yVillageSub$samples$Age + yVillageSub$samples$batch + yVillageSub$samples$RIN + yVillageSub$samples$CD8T + yVillageSub$samples$CD4T + yVillageSub$samples$NK + yVillageSub$samples$Bcell + yVillageSub$samples$Mono + yVillageSub$samples$Gran)
+    # rename columns to exclude spaces and unrecognised characters
+    colnames(design)=gsub("yVillageSub\\$samples\\$", "", colnames(design))
+    colnames(design)=gsub("Sampling.Site", "", colnames(design))
+    colnames(design)=gsub(" ", "_", colnames(design))
+
+    contr.matrix <- makeContrasts(  ANKvsMDB=Anakalung-Madobag, ANKvsMPI=Anakalung-Mappi, ANKvsTLL=Anakalung-Taileleu, ANKvsWNG=Anakalung-Wunga,
+        WNGvsMDB=Wunga-Madobag, WNGvsMPI=Wunga-Mappi, WNGvsTLL=Wunga-Taileleu,
+        MDBvsMPI=Madobag-Mappi, MDBvsTLL=Madobag-Taileleu,   
+        TLLvsMPI=Taileleu-Mappi, 
+        levels=colnames(design)) # Contrasts are ordered in the same order as the island ones, in case we want to look at directional effects
+
+    yVillageSub <- calcNormFactors(yVillageSub, method="TMM")
+
+    # There are not enough reps in here to use blocking, so we'll do it without the blocking:
+        voomNoNorm <- voom(yVillageSub, design, normalize.method="none", plot=F) 
+        voomNoNormVfit <- lmFit(voomNoNorm, design)
+        voomNoNormVfit <- contrasts.fit(voomNoNormVfit, contrasts=contr.matrix)
+        voomNoNormEfit <- eBayes(voomNoNormVfit, robust=T)
+
+    # get top genes using toptable
+    allDEresultsNoDup <- list()
+
+    for(i in 1:10){
+        allDEresultsNoDup[[i]] <- topTable(voomNoNormEfit, coef=i, n=Inf, sort.by="p")
+    }
+
+    deTesting <- summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
+    return(deTesting)
+}
+
+set.seed(110584) # Let's go with this one. 
+iterations <- 1000
+allDESummaries10 <- list()
+allDESummaries10 <- replicate(iterations, deTestingSubsets10(yVillage10), simplify=FALSE)
+
+# Now some analyses... 
+# Every entry is three rows, so first is to sum DE genes for every test:
+    
+deGenesTables10 <- ldply(allDESummaries10, function(x) colSums(x[c(1,3),]))
+summary(deGenesTables10) # Yeah this is hard to interpret, so probably worth putting aside for now. What about n = 15 instead, and repeating with those? There's no variability in Madobag, though, so maybe 10 is a good compromise
 
 
 
