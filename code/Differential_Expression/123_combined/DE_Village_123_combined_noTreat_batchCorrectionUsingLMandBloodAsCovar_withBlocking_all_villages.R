@@ -328,5 +328,6 @@ allDESummaries10 <- replicate(iterations, deTestingSubsets10(yVillage10), simpli
 deGenesTables10 <- ldply(allDESummaries10, function(x) colSums(x[c(1,3),]))
 summary(deGenesTables10) # Yeah this is hard to interpret, so probably worth putting aside for now. What about n = 15 instead, and repeating with those? There's no variability in Madobag, though, so maybe 10 is a good compromise
 
+write.table(deGeneTables10, file=paste0(outputdir, "DE_subsampling_10_inds.txt"), quote=F, row.names=F, col.names=T, sep="\t", eol="\n")
 
 
