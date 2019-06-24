@@ -530,8 +530,12 @@ names(quintileLabels) <- c("1", "2", "3", "4", "5")
             facet_grid(. ~ quintile, labeller = labeller(quintile = quintileLabels))
 
         ggplot(mtwAllKor, aes(y=logFC.tll, x=logFC.mdb, group=quintile)) +
-            geom_hline(yintercept=0, linetype=2, colour="grey60") +
-            geom_vline(xintercept=0, linetype=2, colour="grey60") +
+            geom_hline(yintercept=0, linetype=3, colour="grey30") +
+            geom_vline(xintercept=0, linetype=3, colour="grey30") +
+            geom_hline(yintercept=-0.5, linetype=2, colour="grey60") +
+            geom_vline(xintercept=-0.5, linetype=2, colour="grey60") +
+            geom_hline(yintercept=0.5, linetype=2, colour="grey60") +
+            geom_vline(xintercept=0.5, linetype=2, colour="grey60") +
             geom_point(size= 0.7, alpha=0.5) + 
             theme_bw() + 
             labs(title="", y="log FC TLLvsKOR", x="log FC MDBvsKOR") + 
@@ -541,8 +545,12 @@ names(quintileLabels) <- c("1", "2", "3", "4", "5")
             facet_grid(. ~ quintile, labeller = labeller(quintile = quintileLabels))
 
         ggplot(smbAllKor, aes(y=logFC.wng, x=logFC.ank, group=quintile)) +
-            geom_hline(yintercept=0, linetype=2, colour="grey60") +
-            geom_vline(xintercept=0, linetype=2, colour="grey60") +
+            geom_hline(yintercept=0, linetype=3, colour="grey30") +
+            geom_vline(xintercept=0, linetype=3, colour="grey30") +
+            geom_hline(yintercept=-0.5, linetype=2, colour="grey60") +
+            geom_vline(xintercept=-0.5, linetype=2, colour="grey60") +
+            geom_hline(yintercept=0.5, linetype=2, colour="grey60") +
+            geom_vline(xintercept=0.5, linetype=2, colour="grey60") +
             geom_point(size= 0.7, alpha=0.5) + 
             theme_bw() + 
             labs(title="", y="log FC WNGvsKOR", x="log FC ANKvsKOR") + 
