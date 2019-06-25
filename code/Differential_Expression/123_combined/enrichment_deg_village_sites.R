@@ -36,8 +36,6 @@ mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".
 mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01,]
 tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01,]
 
-background <- ankKor # doesn't matter, just need all tested genes.
-
 ensembl <- useMart(biomart = "ENSEMBL_MART_ENSEMBL", dataset = "hsapiens_gene_ensembl", host = "http://grch37.ensembl.org/", verbose=T) # super slow if we use the default mirrors...
 
 degEnrichment <- function(DEG_pop, DEG_comparison) {
@@ -88,7 +86,21 @@ degEnrichment <- function(DEG_pop, DEG_comparison) {
     message("####")
 }
 
+# Worth thinking about the background a little bit more - what is the best one?
+# This version tests all tested genes:
+background <- ankKor # doesn't matter, just need all tested genes.
 degEnrichment(ankOnly, "ankOnly")
 degEnrichment(wngOnly, "wngOnly")
 degEnrichment(tllOnly, "tllOnly")
 degEnrichment(mdbOnly, "mdbOnly")
+
+# This version considers all genes that are DE in either village against Korowai. This is the best compromise, because the island level testing is missing some genes that are DE at a single village level. Could also go crazy and incorporate those, but don't see the need.
+
+background <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 | smbVillageKor$adj.P.Val.ank <= 0.01,]
+degEnrichment(ankOnly, "ankOnly.islandBG")
+degEnrichment(wngOnly, "wngOnly.islandBG")
+
+background <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 | mtwVillageKor$adj.P.Val.tll <= 0.01,]
+degEnrichment(tllOnly, "tllOnly.islandBG")
+degEnrichment(mdbOnly, "mdbOnly.islandBG")
+
