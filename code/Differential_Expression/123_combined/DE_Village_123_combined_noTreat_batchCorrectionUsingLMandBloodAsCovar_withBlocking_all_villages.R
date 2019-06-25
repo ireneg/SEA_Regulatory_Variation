@@ -265,9 +265,12 @@ dev.off()
 ### 4. Random subsetting to 10 inds... ###
 ##########################################
 
-# Let's drop PadiraTana because even I agree that three samples is ridiculous. 
+# Let's drop small villages: 
 yVillage10 <- yVillage[,-grep("Padira Tana|Rindi|Hupu Mada", yVillage$samples$Sampling.Site)]
 yVillage10$samples <- droplevels(yVillage10$samples) # drop unused levels
+table(yVillage10$samples$Sampling.Site)
+# Anakalung   Madobag     Mappi  Taileleu     Wunga 
+#        20        17        21        32        17 
 
 deTestingSubsets10 <- function(testingData) {
     # draw the sample
@@ -328,6 +331,11 @@ allDESummaries10 <- replicate(iterations, deTestingSubsets10(yVillage10), simpli
 deGenesTables10 <- ldply(allDESummaries10, function(x) colSums(x[c(1,3),]))
 summary(deGenesTables10) # Yeah this is hard to interpret, so probably worth putting aside for now. What about n = 15 instead, and repeating with those? There's no variability in Madobag, though, so maybe 10 is a good compromise
 
-write.table(deGeneTables10, file=paste0(outputdir, "DE_subsampling_10_inds.txt"), quote=F, row.names=F, col.names=T, sep="\t", eol="\n")
+write.table(deGenesTables10, file=paste0(outputdir, "DE_subsampling_10_inds.txt"), quote=F, row.names=F, col.names=T, sep="\t", eol="\n")
 
+#And now... some t.tests:
+t.test(deGenesTables10$ANKvsMPI, deGenesTables10$WNGvsMPI)$p.value
+# [1] 1.290068e-191
 
+t.test(deGenesTables10$MDBvsMPI, deGenesTables10$TLLvsMPI)$p.value
+# [1] 1.727248e-212
