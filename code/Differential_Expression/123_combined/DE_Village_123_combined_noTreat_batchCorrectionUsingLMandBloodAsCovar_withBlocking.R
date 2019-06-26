@@ -1,8 +1,8 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-### Last edit: IGR 2019.06.14 
-### Heatmaps for figure 6
+### Last edit: IGR 2019.06.26 
+### Fixed a bug in making the heatmaps - was not filtering for 0.5 log FC
 
 ### 0. Load dependencies and functions and set input paths ###
 ### 1. Begin analyses and initial QC ###
@@ -418,10 +418,10 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     smbVillageKor <- merge(ankKor, wngKor, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
     smbVillageKor <- smbVillageKor[order(smbVillageKor$adj.P.Val.wng),]
 
-    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01,]
+    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01 & smbVillageKor$logFC.wng >= 0.5,] # This didn't filter for log FC, so I'm repeating that. But the numbers above were all good.
     wngOnly <- wngOnly[order(wngOnly$adj.P.Val.wng),] # Too lazy to order inside function...
 
-    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01,]
+    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01 & smbVillageKor$logFC.ank >= 0.5,]
     ankOnly <- ankOnly[order(ankOnly$adj.P.Val.ank),] # Too lazy to order inside function...
 
     pdf(file=paste0(edaoutput, "wng_kor_only_top_genes.pdf"))
@@ -439,10 +439,10 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
     mtwVillageKor <- mtwVillageKor[order(mtwVillageKor$adj.P.Val.mdb),]
 
-    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01,]
+    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & mtwVillageKor$logFC.mdb >= 0.5,]
     mdbOnly <- mdbOnly[order(mdbOnly$adj.P.Val.mdb),] # Too lazy to order inside function...
 
-    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01,]
+    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & mtwVillageKor$logFC.tll >= 0.5,]
     tllOnly <- tllOnly[order(tllOnly$adj.P.Val.tll),] # Too lazy to order inside function...
 
     pdf(file=paste0(edaoutput, "mdb_kor_only_top_genes.pdf"))
