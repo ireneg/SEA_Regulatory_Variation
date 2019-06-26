@@ -89,18 +89,17 @@ degEnrichment <- function(DEG_pop, DEG_comparison) {
 # Worth thinking about the background a little bit more - what is the best one?
 # This version tests all tested genes:
 background <- ankKor # doesn't matter, just need all tested genes.
-degEnrichment(ankOnly, "ankOnly")
-degEnrichment(wngOnly, "wngOnly")
-degEnrichment(tllOnly, "tllOnly")
-degEnrichment(mdbOnly, "mdbOnly")
+degEnrichment(ankOnly, "ankOnly") # no results
+degEnrichment(wngOnly, "wngOnly") # 35
+degEnrichment(tllOnly, "tllOnly") # 316
+degEnrichment(mdbOnly, "mdbOnly") # 4
 
 # This version considers all genes that are DE in either village against Korowai. This is the best compromise, because the island level testing is missing some genes that are DE at a single village level. Could also go crazy and incorporate those, but don't see the need.
-
 background <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 | smbVillageKor$adj.P.Val.ank <= 0.01,]
-degEnrichment(ankOnly, "ankOnly.islandBG")
-degEnrichment(wngOnly, "wngOnly.islandBG")
+degEnrichment(ankOnly, "ankOnly.islandBG") # no results
+degEnrichment(wngOnly, "wngOnly.islandBG") # no results
 
 background <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 | mtwVillageKor$adj.P.Val.tll <= 0.01,]
-degEnrichment(tllOnly, "tllOnly.islandBG")
-degEnrichment(mdbOnly, "mdbOnly.islandBG")
+degEnrichment(tllOnly, "tllOnly.islandBG") # 139
+degEnrichment(mdbOnly, "mdbOnly.islandBG") # 1
 
