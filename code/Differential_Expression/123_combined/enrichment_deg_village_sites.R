@@ -7,6 +7,7 @@ library(biomaRt)
 library(clusterProfiler)
 library(DOSE)
 library(org.Hs.eg.db)
+library(tidyr)
 
 # Set paths:
 inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
@@ -57,14 +58,6 @@ degEnrichment <- function(DEG_pop, DEG_comparison) {
     annot_DEG_pop <- getBM(attributes = attribute_Names, filters = Type_ensembl, values = Values, mart = ensembl)
     tab_DEG_pop <- left_join(DEG_pop, annot_DEG_pop, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)
 
-    # ## deni
-    # dat <- read.table("~/Dropbox/Work/projects/rna/deni_introg/QT.txt", sep = "\t", header = T, quote = NULL)
-    # QT <- dat %>% fill(QUANTILE) %>% distinct(GENES, .keep_all = TRUE)
-
-    # tab_DEG_pop_deni <- tab_DEG_pop %>% left_join(QT, by = c("external_gene_name"="GENES")) %>% dplyr::rename("DENI_intro"="QUANTILE")
-
-    # ## save annotation
-    # write_tsv(tab_DEG_pop_deni, outfile_annot)
 
     ## enrichment
     message(paste("Performing GO and KEGG enrichment for ", DEG_comparison, "...", sep = ""))
@@ -103,3 +96,77 @@ background <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 | mtwVillageKor$
 degEnrichment(tllOnly, "tllOnly.islandBG") # 139
 degEnrichment(mdbOnly, "mdbOnly.islandBG") # 1
 
+    # ## deni
+denisovan <- read.table(paste0(covariatedir, "denisovan_genes_jacobs_et_al.txt"), sep = "\t", header = T, quote = NULL)
+# But of course that file is a mess because every row can have one gene or many, or none, so we use tidyr. 
+denisovan2 <- separate_rows(denisovan, GENES, sep="\\,") #OMG 
+
+# Executive decision: if a gene is seen multiple times keep the highest frequency
+# In which case we can sort by frequency, then filter duplicate gene names:
+denisovan2 <- denisovan2[order(-denisovan2$PROPORTION_NG),]
+denisovanFilt <- denisovan2[!duplicated(denisovan2$GENES),]
+dim(denisovanFilt)
+# [1] 3224    6
+
+denisovanAnnot <- function(DEG_pop, DEG_name) {
+    outfile_annot <- paste0(edaoutput, DEG_name, "annot.txt")
+    message("")
+    message("####")
+    message(paste("Annotating ", DEG_name, " ...", sep = ""))
+
+    Type_ensembl <- "ensembl_gene_id"
+    Values <- DEG_pop$genes
+    attribute_Names = c('ensembl_gene_id', 'entrezgene', 'external_gene_name', 'description', 'gene_biotype', 'chromosome_name', 'start_position', 'end_position', 'strand')
+
+    annot_DEG_pop <- getBM(attributes = attribute_Names, filters = Type_ensembl, values = Values, mart = ensembl)
+    tab_DEG_pop <- left_join(DEG_pop, annot_DEG_pop, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)
+
+    tab_DEG_pop_deni <- denisovanFilt %>% inner_join(tab_DEG_pop, by = c("GENES"="external_gene_name")) 
+    ## save annotation
+    write_tsv(tab_DEG_pop_deni, outfile_annot)
+
+    return(tab_DEG_pop_deni)
+    message(paste("Done"))
+    message("####")
+}
+
+# This is probably a bit fraught because different haplotypes are different lengths and we need to control for that and gene lengths, but I am being sloppy. 
+
+smbKor <- read.table(files[3], header=T, stringsAsFactors=F)
+mtwKor <- read.table(files[1], header=T, stringsAsFactors=F)
+smbMtw <- read.table(files[5], header=T, stringsAsFactors=F)
+
+smbKorAnnot <- denisovanAnnot(smbKor, "Smb-Kor")
+mtwKorAnnot <- denisovanAnnot(mtwKor, "Mtw-Kor")
+smbMtwAnnot <- denisovanAnnot(smbMtw, "Smb-Mtw")
+
+# Two tailed or one-tailed?
+t.test(smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG) # two tailed, we think they're equal
+# data:  smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
+# t = -0.06737, df = 1432.7, p-value = 0.9463
+# alternative hypothesis: true difference in means is not equal to 0
+# 95 percent confidence interval:
+#  -0.00971487  0.00906973
+# sample estimates:
+#  mean of x  mean of y 
+# 0.07547917 0.07580174 
+
+t.test(smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, alternative="g") # greater, we think kor should contribute
+# data:  smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
+# t = 1.8188, df = 618.62, p-value = 0.03471
+# alternative hypothesis: true difference in means is greater than 0
+# 95 percent confidence interval:
+#  0.0009350708          Inf
+# sample estimates:
+#  mean of x  mean of y 
+# 0.07547917 0.06556098 
+
+t.test(mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, alternative="g") # and here too. 
+# data:  mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
+# t = 1.8244, df = 659.83, p-value = 0.03427
+# alternative hypothesis: true difference in means is greater than 0
+# 95 percent confidence interval:
+#  0.0009948329          Inf
+# sample estimates:
+#  mean of x  mean of y 
+# 0.07580174 0.06556098 

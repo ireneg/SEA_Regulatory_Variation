@@ -418,10 +418,10 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     smbVillageKor <- merge(ankKor, wngKor, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
     smbVillageKor <- smbVillageKor[order(smbVillageKor$adj.P.Val.wng),]
 
-    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01 & smbVillageKor$logFC.wng >= 0.5,] # This didn't filter for log FC, so I'm repeating that. But the numbers above were all good.
+    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01 & abs(smbVillageKor$logFC.wng) >= 0.5,] # This didn't filter for log FC, so I'm repeating that. But the numbers above were all good.
     wngOnly <- wngOnly[order(wngOnly$adj.P.Val.wng),] # Too lazy to order inside function...
 
-    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01 & smbVillageKor$logFC.ank >= 0.5,]
+    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01 & abs(smbVillageKor$logFC.ank) >= 0.5,]
     ankOnly <- ankOnly[order(ankOnly$adj.P.Val.ank),] # Too lazy to order inside function...
 
     pdf(file=paste0(edaoutput, "wng_kor_only_top_genes.pdf"))
@@ -439,10 +439,10 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
     mtwVillageKor <- mtwVillageKor[order(mtwVillageKor$adj.P.Val.mdb),]
 
-    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & mtwVillageKor$logFC.mdb >= 0.5,]
+    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & abs(mtwVillageKor$logFC.mdb) >= 0.5,]
     mdbOnly <- mdbOnly[order(mdbOnly$adj.P.Val.mdb),] # Too lazy to order inside function...
 
-    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & mtwVillageKor$logFC.tll >= 0.5,]
+    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & abs(mtwVillageKor$logFC.tll) >= 0.5,]
     tllOnly <- tllOnly[order(tllOnly$adj.P.Val.tll),] # Too lazy to order inside function...
 
     pdf(file=paste0(edaoutput, "mdb_kor_only_top_genes.pdf"))
@@ -578,10 +578,10 @@ allCPM <- voomNoNormDup$E
     wngKorCPM <- allCPM[wngOnly$genes[1:100],]
     wngKorCPM <- wngKorCPM[,grepl("MPI|SMB", colnames(wngKorCPM))]
 
-    ankKorCPM <- allCPM[ankOnly$genes[1:100],]
+    ankKorCPM <- allCPM[ankOnly$genes[1:86],] # only 86 genes
     ankKorCPM <- ankKorCPM[,grepl("MPI|SMB", colnames(ankKorCPM))]
 
-    smbKorCPM <- allCPM[smbKorIslandDE$genes[1:100],]
+    smbKorCPM <- allCPM[smbKorIslandDE$genes[1:100],] # This one isn't filtered, but it's ok because the figure is useless.
     smbKorCPM <- smbKorCPM[,grepl("MPI|SMB", colnames(smbKorCPM))]
 
     # Column annotation - same for all plots
@@ -603,7 +603,7 @@ allCPM <- voomNoNormDup$E
 
     # Anakalung
     ankOnly <- merge(ankOnly, smbKorIslandDE, by.x="genes", by.y="genes", all=F, sort=F)
-    rowMetadataAnk <- data.frame(rownames(ankKorCPM), -log10(ankOnly$adj.P.Val.wng[1:100]), -log10(ankOnly$adj.P.Val.ank[1:100]), -log10(ankOnly$adj.P.Val[1:100]))
+    rowMetadataAnk <- data.frame(rownames(ankKorCPM), -log10(ankOnly$adj.P.Val.wng[1:86]), -log10(ankOnly$adj.P.Val.ank[1:86]), -log10(ankOnly$adj.P.Val[1:86]))
     names(rowMetadataAnk) <- c("genes", "wngKorpval", "ankKorpval", "smbKorpval")
     rowColsAnk <- HeatmapAnnotation(rowMetadataAnk[,2:4], col = 
         list(wngKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 

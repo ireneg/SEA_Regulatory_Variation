@@ -185,6 +185,7 @@ vfitVillage <- contrasts.fit(fitVillage, contrasts=contrastsVillage)
 efitVillage <- eBayes(vfitVillage)
 
 save(efitVillage, file=paste0(outputdir, "efitVillage.Rda"))
+# load (paste0(outputdir, "efitVillage.Rda"))
 
 # get top genes using toptable
 allVillageResults <- list()
@@ -278,25 +279,25 @@ allTogether05Venn$genes <- rownames(allTogether05)
     smbVillageKor <- merge(ankKor, wngKor, by.x="probe", by.y="probe", suffixes=c(".ank", ".wng"))
     smbVillageKor <- smbVillageKor[order(smbVillageKor$adj.P.Val.wng),]
 
-    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01 & smbVillageKor$logFC.wng >= 0.5,] # was forgetting to filter by logFC here!
+    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01 & abs(smbVillageKor$logFC.wng) >= 0.5,] # was forgetting to filter by logFC here!
     wngOnly <- wngOnly[order(wngOnly$adj.P.Val.wng),] # Too lazy to order inside function...
 
-    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01 & smbVillageKor$logFC.ank >= 0.5,]
+    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01 & abs(smbVillageKor$logFC.ank) >= 0.5,]
     ankOnly <- ankOnly[order(ankOnly$adj.P.Val.ank),]
 
 # Mentawai Korowai:
-    tllKor <- allVillageResults[[2]]
+    tllKor <- allVillageResults[[8]]
     tllKor$probe <- rownames(tllKor)
-    mdbKor <- allVillageResults[[9]]
+    mdbKor <- allVillageResults[[5]]
     mdbKor$probe <- rownames(mdbKor)
 
     mtwVillageKor <- merge(tllKor, mdbKor, by.x="probe", by.y="probe", suffixes=c(".tll", ".mdb"))
     mtwVillageKor <- mtwVillageKor[order(mtwVillageKor$adj.P.Val.mdb),]
 
-    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & mtwVillageKor$logFC.mdb >= 0.5,] # was forgetting to filter by logFC here!
+    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & abs(mtwVillageKor$logFC.mdb) >= 0.5,] # was forgetting to filter by logFC here!
     mdbOnly <- mdbOnly[order(mdbOnly$adj.P.Val.mdb),] # Too lazy to order inside function...
 
-    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & mtwVillageKor$logFC.tll >= 0.5,]
+    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & abs(mtwVillageKor$logFC.tll) >= 0.5,]
     tllOnly <- tllOnly[order(tllOnly$adj.P.Val.tll),]
 
 # What's the rank correlation across the two villages in each island? does it get worse as you go down quintiles/deciles?
@@ -494,7 +495,7 @@ names(decileLabels) <- seq(1,10,1)
 ### 10. Good old plot of pairwise correlations within each village and level etc etc... ###
 #############################################################################################################
 
-# Define hideous function
+# Define hideous functions
 plot.reproducibility <- function(data.to.test, metadata, method){
     corMat <- cor(data.to.test, method=method, use="pairwise.complete.obs")
 
