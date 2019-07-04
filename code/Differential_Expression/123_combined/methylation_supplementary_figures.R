@@ -10,6 +10,9 @@
 ### 3. UpsetR plots and merging island and village. ###
 ### 4. Looking at correlations across sites ###
 ### 5. Heatmaps of top DM genes between some villages but not others. ###
+### 6. Heatmaps, but with beta values instead of m-values. ###
+### 7. Plotting siglec7 because I am curious. ###
+### 8. Good old plot of pairwise correlations within each village and level etc etc... ###
 
 
 ##############################################################
@@ -222,9 +225,9 @@ byIslands05 <- decideTests(efitIsland, method="separate", adjust.method = "BH", 
 #byIslands1 <- decideTests(efitIsland, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1)
 
 #Now order them both by the same so upsetR can judge them both:
-table(rownames(byIslands) == rownames(byVillages))
+# table(rownames(byIslands) == rownames(byVillages))
 table(rownames(byIslands05) == rownames(byVillages05))
-table(rownames(byIslands1) == rownames(byVillages1))
+# table(rownames(byIslands1) == rownames(byVillages1))
 
 #allTogether <- data.frame(byVillages, byIslands)
 allTogether05 <- data.frame(byVillages05, byIslands05)
@@ -491,10 +494,137 @@ names(decileLabels) <- seq(1,10,1)
     dev.off()
 
 
+##############################################################
+### 6. Heatmaps, but with beta values instead of m-values. ###
+##############################################################
 
-###########################################################################################
-### 10. Good old plot of pairwise correlations within each village and level etc etc... ###
-#############################################################################################################
+rm(mvalVillage) 
+rm(mval) # clean some space
+
+beta <- data.frame(fread(paste0(inputdir, "beta_vals.tsv")))
+rownames(beta) <- beta$V1
+beta <- beta[,-1] 
+head(beta)
+
+colnames(beta) <- covariates$Sample.ID
+betaVillage <- beta[,-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira Tana|Rindi", covariates$Sampling.Site)]
+
+# Now the heatmaps - just need to pull the new beta values and replot, the row and colour info shouldn't change. 
+
+# Sumba vs Korowai
+    # Remove Mentawai
+    wngKorbeta <- betaVillage[wngOnly$probe[1:100],]
+    wngKorbeta <- wngKorbeta[,grepl("MPI|SMB", colnames(wngKorbeta))]
+
+    ankKorbeta <- betaVillage[ankOnly$probe[1:100],]
+    ankKorbeta <- ankKorbeta[,grepl("MPI|SMB", colnames(ankKorbeta))]
+
+    smbKorbeta <- betaVillage[smbKorIslandDE$probe[1:100],]
+    smbKorbeta <- smbKorbeta[,grepl("MPI|SMB", colnames(smbKorbeta))]
+
+    # The metadata is the same as before, so no need to redefine it beyond this...
+    colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|SMB", colMetadata$Sample),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
+
+    # Heatmaps:
+    pdf(file=paste0(edaoutput, "smb_kor_DE_heatmaps_betas.pdf"), height=9, width=6)
+        wngMap <- Heatmap(wngKorbeta, col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="beta value", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(wngKorbeta)), cluster_columns=F)
+        draw(rowColsWng + wngMap, row_dend_side = "left")
+
+        ankMap <- Heatmap(ankKorbeta, col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="beta value", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(ankKorbeta)), cluster_columns=F)
+        draw(rowColsAnk + ankMap, row_dend_side = "left")
+
+        smbMap <- Heatmap(smbKorbeta, col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="beta value", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(smbKorbeta)), cluster_columns=F)
+        draw(rowColsSmb + smbMap, row_dend_side = "left")
+    dev.off()
+
+### Now Mentawai vs Korowai:
+    # Remove Sumba
+    tllKorbeta <- betaVillage[tllOnly$probe[1:100],]
+    tllKorbeta <- tllKorbeta[,grepl("MPI|MTW", colnames(tllKorbeta))]
+
+    mdbKorbeta <- betaVillage[mdbOnly$probe[1:100],]
+    mdbKorbeta <- mdbKorbeta[,grepl("MPI|MTW", colnames(mdbKorbeta))]
+
+    mtwKorbeta <- betaVillage[mtwKorIslandDE$probe[1:100],]
+    mtwKorbeta <- mtwKorbeta[,grepl("MPI|MTW", colnames(mtwKorbeta))]
+
+    # Same here...
+    colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|MTW", colMetadata$Sample),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
+
+    # Heatmaps:
+    pdf(file=paste0(edaoutput, "mtw_kor_DE_heatmaps_betas.pdf"), height=8, width=6)
+        tllMap <- Heatmap(tllKorbeta, col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="beta value", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(tllKorbeta)), cluster_columns=F)
+        draw(rowColsTll + tllMap, row_dend_side = "left")
+
+        mdbMap <- Heatmap(mdbKorbeta, col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="beta value",  show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(mdbKorbeta)), cluster_columns=F)
+        draw(rowColsMdb + mdbMap, row_dend_side = "left")
+
+        mtwMap <- Heatmap(mtwKorbeta, col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="beta value",  show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(mtwKorbeta)), cluster_columns=F)
+        draw(rowColsMtw + mtwMap, row_dend_side = "left")
+    dev.off()
+
+#################################################
+### 7. Plotting siglec7 because I am curious. ###
+#################################################
+
+# read in the manifest:
+manifest <- fread(paste0(inputdir, "MethylationEPIC_v-1-0_B4.csv"), sep=",", skip=7)
+siglec7 <- manifest[grepl("SIGLEC7", manifest$GencodeBasicV12_NAME),]
+
+siglecBetas <- beta[siglec7$Name,]
+
+# # Get the pvals:
+# load(paste0(outputdir, "efitIsland.Rda"))
+# allIslandresults <- list()
+
+# for(i in 1:3){
+#     allIslandresults[[i]] <- topTable(efitIsland, coef=i, n=Inf, sort.by="p")
+# }
+
+smbMtwIsland <- allIslandresults[[1]]
+smbMtwIsland$probe <- rownames(smbMtwIsland)
+# smbKorIsland <- allIslandresults[[2]]
+# smbKorIsland$probe <- rownames(smbKorIsland)
+# mtwKorIsland <- allIslandresults[[3]]
+# mtwKorIsland$probe <- rownames(mtwKorIsland)
+
+
+siglecPvals <- merge(smbMtwIsland[siglec7$Name,], smbKorIsland[siglec7$Name,], by.x="probe", by.y="probe", suffixes=c(".smbmtw", ".smbkor"))
+siglecPvals <- merge(siglecPvals, mtwKorIsland[siglec7$Name,], by.x="probe", by.y="probe")
+
+# Column annotation
+colMetadata <- covariates[,c(1,2,3)]
+islandCols <- c("Korowai" = korowai, "Sumba" = sumba, "Mentawai" = mentawai)
+villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod", "Bilarenge" = "gold4", "Hupu Mada" = "gold4", "Padira Tana" = "gold4", "Patiala Bawa" = "gold4", "Wura Homba" = "gold4", "Rindi" = "gold4")
+
+colCols <- HeatmapAnnotation(df = colMetadata[,2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
+
+# Read in CPM data to make a nice extra info column
+# coming soon
+
+rowMetadataSiglec <- data.frame(rownames(siglecPvals), -log10(siglecPvals[,6]), -log10(siglecPvals[,12]), -log10(siglecPvals[,18]))
+names(rowMetadataSiglec) <- c("probe", "SMB_MTW_pval", "SMB_KOR_pval", "MTW_KOR_pval")
+rowColsSiglec <- HeatmapAnnotation(rowMetadataSiglec[,2:4], col = 
+    list(SMB_MTW_pval=colorRamp2(c(min(rowMetadataSiglec[,2:4]), max(rowMetadataSiglec[,2:4])), c("white", "black")), 
+         SMB_KOR_pval=colorRamp2(c(min(rowMetadataSiglec[,2:4]), max(rowMetadataSiglec[,2:4])), c("white", "black")), 
+         MTW_KOR_pval=colorRamp2(c(min(rowMetadataSiglec[,2:4]), max(rowMetadataSiglec[,2:4])), c("white", "black"))), which="row")
+
+# Sort the data... 
+siglecBetas <- siglecBetas[sort(rownames(siglecBetas)),]
+
+pdf(file=paste0(edaoutput, "siglec7_heatmaps_betas.pdf"))
+    siglecMap <- Heatmap(siglecBetas, col=colorRampPalette(brewer.pal(9, "PuOr"))(130), name="beta value", show_column_names=FALSE, show_row_names=TRUE, top_annotation = colCols, cluster_columns=T)
+    draw(rowColsSiglec + siglecMap, row_dend_side = "left")
+dev.off()
+
+# OK that's done and it is ugly and underwhelming
+
+
+##########################################################################################
+### 8. Good old plot of pairwise correlations within each village and level etc etc... ###
+##########################################################################################
+
+# This is so slow that it absolutely goes last. 
 
 # Define hideous functions
 plot.reproducibility <- function(data.to.test, metadata, method){
@@ -649,134 +779,5 @@ pdf(file=paste0(edaoutput, "correlation_within_sites.pdf"))
     plotWithinSite(mval, covariates, "spearman")
     plotWithinSite(mval, covariates, "pearson")
 dev.off()
-
-
-##############################################################
-### 7. Heatmaps, but with beta values instead of m-values. ###
-##############################################################
-
-rm(mvalVillage) 
-rm(mval)
-
-beta <- data.frame(fread(paste0(inputdir, "beta_vals.tsv")))
-rownames(beta) <- beta$V1
-beta <- beta[,-1] 
-head(beta)
-
-colnames(beta) <- covariates$Sample.ID
-betaVillage <- beta[,-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira Tana|Rindi", covariates$Sampling.Site)]
-
-# Now the heatmaps - just need to pull the new beta values and replot, the row and colour info shouldn't change. 
-
-# Sumba vs Korowai
-    # Remove Mentawai
-    wngKorbeta <- betaVillage[wngOnly$probe[1:1000],]
-    wngKorbeta <- wngKorbeta[,grepl("MPI|SMB", colnames(wngKorbeta))]
-
-    ankKorbeta <- betaVillage[ankOnly$probe[1:1000],]
-    ankKorbeta <- ankKorbeta[,grepl("MPI|SMB", colnames(ankKorbeta))]
-
-    smbKorbeta <- betaVillage[smbKorIslandDE$probe[1:1000],]
-    smbKorbeta <- smbKorbeta[,grepl("MPI|SMB", colnames(smbKorbeta))]
-
-    # Column annotation - same for all plots
-    # colMetadata <- covarVillage[,c(1,2,3)]
-    # islandCols <- c("Korowai" = korowai, "Sumba" = sumba, "Mentawai" = mentawai)
-    # villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
-
-    colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|SMB", colMetadata$Sample),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
-
-    # Rows: 
-    # Wunga-centric:
-    # wngOnly <- merge(wngOnly, smbKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
-    # rowMetadataWng <- data.frame(rownames(wngKorbeta), -log10(wngOnly$adj.P.Val.wng[1:1000]), -log10(wngOnly$adj.P.Val.ank[1:1000]), -log10(wngOnly$adj.P.Val[1:1000]))
-    # names(rowMetadataWng) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
-    # rowColsWng <- HeatmapAnnotation(rowMetadataWng[,2:4], col = 
-    #     list(wngKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black")), 
-    #          ankKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black")), 
-    #          smbKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black"))), which="row")
-
-    # # Anakalung
-    # ankOnly <- merge(ankOnly, smbKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
-    # rowMetadataAnk <- data.frame(rownames(ankKorbeta), -log10(ankOnly$adj.P.Val.wng[1:1000]), -log10(ankOnly$adj.P.Val.ank[1:1000]), -log10(ankOnly$adj.P.Val[1:1000]))
-    # names(rowMetadataAnk) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
-    # rowColsAnk <- HeatmapAnnotation(rowMetadataAnk[,2:4], col = 
-    #     list(wngKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
-    #          ankKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
-    #          smbKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black"))), which="row")
-
-    # # For the island-wide one
-    # rowMetadataSmb <- data.frame(rownames(smbKorbeta), -log10(smbAllKor$adj.P.Val.wng[1:1000]), -log10(smbAllKor$adj.P.Val.ank[1:1000]), -log10(smbAllKor$adj.P.Val[1:1000]))
-    # names(rowMetadataSmb) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
-    # rowColsSmb <- HeatmapAnnotation(rowMetadataSmb[,2:4], col = 
-    #     list(wngKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black")), 
-    #          ankKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black")), 
-    #          smbKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black"))), which="row")
-
-    # Heatmaps:
-    pdf(file=paste0(edaoutput, "smb_kor_DE_heatmaps_betas.pdf"), height=9, width=6)
-        wngMap <- Heatmap(t(scale(t(wngKorbeta))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name=expression(beta), show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(wngKorbeta)), cluster_columns=F)
-        draw(rowColsWng + wngMap, row_dend_side = "left")
-
-        ankMap <- Heatmap(t(scale(t(ankKorbeta))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name=expression(beta), show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(ankKorbeta)), cluster_columns=F)
-        draw(rowColsAnk + ankMap, row_dend_side = "left")
-
-        smbMap <- Heatmap(t(scale(t(smbKorbeta))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name=expression(beta), show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(smbKorbeta)), cluster_columns=F)
-        draw(rowColsSmb + smbMap, row_dend_side = "left")
-    dev.off()
-
-### Now Mentawai vs Korowai:
-    # Remove Sumba
-    tllKorbeta <- betaVillage[tllOnly$probe[1:1000],]
-    tllKorbeta <- tllKorbeta[,grepl("MPI|MTW", colnames(tllKorbeta))]
-
-    mdbKorbeta <- betaVillage[mdbOnly$probe[1:1000],]
-    mdbKorbeta <- mdbKorbeta[,grepl("MPI|MTW", colnames(mdbKorbeta))]
-
-    mtwKorbeta <- betaVillage[mtwKorIslandDE$probe[1:1000],]
-    mtwKorbeta <- mtwKorbeta[,grepl("MPI|MTW", colnames(mtwKorbeta))]
-
-    # Column annotation - same for all plots
-    # colMetadata <- covarVillage[,c(1,2,3)]
-    colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|MTW", colMetadata$Sample),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
-
-    # Rows: 
-    # Taileleu-centric:
-    # tllOnly <- merge(tllOnly, mtwKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
-    # rowMetadataTll <- data.frame(rownames(tllKorbeta), -log10(tllOnly$adj.P.Val.tll[1:1000]), -log10(tllOnly$adj.P.Val.mdb[1:1000]), -log10(tllOnly$adj.P.Val[1:1000]))
-    # names(rowMetadataTll) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
-    # rowColsTll <- HeatmapAnnotation(rowMetadataTll[,2:4], col = 
-    #     list(tllKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black")), 
-    #          mdbKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black")), 
-    #          mtwKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black"))), which="row")
-
-    # # Anakalung
-    # mdbOnly <- merge(mdbOnly, mtwKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
-    # rowMetadataMdb <- data.frame(rownames(mdbKorbeta), -log10(mdbOnly$adj.P.Val.tll[1:1000]), -log10(mdbOnly$adj.P.Val.mdb[1:1000]), -log10(mdbOnly$adj.P.Val[1:1000]))
-    # names(rowMetadataMdb) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
-    # rowColsMdb <- HeatmapAnnotation(rowMetadataMdb[,2:4], col = 
-    #     list(tllKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black")), 
-    #          mdbKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black")), 
-    #          mtwKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black"))), which="row")
-
-    # # For the island-wide one
-    # rowMetadataMtw <- data.frame(rownames(mtwKorbeta), -log10(mtwAllKor$adj.P.Val.tll[1:1000]), -log10(mtwAllKor$adj.P.Val.mdb[1:1000]), -log10(mtwAllKor$adj.P.Val[1:1000]))
-    # names(rowMetadataMtw) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
-    # rowColsMtw <- HeatmapAnnotation(rowMetadataMtw[,2:4], col = 
-    #     list(tllKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black")), 
-    #          mdbKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black")), 
-    #          mtwKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black"))), which="row")
-
-    # Heatmaps:
-    pdf(file=paste0(edaoutput, "mtw_kor_DE_heatmaps_betas.pdf"), height=8, width=6)
-        tllMap <- Heatmap(t(scale(t(tllKorbeta))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(tllKorbeta)), cluster_columns=F)
-        draw(rowColsTll + tllMap, row_dend_side = "left")
-
-        mdbMap <- Heatmap(t(scale(t(mdbKorbeta))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(mdbKorbeta)), cluster_columns=F)
-        draw(rowColsMdb + mdbMap, row_dend_side = "left")
-
-        mtwMap <- Heatmap(t(scale(t(mtwKorbeta))), col=colorRampPalette(brewer.pal(9, "PuOr"))(100), name="expression Z-score", show_column_names=FALSE, show_row_names=FALSE, top_annotation = colCols, column_order = sort(colnames(mtwKorbeta)), cluster_columns=F)
-        draw(rowColsMtw + mtwMap, row_dend_side = "left")
-    dev.off()
 
 
