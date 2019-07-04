@@ -498,8 +498,7 @@ names(decileLabels) <- seq(1,10,1)
 ### 6. Heatmaps, but with beta values instead of m-values. ###
 ##############################################################
 
-rm(mvalVillage) 
-rm(mval) # clean some space
+rm(mvalVillage) # clean up a bit
 
 beta <- data.frame(fread(paste0(inputdir, "beta_vals.tsv")))
 rownames(beta) <- beta$V1
@@ -563,6 +562,8 @@ betaVillage <- beta[,-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira T
         draw(rowColsMtw + mtwMap, row_dend_side = "left")
     dev.off()
 
+rm(betaVillage)
+
 #################################################
 ### 7. Plotting siglec7 because I am curious. ###
 #################################################
@@ -624,7 +625,9 @@ dev.off()
 ### 8. Good old plot of pairwise correlations within each village and level etc etc... ###
 ##########################################################################################
 
-# This is so slow that it absolutely goes last. 
+# This is so slow that it absolutely goes last, and we clean up a bit first
+rm(beta)
+rm(manifest)
 
 # Define hideous functions
 plot.reproducibility <- function(data.to.test, metadata, method){
