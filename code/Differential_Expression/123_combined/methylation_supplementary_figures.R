@@ -562,16 +562,21 @@ rm(betaVillage)
 # read in the manifest:
 manifest <- fread(paste0(inputdir, "MethylationEPIC_v-1-0_B4.csv"), sep=",", skip=7)
 siglec7 <- manifest[grepl("SIGLEC7", manifest$GencodeBasicV12_NAME),]
+siglec7Alt <- manifest[grepl("SIGLEC7", manifest$UCSC_RefGene_Name),]
 
 siglecBetas <- beta[siglec7$Name,]
+siglecAltBetas <- beta[siglec7Alt$Name,]
 
 #get missing pvals
 smbMtwIsland <- allIslandresults[[1]]
 smbMtwIsland$probe <- rownames(smbMtwIsland)
 
-
 siglecPvals <- merge(smbMtwIsland[siglec7$Name,], smbKorIsland[siglec7$Name,], by.x="probe", by.y="probe", suffixes=c(".smbmtw", ".smbkor"))
 siglecPvals <- merge(siglecPvals, mtwKorIsland[siglec7$Name,], by.x="probe", by.y="probe")
+
+siglecAltPvals <- merge(smbMtwIsland[siglec7Alt$Name,], smbKorIsland[siglec7Alt$Name,], by.x="probe", by.y="probe", suffixes=c(".smbmtw", ".smbkor"))
+siglecAltPvals <- merge(siglecAltPvals, mtwKorIsland[siglec7Alt$Name,], by.x="probe", by.y="probe")
+
 
 # Column annotation
 colMetadata <- covariates[,c(1,2,3)]
@@ -590,12 +595,22 @@ rowColsSiglec <- HeatmapAnnotation(rowMetadataSiglec[,2:4], col =
          SMB_KOR_pval=colorRamp2(c(min(rowMetadataSiglec[,2:4]), max(rowMetadataSiglec[,2:4])), c("white", "black")), 
          MTW_KOR_pval=colorRamp2(c(min(rowMetadataSiglec[,2:4]), max(rowMetadataSiglec[,2:4])), c("white", "black"))), which="row")
 
+rowMetadatasiglecAlt <- data.frame(rownames(siglecAltPvals), -log10(siglecAltPvals[,6]), -log10(siglecAltPvals[,12]), -log10(siglecAltPvals[,18]))
+names(rowMetadatasiglecAlt) <- c("probe", "SMB_MTW_pval", "SMB_KOR_pval", "MTW_KOR_pval")
+rowColssiglecAlt <- HeatmapAnnotation(rowMetadatasiglecAlt[,2:4], col = 
+    list(SMB_MTW_pval=colorRamp2(c(min(rowMetadatasiglecAlt[,2:4]), max(rowMetadatasiglecAlt[,2:4])), c("white", "black")), 
+         SMB_KOR_pval=colorRamp2(c(min(rowMetadatasiglecAlt[,2:4]), max(rowMetadatasiglecAlt[,2:4])), c("white", "black")), 
+         MTW_KOR_pval=colorRamp2(c(min(rowMetadatasiglecAlt[,2:4]), max(rowMetadatasiglecAlt[,2:4])), c("white", "black"))), which="row")
+
 # Sort the data... 
 siglecBetas <- siglecBetas[sort(rownames(siglecBetas)),]
+siglecAltBetas <- siglecAltBetas[sort(rownames(siglecAltBetas)),]
 
 pdf(file=paste0(edaoutput, "siglec7_heatmaps_betas.pdf"))
     siglecMap <- Heatmap(siglecBetas, col=colorRampPalette(brewer.pal(9, "PuOr"))(130), name="beta value", show_column_names=FALSE, show_row_names=TRUE, top_annotation = colCols, cluster_columns=T)
     draw(rowColsSiglec + siglecMap, row_dend_side = "left")
+    siglecAltMap <- Heatmap(siglecAltBetas, col=colorRampPalette(brewer.pal(9, "PuOr"))(130), name="beta value", show_column_names=FALSE, show_row_names=TRUE, top_annotation = colCols, cluster_columns=T)
+    draw(rowColssiglecAlt + siglecAltMap, row_dend_side = "left")
 dev.off()
 
 # OK that's done and it is ugly and underwhelming

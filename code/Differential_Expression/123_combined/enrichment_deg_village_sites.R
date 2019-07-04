@@ -37,6 +37,8 @@ mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".
 mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01,]
 tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01,]
 
+methylMix <- read.table(paste0(inputdir, "methylmix_genename_ensemblid.csv"), sep=",", header=T)
+
 ensembl <- useMart(biomart = "ENSEMBL_MART_ENSEMBL", dataset = "hsapiens_gene_ensembl", host = "http://grch37.ensembl.org/", verbose=T) # super slow if we use the default mirrors...
 
 degEnrichment <- function(DEG_pop, DEG_comparison) {
@@ -53,7 +55,7 @@ degEnrichment <- function(DEG_pop, DEG_comparison) {
     #listFilters(ensembl) %>% filter(str_detect(name, "ensembl"))
     Type_ensembl <- "ensembl_gene_id"
     Values <- DEG_pop$genes
-    attribute_Names = c('ensembl_gene_id', 'entrezgene', 'external_gene_name', 'description', 'gene_biotype', 'chromosome_name', 'start_position', 'end_position', 'strand')
+    attribute_Names = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'chromosome_name', 'start_position', 'end_position', 'strand', 'kegg_enzyme')
 
     annot_DEG_pop <- getBM(attributes = attribute_Names, filters = Type_ensembl, values = Values, mart = ensembl)
     tab_DEG_pop <- left_join(DEG_pop, annot_DEG_pop, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)
@@ -68,10 +70,9 @@ degEnrichment <- function(DEG_pop, DEG_comparison) {
 
     write_tsv(filter(ego_or_ALL_pop@result, p.adjust <= 0.1), outfile_go)
 
-    kegg_or_ALL_pop <- enrichKEGG(gene = as.character(na.omit(tab_DEG_pop$entrezgene)), 
-                                  universe = as.character(na.omit(background$entrezgene)), organism = "hsa", 
-                                  pAdjustMethod = "fdr", pvalueCutoff = 0.01, qvalueCutoff = 0.05) %>%
-      setReadable(., OrgDb = org.Hs.eg.db, keyType = "ENTREZID")
+    kegg_or_ALL_pop <- enrichKEGG(gene = tab_DEG_pop$entrezgene_id, 
+                                  universe = background$entrezgene_id, organism = "hsa", 
+                                  pAdjustMethod = "fdr", pvalueCutoff = 0.01, qvalueCutoff = 0.05, use_internal_data=F) 
 
     write_tsv(filter(kegg_or_ALL_pop@result, p.adjust <= 0.1), outfile_kegg)
 
@@ -82,10 +83,10 @@ degEnrichment <- function(DEG_pop, DEG_comparison) {
 # Worth thinking about the background a little bit more - what is the best one?
 # This version tests all tested genes:
 background <- ankKor # doesn't matter, just need all tested genes.
-degEnrichment(ankOnly, "ankOnly") # no results
-degEnrichment(wngOnly, "wngOnly") # 35
-degEnrichment(tllOnly, "tllOnly") # 316
-degEnrichment(mdbOnly, "mdbOnly") # 4
+degEnrichment(ankOnly, "ankOnly") # no results /
+degEnrichment(wngOnly, "wngOnly") # 35 /
+degEnrichment(tllOnly, "tllOnly") # 316 /
+degEnrichment(mdbOnly, "mdbOnly") # 4 /
 
 # This version considers all genes that are DE in either village against Korowai. This is the best compromise, because the island level testing is missing some genes that are DE at a single village level. Could also go crazy and incorporate those, but don't see the need.
 background <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 | smbVillageKor$adj.P.Val.ank <= 0.01,]
@@ -95,6 +96,14 @@ degEnrichment(wngOnly, "wngOnly.islandBG") # no results
 background <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 | mtwVillageKor$adj.P.Val.tll <= 0.01,]
 degEnrichment(tllOnly, "tllOnly.islandBG") # 139
 degEnrichment(mdbOnly, "mdbOnly.islandBG") # 1
+
+### Finally, enrichment of methylMix genes vs all genes - would be nice to test genes against particular comparisons, but it doesn't seem to have that resolution. 
+names(methylMix)[2] <- "genes"
+methylMix <- methylMix[!duplicated(methylMix$genes),]
+dim(methylMix)
+# [1] 1261    3 # A lot more than if we do it by HGNC names, which is worrisome.
+degEnrichment(methylMix, "methylMix.all") # 0 GO, 
+
 
     # ## deni
 denisovan <- read.table(paste0(covariatedir, "denisovan_genes_jacobs_et_al.txt"), sep = "\t", header = T, quote = NULL)
@@ -170,3 +179,4 @@ t.test(mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, smbMtwAnnot[sm
 # sample estimates:
 #  mean of x  mean of y 
 # 0.07580174 0.06556098 
+
