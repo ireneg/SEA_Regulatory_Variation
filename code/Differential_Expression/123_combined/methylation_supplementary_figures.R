@@ -161,7 +161,6 @@ table(covariates$Sampling.Site)
 #            1            5           31           16            1 
 
 covarVillage <- covariates[-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira Tana|Rindi", covariates$Sampling.Site),]
-covarVillage$Sampling.Site <- droplevels(covarVillage$Sampling.Site)
 table(covarVillage$Sampling.Site)
 # Anakalung   Korowai   Madobag  Taileleu     Wunga 
 #        18        22        17        31        16 
@@ -667,7 +666,7 @@ head(beta)
 colnames(beta) <- covariates$Sample.ID
 betaVillage <- beta[,-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira Tana|Rindi", covariates$Sampling.Site)]
 
-# Now the heatmaps
+# Now the heatmaps - just need to pull the new beta values and replot, the row and colour info shouldn't change. 
 
 # Sumba vs Korowai
     # Remove Mentawai
@@ -681,38 +680,38 @@ betaVillage <- beta[,-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira T
     smbKorbeta <- smbKorbeta[,grepl("MPI|SMB", colnames(smbKorbeta))]
 
     # Column annotation - same for all plots
-    colMetadata <- covarVillage[,c(1,2,3)]
-    islandCols <- c("Korowai" = korowai, "Sumba" = sumba, "Mentawai" = mentawai)
-    villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
+    # colMetadata <- covarVillage[,c(1,2,3)]
+    # islandCols <- c("Korowai" = korowai, "Sumba" = sumba, "Mentawai" = mentawai)
+    # villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
 
     colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|SMB", colMetadata$Sample),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
 
     # Rows: 
     # Wunga-centric:
-    wngOnly <- merge(wngOnly, smbKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
-    rowMetadataWng <- data.frame(rownames(wngKorbeta), -log10(wngOnly$adj.P.Val.wng[1:1000]), -log10(wngOnly$adj.P.Val.ank[1:1000]), -log10(wngOnly$adj.P.Val[1:1000]))
-    names(rowMetadataWng) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
-    rowColsWng <- HeatmapAnnotation(rowMetadataWng[,2:4], col = 
-        list(wngKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black")), 
-             ankKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black")), 
-             smbKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black"))), which="row")
+    # wngOnly <- merge(wngOnly, smbKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
+    # rowMetadataWng <- data.frame(rownames(wngKorbeta), -log10(wngOnly$adj.P.Val.wng[1:1000]), -log10(wngOnly$adj.P.Val.ank[1:1000]), -log10(wngOnly$adj.P.Val[1:1000]))
+    # names(rowMetadataWng) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
+    # rowColsWng <- HeatmapAnnotation(rowMetadataWng[,2:4], col = 
+    #     list(wngKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black")), 
+    #          ankKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black")), 
+    #          smbKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black"))), which="row")
 
-    # Anakalung
-    ankOnly <- merge(ankOnly, smbKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
-    rowMetadataAnk <- data.frame(rownames(ankKorbeta), -log10(ankOnly$adj.P.Val.wng[1:1000]), -log10(ankOnly$adj.P.Val.ank[1:1000]), -log10(ankOnly$adj.P.Val[1:1000]))
-    names(rowMetadataAnk) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
-    rowColsAnk <- HeatmapAnnotation(rowMetadataAnk[,2:4], col = 
-        list(wngKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
-             ankKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
-             smbKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black"))), which="row")
+    # # Anakalung
+    # ankOnly <- merge(ankOnly, smbKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
+    # rowMetadataAnk <- data.frame(rownames(ankKorbeta), -log10(ankOnly$adj.P.Val.wng[1:1000]), -log10(ankOnly$adj.P.Val.ank[1:1000]), -log10(ankOnly$adj.P.Val[1:1000]))
+    # names(rowMetadataAnk) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
+    # rowColsAnk <- HeatmapAnnotation(rowMetadataAnk[,2:4], col = 
+    #     list(wngKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
+    #          ankKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
+    #          smbKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black"))), which="row")
 
-    # For the island-wide one
-    rowMetadataSmb <- data.frame(rownames(smbKorbeta), -log10(smbAllKor$adj.P.Val.wng[1:1000]), -log10(smbAllKor$adj.P.Val.ank[1:1000]), -log10(smbAllKor$adj.P.Val[1:1000]))
-    names(rowMetadataSmb) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
-    rowColsSmb <- HeatmapAnnotation(rowMetadataSmb[,2:4], col = 
-        list(wngKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black")), 
-             ankKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black")), 
-             smbKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black"))), which="row")
+    # # For the island-wide one
+    # rowMetadataSmb <- data.frame(rownames(smbKorbeta), -log10(smbAllKor$adj.P.Val.wng[1:1000]), -log10(smbAllKor$adj.P.Val.ank[1:1000]), -log10(smbAllKor$adj.P.Val[1:1000]))
+    # names(rowMetadataSmb) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
+    # rowColsSmb <- HeatmapAnnotation(rowMetadataSmb[,2:4], col = 
+    #     list(wngKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black")), 
+    #          ankKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black")), 
+    #          smbKorpval=colorRamp2(c(min(rowMetadataSmb[,2:4]), max(rowMetadataSmb[,2:4])), c("white", "black"))), which="row")
 
     # Heatmaps:
     pdf(file=paste0(edaoutput, "smb_kor_DE_heatmaps_betas.pdf"), height=9, width=6)
@@ -738,35 +737,35 @@ betaVillage <- beta[,-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira T
     mtwKorbeta <- mtwKorbeta[,grepl("MPI|MTW", colnames(mtwKorbeta))]
 
     # Column annotation - same for all plots
-    colMetadata <- covarVillage[,c(1,2,3)]
+    # colMetadata <- covarVillage[,c(1,2,3)]
     colCols <- HeatmapAnnotation(df = colMetadata[grepl("MPI|MTW", colMetadata$Sample),2:3], col = list(Island = islandCols, Sampling.Site = villageCols), which="col")
 
     # Rows: 
     # Taileleu-centric:
-    tllOnly <- merge(tllOnly, mtwKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
-    rowMetadataTll <- data.frame(rownames(tllKorbeta), -log10(tllOnly$adj.P.Val.tll[1:1000]), -log10(tllOnly$adj.P.Val.mdb[1:1000]), -log10(tllOnly$adj.P.Val[1:1000]))
-    names(rowMetadataTll) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
-    rowColsTll <- HeatmapAnnotation(rowMetadataTll[,2:4], col = 
-        list(tllKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black")), 
-             mdbKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black")), 
-             mtwKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black"))), which="row")
+    # tllOnly <- merge(tllOnly, mtwKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
+    # rowMetadataTll <- data.frame(rownames(tllKorbeta), -log10(tllOnly$adj.P.Val.tll[1:1000]), -log10(tllOnly$adj.P.Val.mdb[1:1000]), -log10(tllOnly$adj.P.Val[1:1000]))
+    # names(rowMetadataTll) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
+    # rowColsTll <- HeatmapAnnotation(rowMetadataTll[,2:4], col = 
+    #     list(tllKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black")), 
+    #          mdbKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black")), 
+    #          mtwKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black"))), which="row")
 
-    # Anakalung
-    mdbOnly <- merge(mdbOnly, mtwKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
-    rowMetadataMdb <- data.frame(rownames(mdbKorbeta), -log10(mdbOnly$adj.P.Val.tll[1:1000]), -log10(mdbOnly$adj.P.Val.mdb[1:1000]), -log10(mdbOnly$adj.P.Val[1:1000]))
-    names(rowMetadataMdb) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
-    rowColsMdb <- HeatmapAnnotation(rowMetadataMdb[,2:4], col = 
-        list(tllKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black")), 
-             mdbKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black")), 
-             mtwKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black"))), which="row")
+    # # Anakalung
+    # mdbOnly <- merge(mdbOnly, mtwKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
+    # rowMetadataMdb <- data.frame(rownames(mdbKorbeta), -log10(mdbOnly$adj.P.Val.tll[1:1000]), -log10(mdbOnly$adj.P.Val.mdb[1:1000]), -log10(mdbOnly$adj.P.Val[1:1000]))
+    # names(rowMetadataMdb) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
+    # rowColsMdb <- HeatmapAnnotation(rowMetadataMdb[,2:4], col = 
+    #     list(tllKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black")), 
+    #          mdbKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black")), 
+    #          mtwKorpval=colorRamp2(c(min(rowMetadataMdb[,2:4]), max(rowMetadataMdb[,2:4])), c("white", "black"))), which="row")
 
-    # For the island-wide one
-    rowMetadataMtw <- data.frame(rownames(mtwKorbeta), -log10(mtwAllKor$adj.P.Val.tll[1:1000]), -log10(mtwAllKor$adj.P.Val.mdb[1:1000]), -log10(mtwAllKor$adj.P.Val[1:1000]))
-    names(rowMetadataMtw) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
-    rowColsMtw <- HeatmapAnnotation(rowMetadataMtw[,2:4], col = 
-        list(tllKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black")), 
-             mdbKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black")), 
-             mtwKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black"))), which="row")
+    # # For the island-wide one
+    # rowMetadataMtw <- data.frame(rownames(mtwKorbeta), -log10(mtwAllKor$adj.P.Val.tll[1:1000]), -log10(mtwAllKor$adj.P.Val.mdb[1:1000]), -log10(mtwAllKor$adj.P.Val[1:1000]))
+    # names(rowMetadataMtw) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
+    # rowColsMtw <- HeatmapAnnotation(rowMetadataMtw[,2:4], col = 
+    #     list(tllKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black")), 
+    #          mdbKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black")), 
+    #          mtwKorpval=colorRamp2(c(min(rowMetadataMtw[,2:4]), max(rowMetadataMtw[,2:4])), c("white", "black"))), which="row")
 
     # Heatmaps:
     pdf(file=paste0(edaoutput, "mtw_kor_DE_heatmaps_betas.pdf"), height=8, width=6)
