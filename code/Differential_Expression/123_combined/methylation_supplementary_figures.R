@@ -132,7 +132,7 @@ fitIsland <- lmFit(mval, designIsland)
 vfitIsland <- contrasts.fit(fitIsland, contrasts=contrastsIsland)
 efitIsland <- eBayes(vfitIsland)
 
-save(efitIsland, file=paste0(outputdir, "efitIsland.Rda"))
+# save(efitIsland, file=paste0(outputdir, "efitIsland.Rda"))
 
 allIslandresults <- list()
 
@@ -150,9 +150,9 @@ colSums(summary(decideTests(efitIsland, method="separate", adjust.method = "BH",
 # SMBvsMTW SMBvsMPI MTWvsMPI 
 #     3947    22189    14168  # matches Heini's numbers perfectly.
 
-for (i in 1:3){
-    write.table(allIslandresults[[i]], file=paste0(outputdir,"topTable.filtered.village.", colnames(contrastsIsland)[i], ".txt"))
-}
+# for (i in 1:3){
+#     write.table(allIslandresults[[i]], file=paste0(outputdir,"topTable.filtered.village.", colnames(contrastsIsland)[i], ".txt"))
+# }
 
 # Now for villages:
 
@@ -188,7 +188,7 @@ fitVillage <- lmFit(mvalVillage, designVillage)
 vfitVillage <- contrasts.fit(fitVillage, contrasts=contrastsVillage)
 efitVillage <- eBayes(vfitVillage)
 
-save(efitVillage, file=paste0(outputdir, "efitVillage.Rda"))
+# save(efitVillage, file=paste0(outputdir, "efitVillage.Rda"))
 # load (paste0(outputdir, "efitVillage.Rda"))
 
 # get top genes using toptable
@@ -208,30 +208,21 @@ colSums(summary(decideTests(efitVillage, method="separate", adjust.method = "BH"
 # ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL 
 #     1314    18663     2455       18     7282       56     4605     9631    24557     8628 
 
-for (i in 1:10){
-    write.table(allVillageResults[[i]], file=paste0(outputdir,"topTable.filtered.village.", colnames(contrastsVillage)[i], ".txt"))
-}
+# for (i in 1:10){
+#     write.table(allVillageResults[[i]], file=paste0(outputdir,"topTable.filtered.village.", colnames(contrastsVillage)[i], ".txt"))
+# }
 
 #######################################################
 ### 3. UpsetR plots and merging island and village. ###
 #######################################################
 
-#byVillages <- decideTests(efitVillage, method="separate", adjust.method = "BH", p.value = 0.01)
 byVillages05 <- decideTests(efitVillage, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5)
-#byVillages1 <- decideTests(efitVillage, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1)
-
-#byIslands <- decideTests(efitIsland, method="separate", adjust.method = "BH", p.value = 0.01)
 byIslands05 <- decideTests(efitIsland, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5)
-#byIslands1 <- decideTests(efitIsland, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1)
 
 #Now order them both by the same so upsetR can judge them both:
-# table(rownames(byIslands) == rownames(byVillages))
 table(rownames(byIslands05) == rownames(byVillages05))
-# table(rownames(byIslands1) == rownames(byVillages1))
 
-#allTogether <- data.frame(byVillages, byIslands)
 allTogether05 <- data.frame(byVillages05, byIslands05)
-#allTogether1 <- data.frame(byVillages1, byIslands1)
 
 # Look at which genes are in common using UpsetR
 
@@ -305,16 +296,16 @@ allTogether05Venn$genes <- rownames(allTogether05)
     tllOnly <- tllOnly[order(tllOnly$adj.P.Val.tll),]
 
 # What's the rank correlation across the two villages in each island? does it get worse as you go down quintiles/deciles?
-smbKorIslandDE <- allIslandresults[[2]]
-smbKorIslandDE$probe <- rownames(smbKorIslandDE)
-mtwKorIslandDE <- allIslandresults[[3]]
-mtwKorIslandDE$probe <- rownames(mtwKorIslandDE)
+smbKorIsland <- allIslandresults[[2]]
+smbKorIsland$probe <- rownames(smbKorIsland)
+mtwKorIsland <- allIslandresults[[3]]
+mtwKorIsland$probe <- rownames(mtwKorIsland)
 
 # Merge island info with village info, pt 2:
-smbAllKor <- merge(smbVillageKor, smbKorIslandDE, by.x="probe", by.y="probe")
+smbAllKor <- merge(smbVillageKor, smbKorIsland, by.x="probe", by.y="probe")
 smbAllKor <- smbAllKor[order(smbAllKor$adj.P.Val),]
 
-mtwAllKor <- merge(mtwVillageKor, mtwKorIslandDE, by.x="probe", by.y="probe")
+mtwAllKor <- merge(mtwVillageKor, mtwKorIsland, by.x="probe", by.y="probe")
 mtwAllKor <- mtwAllKor[order(mtwAllKor$adj.P.Val),]
 
 # And now, by quintiles/deciles, determined on the island-wide p-value? mean expression?:
@@ -390,7 +381,7 @@ names(decileLabels) <- seq(1,10,1)
     ankKorMval <- mvalVillage[ankOnly$probe[1:1000],]
     ankKorMval <- ankKorMval[,grepl("MPI|SMB", colnames(ankKorMval))]
 
-    smbKorMval <- mvalVillage[smbKorIslandDE$probe[1:1000],]
+    smbKorMval <- mvalVillage[smbKorIsland$probe[1:1000],]
     smbKorMval <- smbKorMval[,grepl("MPI|SMB", colnames(smbKorMval))]
 
     # Column annotation - same for all plots
@@ -402,7 +393,7 @@ names(decileLabels) <- seq(1,10,1)
 
     # Rows: 
     # Wunga-centric:
-    wngOnly <- merge(wngOnly, smbKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
+    wngOnly <- merge(wngOnly, smbKorIsland, by.x="probe", by.y="probe", all=F, sort=F)
     rowMetadataWng <- data.frame(rownames(wngKorMval), -log10(wngOnly$adj.P.Val.wng[1:1000]), -log10(wngOnly$adj.P.Val.ank[1:1000]), -log10(wngOnly$adj.P.Val[1:1000]))
     names(rowMetadataWng) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
     rowColsWng <- HeatmapAnnotation(rowMetadataWng[,2:4], col = 
@@ -411,7 +402,7 @@ names(decileLabels) <- seq(1,10,1)
              smbKorpval=colorRamp2(c(min(rowMetadataWng[,2:4]), max(rowMetadataWng[,2:4])), c("white", "black"))), which="row")
 
     # Anakalung
-    ankOnly <- merge(ankOnly, smbKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
+    ankOnly <- merge(ankOnly, smbKorIsland, by.x="probe", by.y="probe", all=F, sort=F)
     rowMetadataAnk <- data.frame(rownames(ankKorMval), -log10(ankOnly$adj.P.Val.wng[1:1000]), -log10(ankOnly$adj.P.Val.ank[1:1000]), -log10(ankOnly$adj.P.Val[1:1000]))
     names(rowMetadataAnk) <- c("probe", "wngKorpval", "ankKorpval", "smbKorpval")
     rowColsAnk <- HeatmapAnnotation(rowMetadataAnk[,2:4], col = 
@@ -447,7 +438,7 @@ names(decileLabels) <- seq(1,10,1)
     mdbKorMval <- mvalVillage[mdbOnly$probe[1:1000],]
     mdbKorMval <- mdbKorMval[,grepl("MPI|MTW", colnames(mdbKorMval))]
 
-    mtwKorMval <- mvalVillage[mtwKorIslandDE$probe[1:1000],]
+    mtwKorMval <- mvalVillage[mtwKorIsland$probe[1:1000],]
     mtwKorMval <- mtwKorMval[,grepl("MPI|MTW", colnames(mtwKorMval))]
 
     # Column annotation - same for all plots
@@ -456,7 +447,7 @@ names(decileLabels) <- seq(1,10,1)
 
     # Rows: 
     # Taileleu-centric:
-    tllOnly <- merge(tllOnly, mtwKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
+    tllOnly <- merge(tllOnly, mtwKorIsland, by.x="probe", by.y="probe", all=F, sort=F)
     rowMetadataTll <- data.frame(rownames(tllKorMval), -log10(tllOnly$adj.P.Val.tll[1:1000]), -log10(tllOnly$adj.P.Val.mdb[1:1000]), -log10(tllOnly$adj.P.Val[1:1000]))
     names(rowMetadataTll) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
     rowColsTll <- HeatmapAnnotation(rowMetadataTll[,2:4], col = 
@@ -465,7 +456,7 @@ names(decileLabels) <- seq(1,10,1)
              mtwKorpval=colorRamp2(c(min(rowMetadataTll[,2:4]), max(rowMetadataTll[,2:4])), c("white", "black"))), which="row")
 
     # Anakalung
-    mdbOnly <- merge(mdbOnly, mtwKorIslandDE, by.x="probe", by.y="probe", all=F, sort=F)
+    mdbOnly <- merge(mdbOnly, mtwKorIsland, by.x="probe", by.y="probe", all=F, sort=F)
     rowMetadataMdb <- data.frame(rownames(mdbKorMval), -log10(mdbOnly$adj.P.Val.tll[1:1000]), -log10(mdbOnly$adj.P.Val.mdb[1:1000]), -log10(mdbOnly$adj.P.Val[1:1000]))
     names(rowMetadataMdb) <- c("probe", "tllKorpval", "mdbKorpval", "mtwKorpval")
     rowColsMdb <- HeatmapAnnotation(rowMetadataMdb[,2:4], col = 
@@ -518,7 +509,7 @@ betaVillage <- beta[,-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira T
     ankKorbeta <- betaVillage[ankOnly$probe[1:100],]
     ankKorbeta <- ankKorbeta[,grepl("MPI|SMB", colnames(ankKorbeta))]
 
-    smbKorbeta <- betaVillage[smbKorIslandDE$probe[1:100],]
+    smbKorbeta <- betaVillage[smbKorIsland$probe[1:100],]
     smbKorbeta <- smbKorbeta[,grepl("MPI|SMB", colnames(smbKorbeta))]
 
     # The metadata is the same as before, so no need to redefine it beyond this...
@@ -544,7 +535,7 @@ betaVillage <- beta[,-grep("Bilarenge|Patiala Bawa|Wura Homba|Hupu Mada|Padira T
     mdbKorbeta <- betaVillage[mdbOnly$probe[1:100],]
     mdbKorbeta <- mdbKorbeta[,grepl("MPI|MTW", colnames(mdbKorbeta))]
 
-    mtwKorbeta <- betaVillage[mtwKorIslandDE$probe[1:100],]
+    mtwKorbeta <- betaVillage[mtwKorIsland$probe[1:100],]
     mtwKorbeta <- mtwKorbeta[,grepl("MPI|MTW", colnames(mtwKorbeta))]
 
     # Same here...
@@ -574,20 +565,9 @@ siglec7 <- manifest[grepl("SIGLEC7", manifest$GencodeBasicV12_NAME),]
 
 siglecBetas <- beta[siglec7$Name,]
 
-# # Get the pvals:
-# load(paste0(outputdir, "efitIsland.Rda"))
-# allIslandresults <- list()
-
-# for(i in 1:3){
-#     allIslandresults[[i]] <- topTable(efitIsland, coef=i, n=Inf, sort.by="p")
-# }
-
+#get missing pvals
 smbMtwIsland <- allIslandresults[[1]]
 smbMtwIsland$probe <- rownames(smbMtwIsland)
-# smbKorIsland <- allIslandresults[[2]]
-# smbKorIsland$probe <- rownames(smbKorIsland)
-# mtwKorIsland <- allIslandresults[[3]]
-# mtwKorIsland$probe <- rownames(mtwKorIsland)
 
 
 siglecPvals <- merge(smbMtwIsland[siglec7$Name,], smbKorIsland[siglec7$Name,], by.x="probe", by.y="probe", suffixes=c(".smbmtw", ".smbkor"))
