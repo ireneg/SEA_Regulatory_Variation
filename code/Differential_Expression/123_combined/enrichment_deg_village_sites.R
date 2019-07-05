@@ -151,7 +151,6 @@ names(methylMix)[2] <- "genes"
 methylMix <- methylMix[!duplicated(methylMix$genes),]
 dim(methylMix)
 # [1] 1261    3 # A lot more than if we do it by HGNC names, which is worrisome.
-# Also worrisome - 1008 methylMix genes annotated in KEGG, but only 4797 in the background?
 
 methylMixKEGG <- degEnrichment(methylMix, "methylMix.all") # 0 / 2 
 
