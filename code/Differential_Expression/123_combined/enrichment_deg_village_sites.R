@@ -86,13 +86,13 @@ degEnrichment <- function(DEG_pop, DEG_comparison) {
     ## enrichment
     message(paste("Performing GO and KEGG enrichment for ", DEG_comparison, "...", sep = ""))
 
-    ego_or_ALL_pop <- enrichGO(gene = tab_DEG_pop$genes, universe = background$genes, OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "ALL", pAdjustMethod = "fdr", pvalueCutoff = 0.1, qvalueCutoff  = 0.05, readable = TRUE, pool=TRUE)
+    ego_or_ALL_pop <- enrichGO(gene = tab_DEG_pop$genes, universe = background$genes, OrgDb = org.Hs.eg.db, keyType = "ENSEMBL", ont = "ALL", pAdjustMethod = "fdr", pvalueCutoff = 0.05, qvalueCutoff  = 0.05, readable = TRUE, pool=TRUE)
 
     write_tsv(filter(ego_or_ALL_pop@result, p.adjust <= 0.05), outfile_go)
 
     # For KEGG we need to annotate the background too, because otherwise there's no way to get results, since the background cannot be mapped properly!
     # Because this is slow we do it outside the function, once per background set, instead of every time.
-    kegg_or_ALL_pop <- enrichKEGG(gene = tab_DEG_pop$entrezgene_id, universe = background$entrezgene_id, organism = "hsa", pAdjustMethod = "fdr", pvalueCutoff = 0.1, qvalueCutoff = 0.05, use_internal_data=F) 
+    kegg_or_ALL_pop <- enrichKEGG(gene = tab_DEG_pop$entrezgene_id, universe = background$entrezgene_id, organism = "hsa", pAdjustMethod = "fdr", pvalueCutoff = 0.05, qvalueCutoff = 0.05, use_internal_data=F) 
     kegg_readable <- setReadable(kegg_or_ALL_pop, OrgDb = org.Hs.eg.db, keyType="ENTREZID")
 
     write_tsv(filter(kegg_or_ALL_pop@result, p.adjust <= 0.05), outfile_kegg)
@@ -127,12 +127,17 @@ background <- ankKor # doesn't matter, just need all tested genes. But because a
     background <- left_join(background, annot_background, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)  
     background$entrezgene_id <- as.character(background$entrezgene_id)
 
-# We'll need these later, so save the output:
-mtwKorKEGG <- degEnrichment(mtwKor, "MTW_vs_KOR") # 0 / 2 
-smbKorKEGG <- degEnrichment(smbKor, "SMB_vs_KOR") # 0 / 2 
-smbMtwKEGG <- degEnrichment(smbMtw, "SMB_vs_MTW") # 0 / 2 
+# We'll need these later, so save the output, but first filter to genes with FDR < 0.01
+# mtwKor <- mtwKor[mtwKor$adj.P.Val <= 0.01,]
+# smbKor <- smbKor[smbKor$adj.P.Val <= 0.01,]
+# smbKor <- smbKor[smbKor$adj.P.Val <= 0.01,]
+
+mtwKorKEGG <- degEnrichment(mtwKor[mtwKor$adj.P.Val <= 0.01,], "MTW_vs_KOR.") # 0 / 2 
+smbKorKEGG <- degEnrichment(smbKor[smbKor$adj.P.Val <= 0.01,], "SMB_vs_KOR.") # 0 / 2 
+smbMtwKEGG <- degEnrichment(smbMtw[smbMtw$adj.P.Val <= 0.01,], "SMB_vs_MTW.") # 0 / 2 
 
 # Village level:
+# Don't forget the p-value cutoff if you're going to run these!
 # degEnrichment(ankKor, "ANK_vs_KOR")  
 # degEnrichment(wngKor, "WNG_vs_KOR")  
 
@@ -140,10 +145,10 @@ smbMtwKEGG <- degEnrichment(smbMtw, "SMB_vs_MTW") # 0 / 2
 # degEnrichment(mdbKor, "MDB_vs_KOR") 
 
 # Now the island-unique ones. No need to redefine background for this first set:
-degEnrichment(ankOnly, "ankOnly") #   0 /  1
-degEnrichment(wngOnly, "wngOnly") #  30 /  8
-degEnrichment(tllOnly, "tllOnly") # 217 / 30
-degEnrichment(mdbOnly, "mdbOnly") #   4 /  0
+degEnrichment(ankOnly, "ankOnly.") #   0 /  1
+degEnrichment(wngOnly, "wngOnly.") #  30 /  8
+degEnrichment(tllOnly, "tllOnly.") # 217 / 30
+degEnrichment(mdbOnly, "mdbOnly.") #   4 /  0
 
 
 ### Finally, enrichment of methylMix genes vs all genes - would be nice to test genes against particular comparisons, but it doesn't seem to have that resolution. 
@@ -152,7 +157,7 @@ methylMix <- methylMix[!duplicated(methylMix$genes),]
 dim(methylMix)
 # [1] 1261    3 # A lot more than if we do it by HGNC names, which is worrisome.
 
-methylMixKEGG <- degEnrichment(methylMix, "methylMix.all") # 0 / 2 
+methylMixKEGG <- degEnrichment(methylMix, "methylMix.all.") # 0 / 2 
 
 ### Now we gotta integrate DE with methylMix output
 
@@ -171,16 +176,16 @@ background <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 | smbVillageKor$
     background <- left_join(background, annot_background, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)  
     background$entrezgene_id <- as.character(background$entrezgene_id)
 
-degEnrichment(ankOnly, "ankOnly.islandBG") # 0 / 3
-degEnrichment(wngOnly, "wngOnly.islandBG") # 0 / 8
+degEnrichment(ankOnly, "ankOnly.islandBG.") # 0 / 3
+degEnrichment(wngOnly, "wngOnly.islandBG.") # 0 / 8
 
 background <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 | mtwVillageKor$adj.P.Val.tll <= 0.01,]
     annot_background <- getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'chromosome_name', 'start_position', 'end_position', 'strand', 'kegg_enzyme'), filters = 'ensembl_gene_id', values = background$genes, mart = ensembl)
     background <- left_join(background, annot_background, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)  
     background$entrezgene_id <- as.character(background$entrezgene_id)
 
-degEnrichment(tllOnly, "tllOnly.islandBG") # 98 / 30
-degEnrichment(mdbOnly, "mdbOnly.islandBG") #  0 /  0
+degEnrichment(tllOnly, "tllOnly.islandBG.") # 98 / 30
+degEnrichment(mdbOnly, "mdbOnly.islandBG.") #  0 /  0
 
 
 ############################################################################
@@ -223,9 +228,9 @@ denisovanAnnot <- function(DEG_pop, DEG_name) {
 
 # This is probably a bit fraught because different haplotypes are different lengths and we need to control for that and gene lengths, but I am being sloppy. 
 
-smbKorAnnot <- denisovanAnnot(smbKor, "Smb-Kor")
-mtwKorAnnot <- denisovanAnnot(mtwKor, "Mtw-Kor")
-smbMtwAnnot <- denisovanAnnot(smbMtw, "Smb-Mtw")
+smbKorAnnot <- denisovanAnnot(smbKor, "Smb-Kor.")
+mtwKorAnnot <- denisovanAnnot(mtwKor, "Mtw-Kor.")
+smbMtwAnnot <- denisovanAnnot(smbMtw, "Smb-Mtw.")
 
 # Two tailed or one-tailed?
 t.test(smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG) # two tailed, we think they're equal #NB that it wouldn't be significant even if it was one tailed. 
