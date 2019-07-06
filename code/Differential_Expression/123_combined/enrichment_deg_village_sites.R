@@ -21,6 +21,7 @@ library(clusterProfiler)
 library(DOSE)
 library(org.Hs.eg.db)
 library(tidyr)
+library(rentrez) # OMG direct retrieval of RIFs and gene summaries???
 
 # Set paths:
 inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
@@ -45,18 +46,18 @@ smbMtw <- read.table(files[5], header=T, stringsAsFactors=F)
 ankKor <- read.table(files[6], header=T, stringsAsFactors=F)
 wngKor <- read.table(files[16], header=T, stringsAsFactors=F)
 smbVillageKor <- merge(ankKor, wngKor, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
-wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01,]
-ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01,]
+wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01 & abs(smbVillageKor$logFC.wng) >= 0.5,]
+ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01 & abs(smbVillageKor$logFC.ank) >= 0.5,]
 
 tllKor <- read.table(files[14], header=T, stringsAsFactors=F)
 mdbKor <- read.table(files[11], header=T, stringsAsFactors=F)
 mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
-mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01,]
-tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01,]
+mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & abs(mtwVillageKor$logFC.mdb) >= 0.5,]
+tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & abs(mtwVillageKor$logFC.tll) >= 0.5,]
 
 methylMix <- read.table(paste0(inputdir, "methylmix_genename_ensemblid.csv"), sep=",", header=T)
 
-ensembl <- useMart(biomart = "ENSEMBL_MART_ENSEMBL", dataset = "hsapiens_gene_ensembl", host = "http://grch37.ensembl.org/", verbose=T) # super slow if we use the default mirrors...
+ensembl <- useMart(biomart = "ENSEMBL_MART_ENSEMBL", dataset = "hsapiens_gene_ensembl", host = "http://www.ensembl.org/", verbose=T) # super slow if we use the default mirrors...
 
 
 ##########################################################
@@ -127,14 +128,10 @@ background <- ankKor # doesn't matter, just need all tested genes. But because a
     background <- left_join(background, annot_background, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)  
     background$entrezgene_id <- as.character(background$entrezgene_id)
 
-# We'll need these later, so save the output, but first filter to genes with FDR < 0.01
-# mtwKor <- mtwKor[mtwKor$adj.P.Val <= 0.01,]
-# smbKor <- smbKor[smbKor$adj.P.Val <= 0.01,]
-# smbKor <- smbKor[smbKor$adj.P.Val <= 0.01,]
-
-mtwKorKEGG <- degEnrichment(mtwKor[mtwKor$adj.P.Val <= 0.01,], "MTW_vs_KOR.") # 0 / 2 
-smbKorKEGG <- degEnrichment(smbKor[smbKor$adj.P.Val <= 0.01,], "SMB_vs_KOR.") # 0 / 2 
-smbMtwKEGG <- degEnrichment(smbMtw[smbMtw$adj.P.Val <= 0.01,], "SMB_vs_MTW.") # 0 / 2 
+# We'll need these later, so save the output, but first filter to genes with FDR < 0.01 and the logFC threshold
+mtwKorKEGG <- degEnrichment(mtwKor[mtwKor$adj.P.Val <= 0.01 & abs(mtwKor$logFC) >= 0.5,], "MTW_vs_KOR.") # 0 /  
+smbKorKEGG <- degEnrichment(smbKor[smbKor$adj.P.Val <= 0.01 & abs(smbKor$logFC) >= 0.5,], "SMB_vs_KOR.") # 0 /  
+smbMtwKEGG <- degEnrichment(smbMtw[smbMtw$adj.P.Val <= 0.01 & abs(smbMtw$logFC) >= 0.5,], "SMB_vs_MTW.") # 0 /  
 
 # Village level:
 # Don't forget the p-value cutoff if you're going to run these!
@@ -159,18 +156,50 @@ dim(methylMix)
 
 methylMixKEGG <- degEnrichment(methylMix, "methylMix.all.") # 0 / 2 
 
-### Now we gotta integrate DE with methylMix output
+### Now we gotta integrate DE with methylMix output, and rerun that enrichment, to see what's going there for realz, because much of the mismapping ribosomal protein signal will go away once that's fixed.
+
+smbKorMethyl <- inner_join(methylMix, smbKor[smbKor$adj.P.Val <= 0.01 & abs(smbKor$logFC) >= 0.5,], by=c("genes" = "genes"))
+mtwKorMethyl <- inner_join(methylMix, mtwKor[mtwKor$adj.P.Val <= 0.01 & abs(mtwKor$logFC) >= 0.5,], by=c("genes" = "genes"))
+smbMtwMethyl <- inner_join(methylMix, smbMtw[smbMtw$adj.P.Val <= 0.01 & abs(smbMtw$logFC) >= 0.5,], by=c("genes" = "genes"))
+
+smbKorMethylKEGG <- degEnrichment(smbKorMethyl, "smbKorDE.methylMix.")
+mtwKorMethylKEGG <- degEnrichment(mtwKorMethyl, "mtwKorDE.methylMix.")
+smbMtwMethylKEGG <- degEnrichment(smbMtwMethyl, "smbMtwDE.methylMix.")
+
+# What's in these gene sets? Quick manual annotation...
+smbKorMethylAnnot <- getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'mim_morbid_description'), filters = 'ensembl_gene_id', values = smbKorMethyl$genes, mart = ensembl)
+mtwKorMethylAnnot <- getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'mim_morbid_description'), filters = 'ensembl_gene_id', values = mtwKorMethyl$genes, mart = ensembl)
+smbMtwMethylAnnot <- getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'mim_morbid_description'), filters = 'ensembl_gene_id', values = smbMtwMethyl$genes, mart = ensembl)
+
+smbKorMethylNCBI <- entrez_summary(db="gene", id=smbKorMethylAnnot[,2])
+smbKorMethylSummary <- sapply(as.list(extract_from_esummary(smbKorMethylNCBI, "summary")), function(x) strwrap(x, width=150), simplify=F, USE.NAMES=T)
+
+mtwKorMethylNCBI <- entrez_summary(db="gene", id=mtwKorMethylAnnot[,2])
+mtwKorMethylSummary <- sapply(as.list(extract_from_esummary(mtwKorMethylNCBI, "summary")), function(x) strwrap(x, width=150), simplify=F, USE.NAMES=T)
+
+smbMtwMethylNCBI <- entrez_summary(db="gene", id=smbMtwMethylAnnot[,2])
+smbMtwMethylSummary <- sapply(as.list(extract_from_esummary(smbMtwMethylNCBI, "summary")), function(x) strwrap(x, width=150), simplify=F, USE.NAMES=T)
 
 
 ###############################################
 ### 3. Testing the single-village DE genes. ### 
 ###############################################
 
+# First, testing of the 51 genes that are DE between TLL and MDB:
+mdbTll <- read.table(files[13], header=T, stringsAsFactors=F)
+mdbTllKEGG <- degEnrichment(mdbTll[mdbTll$adj.P.Val <= 0.01 & abs(mdbTll$logFC) >= 0.5,], "MDB_vs_TLL.") # 0 /  
+mdbTllAnnot <- getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'mim_morbid_description'), filters = 'ensembl_gene_id', values = mdbTll[mdbTll$adj.P.Val <= 0.01 & abs(mdbTll$logFC) >= 0.5,]$genes, mart = ensembl)
+mdbTllNCBI <- entrez_summary(db="gene", id=mdbTllAnnot[,2])
+mdbTllSummary <- sapply(as.list(extract_from_esummary(mdbTllNCBI, "summary")), function(x) strwrap(x, width=150), simplify=F, USE.NAMES=T)
+
+
 # Now we do redefine the background although it's unclear what the merits are:
 # NB this is my ideal test case for the bug, since the background would be bigger than the list of tested genes for the GO stuff unless I have fixed it properly.
 # Edit: I was correct - the old version tested against all known KEGG annotations, the background annotation code below tests against only the background set.  
 
 # This version considers all genes that are DE in either village against Korowai. This is the best compromise, because the island level testing is missing some genes that are DE at a single village level. Could also go crazy and incorporate those, but don't see the need.
+# NB that this result is hard to interpret, because of logFC thresholding - probably not worth dwelling on too much. Currently not mentioned in the main text, anyhow.
+
 background <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 | smbVillageKor$adj.P.Val.ank <= 0.01,]
     annot_background <- getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'chromosome_name', 'start_position', 'end_position', 'strand', 'kegg_enzyme'), filters = 'ensembl_gene_id', values = background$genes, mart = ensembl)
     background <- left_join(background, annot_background, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)  
