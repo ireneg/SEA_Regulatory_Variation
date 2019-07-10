@@ -20,6 +20,8 @@ library(raster)
 library(WorldClimTiles)
 library(ggplot2)
 library(reshape)
+library(wesanderson)
+library(gridExtra)
 
 # Set output directory and create it if it does not exist:
 outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/spatial_testing/"
@@ -29,6 +31,15 @@ if (file.exists(outputdir) == FALSE){
     dir.create(outputdir, recursive=T)
     dir.create(edaoutput, recursive=T)
 }
+
+#Colour schemes:
+korowai <- wes_palette("Zissou1", 20, type = "continuous")[20]
+mentawai <- wes_palette("Zissou1", 20, type = "continuous")[1]
+sumba <- wes_palette("Zissou1", 20, type = "continuous")[11]
+
+smb_mtw <- wes_palette("Darjeeling1", 9, type = "continuous")[3]
+smb_kor <- wes_palette("Darjeeling1", 9, type = "continuous")[7]
+mtw_kor <- "darkorchid4"
 
 setwd(outputdir)
 
@@ -46,10 +57,10 @@ tiles <- tile_get(srtm_tiles, var = "prec", name= "srtm", path = outputdir) #dow
 final <- tile_merge(tiles)
 final <- tile_merge(tiles, fac = 10) #Reprojects data to 10 times smaller res, i.e. to get srtm data from 90m to approx 1km resolution.
 
-#If I plot final, do I get a lovely plot?
-pdf("tester.pdf")
-    plot(final)
-dev.off()
+# #If I plot final, do I get a lovely plot?
+# pdf("tester.pdf")
+#     plot(final)
+# dev.off()
 
 ### The example in the post from emilypiche.github.io is perfect:
 indoVillages <- data.frame(site=c("Madobag", "Taileleu", "Anakalung", "Wunga", "Korowai"), long=c(99.0837, 99.1371, 119.575, 119.958, 139.673002), lat=c(-1.594, -1.7878, -9.588, -9.385, -5.480278))
@@ -128,29 +139,40 @@ tMax05Plot <- melt(tMax05[,c(1,4:15)])
 tMin05Plot <- melt(tMin05[,c(1,4:15)])
 precip05Plot <- melt(precip05[,c(1,4:15)])
 
-pdf(file="climate_vars_0.5.pdf")
-    tMaxgg <- ggplot(tMax05Plot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
+villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
+
+pdf(file="climate_vars_0.5.pdf", width=3.5, height=10)
+    tMaxgg <- ggplot(tMax05Plot, aes(x=variable, y=value, group=site, color=site)) +
         geom_line() +
-        geom_point() +
+        geom_point(size = 2) +
+        theme_bw() +
+        theme(legend.position="top") +
+        scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+        scale_color_manual(name = "Sampling Site",values = villageCols) +
+        labs(title="", y="Mean monthly max temperature (C; 1970-2000)", x="") +
+        guides(color=guide_legend(nrow=2))
+
+    tMingg <- ggplot(tMin05Plot, aes(x=variable, y=value, group=site, color=site)) +
+        geom_line() +
+        geom_point(size = 2) +
         theme_bw() +
         scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
-        labs(title="", y="mean monthly max temperature (1970-2015), 0.5 arc min res", x="")
+        scale_color_manual(name = "Sampling Site",values = villageCols) +
+        labs(title="", y="Mean monthly min temperature (C; 1970-2000)", x="") +
+        guides(color=F)
 
-    tMingg <- ggplot(tMin05Plot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
+    precipgg <- ggplot(precip05Plot, aes(x=variable, y=value, group=site, color=site)) +
         geom_line() +
-        geom_point() +
+        geom_point(size = 2) +
         theme_bw() +
         scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
-        labs(title="", y="mean monthly min temperature (1970-2015), 0.5 arc min res", x="")
+        scale_color_manual(name = "Sampling Site",values = villageCols) +
+        labs(title="", y="Mean monthly precipitation (mm; 1970-2000)", x="") +
+        guides(color=F)
 
-    precipgg <- ggplot(precip05Plot, aes(x=variable, y=value, group=site, fill=site, color=site)) +
-        geom_line() +
-        geom_point() +
-        theme_bw() +
-        scale_x_discrete(labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
-        labs(title="", y="mean monthly precipitation (mm; 1970-2015), 0.5 arc min res", x="")
+    grid.arrange(tMaxgg, tMingg, precipgg, ncol = 1)
 
-    print(tMaxgg)
-    print(tMingg)
-    print(precipgg)
+    # print(tMaxgg)
+    # print(tMingg)
+    # print(precipgg)
 dev.off()
