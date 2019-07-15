@@ -22,6 +22,7 @@ library(ggplot2)
 library(reshape)
 library(wesanderson)
 library(gridExtra)
+library(ggpubr)
 
 # Set output directory and create it if it does not exist:
 outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/spatial_testing/"
@@ -170,9 +171,10 @@ pdf(file="climate_vars_0.5.pdf", width=3.5, height=10)
         labs(title="", y="Mean monthly precipitation (mm; 1970-2000)", x="") +
         guides(color=F)
 
-    grid.arrange(tMaxgg, tMingg, precipgg, ncol = 1)
+    ggarrange(tMaxgg, tMingg, precipgg, common.legend=T, legend="top", ncol=1, nrow=3)
 
     # print(tMaxgg)
     # print(tMingg)
     # print(precipgg)
 dev.off()
+    
