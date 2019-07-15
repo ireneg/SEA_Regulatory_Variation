@@ -38,18 +38,23 @@ library(matrixStats)
 library(reshape)
 library(wesanderson)
 library(dplyr)
+library(ggpubr)
 #library(GenomicRanges)
 
 
 # Set paths:
-inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
-covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
+# inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
+# covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
+inputdir <- "~/Desktop/indoRNA_temp/de_testing/"
+covariatedir <- "~/Desktop/indoRNA_temp/"
 
-# Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
-edaoutput <- paste0(outputdir, "/eda/")
+# # Set output directory and create it if it does not exist:
+# outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
+# edaoutput <- paste0(outputdir, "eda/")
+outputdir <- "~/Desktop/indoRNA_temp/de_testing/"
+edaoutput <- paste0(outputdir, "local_eda/")
 
-if (file.exists(outputdir) == FALSE){
+if (file.exists(edaoutput) == FALSE){
     dir.create(outputdir, recursive=T)
     dir.create(edaoutput, recursive=T)
 }
@@ -418,10 +423,11 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     smbVillageKor <- merge(ankKor, wngKor, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
     smbVillageKor <- smbVillageKor[order(smbVillageKor$adj.P.Val.wng),]
 
-    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01 & abs(smbVillageKor$logFC.wng) >= 0.5,] # This didn't filter for log FC, so I'm repeating that. But the numbers above were all good.
+    wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & abs(smbVillageKor$logFC.wng) >= 0.5 & (smbVillageKor$adj.P.Val.ank > 0.01 | abs(smbVillageKor$logFC.ank) < 0.5) ,]
+    # This one actually recapitulates the results of the venn diagram perfectly, which is what I want - either it is not DE, or the log FC is too low
     wngOnly <- wngOnly[order(wngOnly$adj.P.Val.wng),] # Too lazy to order inside function...
 
-    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01 & abs(smbVillageKor$logFC.ank) >= 0.5,]
+    ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & abs(smbVillageKor$logFC.ank) >= 0.5 & (smbVillageKor$adj.P.Val.wng > 0.01 | abs(smbVillageKor$logFC.wng) < 0.5),]
     ankOnly <- ankOnly[order(ankOnly$adj.P.Val.ank),] # Too lazy to order inside function...
 
     pdf(file=paste0(edaoutput, "wng_kor_only_top_genes.pdf"))
@@ -439,10 +445,11 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
     mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
     mtwVillageKor <- mtwVillageKor[order(mtwVillageKor$adj.P.Val.mdb),]
 
-    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & abs(mtwVillageKor$logFC.mdb) >= 0.5,]
+    mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & abs(mtwVillageKor$logFC.mdb) >= 0.5 & (mtwVillageKor$adj.P.Val.tll > 0.01 | abs(mtwVillageKor$logFC.tll) < 0.5) ,]
+    # This one actually recapitulates the results of the venn diagram perfectly, which is what I want - either it is not DE, or the log FC is too low
     mdbOnly <- mdbOnly[order(mdbOnly$adj.P.Val.mdb),] # Too lazy to order inside function...
 
-    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & abs(mtwVillageKor$logFC.tll) >= 0.5,]
+    tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & abs(mtwVillageKor$logFC.tll) >= 0.5 & (mtwVillageKor$adj.P.Val.mdb > 0.01 | abs(mtwVillageKor$logFC.mdb) < 0.5),]
     tllOnly <- tllOnly[order(tllOnly$adj.P.Val.tll),] # Too lazy to order inside function...
 
     pdf(file=paste0(edaoutput, "mdb_kor_only_top_genes.pdf"))
@@ -713,14 +720,14 @@ summary(perVillageCoVDF)
 
 dataForPlotting <- melt(perVillageCoVDF)
 
-pdf(paste0(edaoutput, "cov_by_village.pdf"))
-    ggplot(dataForPlotting, aes(x=variable, y=value, fill=variable)) +
-        geom_violin(trim=T) + 
-        geom_boxplot(width=0.05, fill="white") + 
+pdf(paste0(edaoutput, "cov_by_village_densities.pdf"))
+    ggplot(dataForPlotting, aes(x=value, fill=variable)) +
+        geom_density(alpha=0.3) + 
+        # geom_boxplot(width=0.05, fill="white") + 
         scale_fill_manual(values=c(sumba, mentawai, korowai, mentawai, sumba)) + 
-        scale_x_discrete(labels=c("Anakalung", "Madobag", "Korowai", "Taileleu", "Wunga")) +
+        # scale_x_discrete(labels=c("Anakalung", "Madobag", "Korowai", "Taileleu", "Wunga")) +
         theme_bw() + 
-        labs(title="", y="CoV CPM", x="") + 
+        labs(title="", x="CoV all genes", y="Density") + 
         theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
         guides(fill=F)
 dev.off()
@@ -757,27 +764,34 @@ signif(tTestOut, digits=3)
 # Add row names so you can subset by genes:
 rownames(perVillageCoVDF) <- rownames(perVillageCoV)[-1]
 
+villageCols <- c("Korowai" = korowai, "Taileleu" = mentawai, "Madobag" = "steelblue4", "Wunga" = sumba, "Anakalung" = "goldenrod")
+
 # Define plotting function
 plotCoV <- function(inputDF, comparison){
     dataForPlotting <- melt(inputDF)
 
-    covOverkill <- ggplot(dataForPlotting, aes(x=variable, y=value, fill=variable)) +
-            geom_violin(trim=T) + 
-            geom_boxplot(width=0.05, fill="white") + 
-            scale_fill_manual(values=c(sumba, mentawai, korowai, mentawai, sumba)) + 
-            scale_x_discrete(labels=c("Anakalung", "Madobag", "Korowai", "Taileleu", "Wunga")) +
+    covOverkill <- ggplot(dataForPlotting, aes(x=value, fill=variable)) +
+            geom_density(alpha=0.5) + 
+            scale_fill_manual(name = "",values = villageCols) +
             theme_bw() + 
-            labs(title=paste0("DE ", comparison, " (", nrow(inputDF), " genes)"), y="CoV CPM", x="") + 
-            theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-            guides(fill=F)
-    print(covOverkill)
+            labs(title=paste0("DE ", comparison, " (", nrow(inputDF), " genes)"), x="CoV by gene", x="") + 
+            theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="bottom")
+    return(covOverkill)
+
+    # print(covOverkill)
 }
 
-pdf(paste0(edaoutput, "cov_by_single_village_DE.pdf"))
-    plotCoV(perVillageCoVDF[wngOnly$genes,], "WNGvsKOR not ANKvsKOR")
-    plotCoV(perVillageCoVDF[ankOnly$genes,], "ANKvsKOR not WNGvsKOR")
-    plotCoV(perVillageCoVDF[mdbOnly$genes,], "MDBvsKOR not TLLvsKOR")
-    plotCoV(perVillageCoVDF[tllOnly$genes,], "TLLvsKOR not MDBvsKOR")
+WngNoAnk <- plotCoV(perVillageCoVDF[wngOnly$genes,c("Wunga", "Anakalung")], "WNGvsKOR not ANKvsKOR")
+AnkNoWng <- plotCoV(perVillageCoVDF[ankOnly$genes,c("Wunga", "Anakalung")], "ANKvsKOR not WNGvsKOR")
+MdbNoTll <- plotCoV(perVillageCoVDF[mdbOnly$genes,c("Madobag", "Taileleu")], "MDBvsKOR not TLLvsKOR")
+TllNoMdb <- plotCoV(perVillageCoVDF[tllOnly$genes,c("Madobag", "Taileleu")], "TLLvsKOR not MDBvsKOR")
+
+pdf(paste0(edaoutput, "cov_by_single_village_DE_densities.pdf"), height=8, width=8)
+    # plotCoV(perVillageCoVDF[wngOnly$genes,c("Wunga", "Anakalung")], "WNGvsKOR not ANKvsKOR")
+    # plotCoV(perVillageCoVDF[ankOnly$genes,c("Wunga", "Anakalung")], "ANKvsKOR not WNGvsKOR")
+    # plotCoV(perVillageCoVDF[mdbOnly$genes,c("Madobag", "Taileleu")], "MDBvsKOR not TLLvsKOR")
+    # plotCoV(perVillageCoVDF[tllOnly$genes,c("Madobag", "Taileleu")], "TLLvsKOR not MDBvsKOR")
+    ggarrange(WngNoAnk, AnkNoWng, MdbNoTll, TllNoMdb, ncol=2, nrow=2, common.legend=T)
 dev.off()
 
 
