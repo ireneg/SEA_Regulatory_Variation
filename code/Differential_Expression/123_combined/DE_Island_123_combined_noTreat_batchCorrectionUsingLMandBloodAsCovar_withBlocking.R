@@ -147,84 +147,84 @@ yFilt$samples$ind <- sapply(strsplit(as.character(yFilt$samples$samples), "[_.]"
     voomNoNormDupTopTableSMB.KOR <- topTable(voomNoNormDupEfit, coef=2, n=Inf, sort.by="p")
     voomNoNormDupTopTableMTW.KOR <- topTable(voomNoNormDupEfit, coef=3, n=Inf, sort.by="p")
 
-# # Quantile normalisation between samples and tmm and voom:
-#     voomQuant <- voom(yFilt, design, normalize.method="quantile", plot=F) 
-#     dupcorQuant <- duplicateCorrelation(voomQuant, design, block=yFilt$samples$ind) # 46 warnings
-#     # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
-#     dupcorQuant$consensus # sanity check
-#     # [1] 0.6888087
-#     median(voomQuant$weights) # another sanity check:
-#     # [1] 22.94226
-#     save(voomQuant, file=paste0(outputdir, "voomQuant.tmm.filtered.indoRNA.Rda"))
+# Quantile normalisation between samples and tmm and voom:
+    voomQuant <- voom(yFilt, design, normalize.method="quantile", plot=F) 
+    dupcorQuant <- duplicateCorrelation(voomQuant, design, block=yFilt$samples$ind) # 46 warnings
+    # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
+    dupcorQuant$consensus # sanity check
+    # [1] 0.6888087
+    median(voomQuant$weights) # another sanity check:
+    # [1] 22.94226
+    save(voomQuant, file=paste0(outputdir, "voomQuant.tmm.filtered.indoRNA.Rda"))
 
-#     # Second round:
-#     voomQuantDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorQuant$consensus)
-#     dupcorQuantDup <- duplicateCorrelation(voomQuantDup, design, block=yFilt$samples$ind) # 48 warnings
-#     dupcorQuantDup$consensus # sanity check pt 2
-#     # [1] 0.6796766
-#     median(voomQuantDup$weights) # another sanity check, pt 2 
-#     # [1] 22.37909
+    # Second round:
+    voomQuantDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorQuant$consensus)
+    dupcorQuantDup <- duplicateCorrelation(voomQuantDup, design, block=yFilt$samples$ind) # 48 warnings
+    dupcorQuantDup$consensus # sanity check pt 2
+    # [1] 0.6796766
+    median(voomQuantDup$weights) # another sanity check, pt 2 
+    # [1] 22.37909
 
-#     pdf(file=paste0(edaoutput, "voomQuant.tmm.filtered.indoRNA.densities.pdf"))
-#         plotDensities(voomQuantDup, group=yFilt$samples$batch)
-#         plotDensities(voomQuantDup, group=yFilt$samples$Island)
-#     dev.off()
-#     save(voomQuantDup, file=paste0(outputdir, "voomQuant.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+    pdf(file=paste0(edaoutput, "voomQuant.tmm.filtered.indoRNA.densities.pdf"))
+        plotDensities(voomQuantDup, group=yFilt$samples$batch)
+        plotDensities(voomQuantDup, group=yFilt$samples$Island)
+    dev.off()
+    save(voomQuantDup, file=paste0(outputdir, "voomQuant.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
 
-#     # DE testing:
-#     # the inter-subject correlation is input into the linear model fit
-#     voomQuantDupVfit <- lmFit(voomQuantDup, design, block=yFilt$samples$ind, correlation=dupcorQuantDup$consensus)
-#     voomQuantDupVfit <- contrasts.fit(voomQuantDupVfit, contrasts=contr.matrix)
-#     voomQuantDupEfit <- eBayes(voomQuantDupVfit, robust=T)
+    # DE testing:
+    # the inter-subject correlation is input into the linear model fit
+    voomQuantDupVfit <- lmFit(voomQuantDup, design, block=yFilt$samples$ind, correlation=dupcorQuantDup$consensus)
+    voomQuantDupVfit <- contrasts.fit(voomQuantDupVfit, contrasts=contr.matrix)
+    voomQuantDupEfit <- eBayes(voomQuantDupVfit, robust=T)
 
-#     pdf(file=paste0(edaoutput, "voomQuant.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
-#         plotSA(voomQuantDupEfit, main="Mean-variance trend elimination with duplicate correction")
-#     dev.off()
+    pdf(file=paste0(edaoutput, "voomQuant.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
+        plotSA(voomQuantDupEfit, main="Mean-variance trend elimination with duplicate correction")
+    dev.off()
 
-#     # get top genes using toptable
-#     voomQuantDupTopTableSMB.MTW <- topTable(voomQuantDupEfit, coef=1, n=Inf, sort.by="p")
-#     voomQuantDupTopTableSMB.KOR <- topTable(voomQuantDupEfit, coef=2, n=Inf, sort.by="p")
-#     voomQuantDupTopTableMTW.KOR <- topTable(voomQuantDupEfit, coef=3, n=Inf, sort.by="p")
+    # get top genes using toptable
+    voomQuantDupTopTableSMB.MTW <- topTable(voomQuantDupEfit, coef=1, n=Inf, sort.by="p")
+    voomQuantDupTopTableSMB.KOR <- topTable(voomQuantDupEfit, coef=2, n=Inf, sort.by="p")
+    voomQuantDupTopTableMTW.KOR <- topTable(voomQuantDupEfit, coef=3, n=Inf, sort.by="p")
 
 
-# # Loess normalisation between samples and tmm and voom:
-#     voomLoess <- voom(yFilt, design, normalize.method="cyclicloess", plot=F) 
-#     dupcorLoess <- duplicateCorrelation(voomLoess, design, block=yFilt$samples$ind) # 46 warnings
-#     # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
-#     dupcorLoess$consensus # sanity check
-#     # [1] 0.6825221
-#     median(voomLoess$weights) # another sanity check:
-#     # [1] 23.18414
-#     save(voomLoess, file=paste0(outputdir, "voomLoess.tmm.filtered.indoRNA.Rda"))
+# Loess normalisation between samples and tmm and voom:
+    voomLoess <- voom(yFilt, design, normalize.method="cyclicloess", plot=F) 
+    dupcorLoess <- duplicateCorrelation(voomLoess, design, block=yFilt$samples$ind) # 46 warnings
+    # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
+    dupcorLoess$consensus # sanity check
+    # [1] 0.6825221
+    median(voomLoess$weights) # another sanity check:
+    # [1] 23.18414
+    save(voomLoess, file=paste0(outputdir, "voomLoess.tmm.filtered.indoRNA.Rda"))
 
-#     # Second round:
-#     voomLoessDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorLoess$consensus)
-#     dupcorLoessDup <- duplicateCorrelation(voomLoessDup, design, block=yFilt$samples$ind) # 48 warnings
-#     dupcorLoessDup$consensus # sanity check pt 2
-#     # [1] 0.6796738
-#     median(voomLoessDup$weights) # another sanity check, pt 2 
-#     # [1] 22.40257
+    # Second round:
+    voomLoessDup <- voom(yFilt, design, plot=TRUE, block=yFilt$samples$ind, correlation=dupcorLoess$consensus)
+    dupcorLoessDup <- duplicateCorrelation(voomLoessDup, design, block=yFilt$samples$ind) # 48 warnings
+    dupcorLoessDup$consensus # sanity check pt 2
+    # [1] 0.6796738
+    median(voomLoessDup$weights) # another sanity check, pt 2 
+    # [1] 22.40257
 
-#     pdf(file=paste0(edaoutput, "voomLoess.tmm.filtered.indoRNA.densities.pdf"))
-#         plotDensities(voomLoessDup, group=yFilt$samples$batch)
-#         plotDensities(voomLoessDup, group=yFilt$samples$Island)
-#     dev.off()
-#     save(voomLoessDup, file=paste0(outputdir, "voomLoess.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
+    pdf(file=paste0(edaoutput, "voomLoess.tmm.filtered.indoRNA.densities.pdf"))
+        plotDensities(voomLoessDup, group=yFilt$samples$batch)
+        plotDensities(voomLoessDup, group=yFilt$samples$Island)
+    dev.off()
+    save(voomLoessDup, file=paste0(outputdir, "voomLoess.tmm.filtered.duplicate_corrected.indoRNA.Rda"))
 
-#     # DE testing:
-#     # the inter-subject correlation is input into the linear model fit
-#     voomLoessDupVfit <- lmFit(voomLoessDup, design, block=yFilt$samples$ind, correlation=dupcorLoessDup$consensus)
-#     voomLoessDupVfit <- contrasts.fit(voomLoessDupVfit, contrasts=contr.matrix)
-#     voomLoessDupEfit <- eBayes(voomLoessDupVfit, robust=T)
+    # DE testing:
+    # the inter-subject correlation is input into the linear model fit
+    voomLoessDupVfit <- lmFit(voomLoessDup, design, block=yFilt$samples$ind, correlation=dupcorLoessDup$consensus)
+    voomLoessDupVfit <- contrasts.fit(voomLoessDupVfit, contrasts=contr.matrix)
+    voomLoessDupEfit <- eBayes(voomLoessDupVfit, robust=T)
 
-#     pdf(file=paste0(edaoutput, "voomLoess.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
-#         plotSA(voomLoessDupEfit, main="Mean-variance trend elimination with duplicate correction")
-#     dev.off()
+    pdf(file=paste0(edaoutput, "voomLoess.tmm.filtered.indoRNA.mean-variance-trend.pdf"))
+        plotSA(voomLoessDupEfit, main="Mean-variance trend elimination with duplicate correction")
+    dev.off()
 
-#     # get top genes using toptable
-#     voomLoessDupTopTableSMB.MTW <- topTable(voomLoessDupEfit, coef=1, n=Inf, sort.by="p")
-#     voomLoessDupTopTableSMB.KOR <- topTable(voomLoessDupEfit, coef=2, n=Inf, sort.by="p")
-#     voomLoessDupTopTableMTW.KOR <- topTable(voomLoessDupEfit, coef=3, n=Inf, sort.by="p")
+    # get top genes using toptable
+    voomLoessDupTopTableSMB.MTW <- topTable(voomLoessDupEfit, coef=1, n=Inf, sort.by="p")
+    voomLoessDupTopTableSMB.KOR <- topTable(voomLoessDupEfit, coef=2, n=Inf, sort.by="p")
+    voomLoessDupTopTableMTW.KOR <- topTable(voomLoessDupEfit, coef=3, n=Inf, sort.by="p")
 
 # LOL omg what was the point? On the basis of this, going with no norm so there's no need to think about it any deeper.
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
@@ -232,48 +232,48 @@ summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", 
 # Down        898     2325     2102
 # NotSig    11430     8479     8887
 # Up          647     2171     1986
-# summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-# #        SMBvsMTW SMBvsKOR MTWvsKOR
-# # Down        896     2324     2102
-# # NotSig    11432     8480     8887
-# # Up          647     2171     1986
-# summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-# #        SMBvsMTW SMBvsKOR MTWvsKOR
-# # Down        898     2325     2102
-# # NotSig    11430     8479     8887
-# # Up          647     2171     1986
+summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
+#        SMBvsMTW SMBvsKOR MTWvsKOR
+# Down        896     2324     2102
+# NotSig    11432     8480     8887
+# Up          647     2171     1986
+summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
+#        SMBvsMTW SMBvsKOR MTWvsKOR
+# Down        898     2325     2102
+# NotSig    11430     8479     8887
+# Up          647     2171     1986
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
 #        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down         96      606      536
 # NotSig    12661    11577    11958
 # Up          218      792      481
-# summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-# #        SMBvsMTW SMBvsKOR MTWvsKOR
-# # Down         96      606      536
-# # NotSig    12661    11577    11958
-# # Up          218      792      481
-# summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-# #        SMBvsMTW SMBvsKOR MTWvsKOR
-# # Down         96      606      536
-# # NotSig    12661    11577    11958
-# # Up          218      792      481
+summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
+#        SMBvsMTW SMBvsKOR MTWvsKOR
+# Down         96      606      536
+# NotSig    12661    11577    11958
+# Up          218      792      481
+summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
+#        SMBvsMTW SMBvsKOR MTWvsKOR
+# Down         96      606      536
+# NotSig    12661    11577    11958
+# Up          218      792      481
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #        SMBvsMTW SMBvsKOR MTWvsKOR
 # Down          6       87       96
 # NotSig    12940    12662    12748
 # Up           29      226      131
-# summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-# #        SMBvsMTW SMBvsKOR MTWvsKOR
-# # Down          6       87       96
-# # NotSig    12940    12662    12748
-# # Up           29      226      131
-# summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-# #        SMBvsMTW SMBvsKOR MTWvsKOR
-# # Down          6       87       96
-# # NotSig    12940    12662    12748
-# # Up           29      226      131
+summary(decideTests(voomQuantDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
+#        SMBvsMTW SMBvsKOR MTWvsKOR
+# Down          6       87       96
+# NotSig    12940    12662    12748
+# Up           29      226      131
+summary(decideTests(voomLoessDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
+#        SMBvsMTW SMBvsKOR MTWvsKOR
+# Down          6       87       96
+# NotSig    12940    12662    12748
+# Up           29      226      131
 
 write.table(voomNoNormDupTopTableSMB.MTW, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.SMB-MTW.txt"))
 write.table(voomNoNormDupTopTableSMB.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.SMB-KOR.txt"))
@@ -282,62 +282,62 @@ write.table(voomNoNormDupTopTableMTW.KOR, file=paste0(outputdir,"topTable.voomNo
 # For easily combining with the villages:
 save(voomNoNormDupEfit, file=paste0(outputdir, "voomNoNorm.tmm.filtered.dup_corrected.Efit_object.Rda"))
 
-# ###################################################
-# ### 3. DE testing without duplicate correlation ###
-# ###################################################
+###################################################
+### 3. DE testing without duplicate correlation ###
+###################################################
 
-# ### Only doing the nonorm one, because why bother with the others?
+### Only doing the nonorm one, because why bother with the others?
 
-#     voomNoNormVfit <- lmFit(voomNoNorm, design)
-#     voomNoNormVfit <- contrasts.fit(voomNoNormVfit, contrasts=contr.matrix)
-#     voomNoNormEfit <- eBayes(voomNoNormVfit, robust=T)
+    voomNoNormVfit <- lmFit(voomNoNorm, design)
+    voomNoNormVfit <- contrasts.fit(voomNoNormVfit, contrasts=contr.matrix)
+    voomNoNormEfit <- eBayes(voomNoNormVfit, robust=T)
 
-# pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.no_dup_correction.mean-variance-trend.pdf"))
-#     plotSA(voomNoNormEfit, main="Mean-variance trend elimination without duplicate correction")
-# dev.off()
+pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.no_dup_correction.mean-variance-trend.pdf"))
+    plotSA(voomNoNormEfit, main="Mean-variance trend elimination without duplicate correction")
+dev.off()
 
-# # get top genes using toptable
-# topTableSMB.MTW <- topTable(voomNoNormEfit, coef=1, n=Inf, sort.by="p")
-# topTableSMB.KOR <- topTable(voomNoNormEfit, coef=2, n=Inf, sort.by="p")
-# topTableMTW.KOR <- topTable(voomNoNormEfit, coef=3, n=Inf, sort.by="p")
+# get top genes using toptable
+topTableSMB.MTW <- topTable(voomNoNormEfit, coef=1, n=Inf, sort.by="p")
+topTableSMB.KOR <- topTable(voomNoNormEfit, coef=2, n=Inf, sort.by="p")
+topTableMTW.KOR <- topTable(voomNoNormEfit, coef=3, n=Inf, sort.by="p")
 
-# # no LFC threshold
-# summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01))
-# #       SMBvsMTW SMBvsKOR MTWvsKOR
-# #Down       1032     2569     2228
-# #NotSig    11183     8106     8669
-# #Up          760     2300     2078
+# no LFC threshold
+summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01))
+#       SMBvsMTW SMBvsKOR MTWvsKOR
+#Down       1032     2569     2228
+#NotSig    11183     8106     8669
+#Up          760     2300     2078
 
-# # LFC of 0.05
-# summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-# #       SMBvsMTW SMBvsKOR MTWvsKOR
-# #Down        112      654      558
-# #NotSig    12603    11492    11920
-# #Up          260      829      497
+# LFC of 0.05
+summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
+#       SMBvsMTW SMBvsKOR MTWvsKOR
+#Down        112      654      558
+#NotSig    12603    11492    11920
+#Up          260      829      497
 
-# # LFC of 1
-# summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
-# #       SMBvsMTW SMBvsKOR MTWvsKOR
-# #Down          6       93      103
-# #NotSig    12923    12643    12737
-# #Up           46      239      135
+# LFC of 1
+summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
+#       SMBvsMTW SMBvsKOR MTWvsKOR
+#Down          6       93      103
+#NotSig    12923    12643    12737
+#Up           46      239      135
 
-# # Let's check the correlation between those two approaches - sort by gene first, then cor test on adjusted p-value
-# MTW.KOR <- join(voomNoNormDupTopTableMTW.KOR, topTableMTW.KOR, by="genes")
-# cor(MTW.KOR[,6], MTW.KOR[,12], method="spearman"    )
-# # [1] 0.9884076
+# Let's check the correlation between those two approaches - sort by gene first, then cor test on adjusted p-value
+MTW.KOR <- join(voomNoNormDupTopTableMTW.KOR, topTableMTW.KOR, by="genes")
+cor(MTW.KOR[,6], MTW.KOR[,12], method="spearman"    )
+# [1] 0.9884076
 
-# SMB.KOR <- join(voomNoNormDupTopTableSMB.KOR, topTableSMB.KOR, by="genes")
-# cor(SMB.KOR[,6], SMB.KOR[,12], method="spearman", use="complete")
-# # [1] 0.9771854
+SMB.KOR <- join(voomNoNormDupTopTableSMB.KOR, topTableSMB.KOR, by="genes")
+cor(SMB.KOR[,6], SMB.KOR[,12], method="spearman", use="complete")
+# [1] 0.9771854
 
-# SMB.MTW <- join(voomNoNormDupTopTableSMB.MTW, topTableSMB.MTW, by="genes")
-# cor(SMB.MTW[,6], SMB.MTW[,12], method="spearman", use="complete")
-# # [1] 0.955927
+SMB.MTW <- join(voomNoNormDupTopTableSMB.MTW, topTableSMB.MTW, by="genes")
+cor(SMB.MTW[,6], SMB.MTW[,12], method="spearman", use="complete")
+# [1] 0.955927
 
-# write.table(topTableSMB.MTW, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-MTW.txt"))
-# write.table(topTableSMB.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-KOR.txt"))
-# write.table(topTableMTW.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.MTW-KOR.txt"))
+write.table(topTableSMB.MTW, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-MTW.txt"))
+write.table(topTableSMB.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.SMB-KOR.txt"))
+write.table(topTableMTW.KOR, file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.MTW-KOR.txt"))
 
 
 #####################################################################################
@@ -419,11 +419,11 @@ dev.off()
 
 
 # # Some Venn diagrams
-# make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01,]$genes, paste0(edaoutput, "all_islands.fdr_0.01"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01,]$genes, paste0(edaoutput, "all_islands.fdr_0.01"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
 
-# make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 0.5,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.KOR$logFC)>= 0.5,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.KOR$logFC)>= 0.5,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_0.5"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 0.5,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.KOR$logFC)>= 0.5,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.KOR$logFC)>= 0.5,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_0.5"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
 
-# make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 1,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.KOR$logFC)>= 1,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.KOR$logFC)>= 1,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_1"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
+make.venn.triple(voomNoNormDupTopTableSMB.MTW[voomNoNormDupTopTableSMB.MTW$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.MTW$logFC)>= 1,]$genes, voomNoNormDupTopTableSMB.KOR[voomNoNormDupTopTableSMB.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableSMB.KOR$logFC)>= 1,]$genes, voomNoNormDupTopTableMTW.KOR[voomNoNormDupTopTableMTW.KOR$adj.P.Val <= 0.01 & abs(voomNoNormDupTopTableMTW.KOR$logFC)>= 1,]$genes, paste0(edaoutput, "all_islands.fdr_0.01.logfc_1"), "Sumba vs\nMentawai", "Sumba vs\nKorowai", "Mentawai\nvs Korowai", voomNoNormDupTopTableSMB.MTW)
 
 
 # get DE genes in common with populations compared to Korowai, i.e., SMBvsKOR and MTWvsKOR (since we think this is an interesting island comparison)
@@ -440,10 +440,10 @@ deCommonKOR05 = which(deSummary05[,2]!=0 & deSummary05[,3]!=0)
 deCommonKOR1 = which(deSummary1[,2]!=0 & deSummary1[,3]!=0)
 
 # get what these genes are doing and save them to a file
-# commonGenes.KOR <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.KOR), filters="ensembl_gene_id")
-# write.table(de.common.KOR, file=paste0(outputdir,"allCommonGenes_KOR_dupcor.txt"))
+commonGenes.KOR <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name', 'description', "interpro","interpro_description"), mart = ensembl.mart.90,values=names(de.common.KOR), filters="ensembl_gene_id")
+write.table(de.common.KOR, file=paste0(outputdir,"allCommonGenes_KOR_dupcor.txt"))
 # # save the common gene names 
-# de.common.KOR=voomNoNormDupEfit$genes[names(de.common.KOR),]
+de.common.KOR=voomNoNormDupEfit$genes[names(de.common.KOR),]
 
 # now plot the common genes to see if they're being regulated in the same direction
 pdf(paste0(edaoutput,"logFC_commonKORgenes_dupCor.pdf"))
@@ -453,9 +453,7 @@ pdf(paste0(edaoutput,"logFC_commonKORgenes_dupCor.pdf"))
             geom_vline(xintercept = 0, linetype=2, colour="grey60") +
             geom_abline(slope = 1, intercept=0, colour="grey60", linetype=2)
             theme_bw() + 
-            labs(title="" y="log2FC Sumba-Korowai", x="log2FC Mentawai-Korowai") + 
+            labs(title="", y="log2FC Sumba-Korowai", x="log2FC Mentawai-Korowai") + 
             theme(legend.title=element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
             guides(fill=F)
 dev.off()
-
-

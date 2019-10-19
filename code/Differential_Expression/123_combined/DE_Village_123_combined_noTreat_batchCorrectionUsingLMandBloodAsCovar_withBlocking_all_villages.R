@@ -235,19 +235,19 @@ allDESummaries <- replicate(iterations, deTestingSubsets(yVillage5), simplify=FA
 deGenesTables <- ldply(allDESummaries, function(x) colSums(x[c(1,3),]))
 summary(deGenesTables) # Yeah this is hard to interpret, so probably worth putting aside for now. What about n = 15 instead, and repeating with those? There's no variability in Madobag, though, so maybe 10 is a good compromise
 
-# deGenesPlotting <- melt(deGenesTables)
-# deGenesPlotting[deGenesPlotting == 0] <- NA
+deGenesPlotting <- melt(deGenesTables)
+deGenesPlotting[deGenesPlotting == 0] <- NA
 
-# pdf(paste0(edaoutput, "subsampling_densities.pdf"), width=18)
-#     ggplot(deGenesPlotting, aes(x=value, colour=variable, fill=variable, group=variable)) +
-#         geom_density() +
-#         xlim(0,200) + 
-#         theme_bw() + 
-#         # facet_wrap(. ~ variable, nrow = 5, ncol = 5) + 
-#         labs(title="", y="density", x="DE genes") + 
-#         theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-#         guides(colour=F, fill=F)
-# dev.off()
+pdf(paste0(edaoutput, "subsampling_densities.pdf"), width=18)
+    ggplot(deGenesPlotting, aes(x=value, colour=variable, fill=variable, group=variable)) +
+        geom_density() +
+        xlim(0,200) + 
+        theme_bw() + 
+        # facet_wrap(. ~ variable, nrow = 5, ncol = 5) + 
+        labs(title="", y="density", x="DE genes") + 
+        theme(legend.title=element_blank(), axis.text.x = element_text(angle = 45, hjust = 1), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+        guides(colour=F, fill=F)
+dev.off()
 
 # OK and now that we know what village is weird, let's just plot the RINs out by village, because this is soooo bizarre.
 
@@ -285,8 +285,8 @@ deTestingSubsets10 <- function(testingData) {
     }
 
     # # A sanity check for debugging - output the list of samples used:
-    # print("doing DE testing with the following samples:")
-    # print(yVillageSub$samples$ID)
+    print("doing DE testing with the following samples:")
+    print(yVillageSub$samples$ID)
 
     # Once we are happy with our subset, set up design and contrast matrices:
     design <- model.matrix(~0 + yVillageSub$samples$Sampling.Site + yVillageSub$samples$Age + yVillageSub$samples$batch + yVillageSub$samples$RIN + yVillageSub$samples$CD8T + yVillageSub$samples$CD4T + yVillageSub$samples$NK + yVillageSub$samples$Bcell + yVillageSub$samples$Mono + yVillageSub$samples$Gran)
