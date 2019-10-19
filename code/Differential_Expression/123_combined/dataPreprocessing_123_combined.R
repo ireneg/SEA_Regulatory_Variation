@@ -1,8 +1,8 @@
 # script created by KSB, 26.07.18
 # perform data pre-processing on both batches of indonesian RNA-seq data- third batch
 
-### Last edit: IGR 2019.04.12
-### Better segmentation, added PCA plotting code
+### Last edit: IGR 2019.10.19
+### Removed MPI-296 having discovered she is female. 
 
 ### 0. Load dependencies and set input paths -------------------------- 
 ### 1. BEGIN ANALYSIS ----------------------------------------------------------- 
@@ -34,12 +34,12 @@ library(RColorBrewer)
 library(magrittr)
 
 # Set paths:
-inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296" # on server
 covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
 
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296"
 edaoutput <- paste0(outputdir, "eda/")
 
 if (file.exists(outputdir) == FALSE){
@@ -66,7 +66,7 @@ samplenames <- as.character(y$samples$samples)
 samplenames <- sub("([A-Z]{3})([0-9]{3})", "\\1-\\2", samplenames)
 samplenames <- sapply(strsplit(samplenames, "[_.]"), `[`, 1)
 
-  # Create the covariate matrix --------------------------------------
+# Create the covariate matrix --------------------------------------
 
 covariates <- read.xlsx(paste0(covariatedir, "metadata_RNA_Batch123.xlsx"), sheet=1, detectDates <- T)
 
@@ -90,9 +90,10 @@ covariates$Sampling.Date <- gsub("2016-03-10","10/03/2016",covariates$Sampling.D
 
 # Check if any samples in the covariate DF are not in samplenames
 covariates[which(!(covariates[,"Sample.ID"] %in% samplenames)),]
-# <0 rows> (or 0-length row.names)
-# Nothing! So that's good news
-
+# MPI 296 comes up, as expected, so we remove her before we go any further:
+covariates <- covariates[covariates$ID != "MPI-296",]
+covariates[which(!(covariates[,"Sample.ID"] %in% samplenames)),]
+# all good now!
 
 #################################################################################
 ### 2. Covariate setup ------------------------------------------------------ ###
