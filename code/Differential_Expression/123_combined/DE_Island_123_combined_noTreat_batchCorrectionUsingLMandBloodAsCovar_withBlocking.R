@@ -1,8 +1,8 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-### Last edit: IGR 2019.06.03 
-### Cleaned up unused bits and legacy code.
+### Last edit: IGR 2019.10.19
+### Changed paths to deal with removal of MPI-296
 
 ### 0. Load dependencies and functions and set input paths ###
 ### 1. Begin analyses and initial QC ###
@@ -32,11 +32,11 @@ library(ComplexHeatmap)
 library(wesanderson)
 
 # Set paths:
-inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296" # on server
 covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296"
 edaoutput <- paste0(outputdir, "/eda/")
 
 if (file.exists(outputdir) == FALSE){

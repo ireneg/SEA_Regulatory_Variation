@@ -1,7 +1,7 @@
 ### Script from Pai Kusuma, modified a little bit by IGR to detect enrichment in genes DE between some comparisons but not others
 
-### Last update: 2019.07.05 IGR
-### Fixed a bug in KEGG testing where the background was not getting set correctly, cleaned up.
+### Last edit: IGR 2019.10.19
+### Changed paths to deal with removal of MPI-296
 
 ### 0. Load the relevant packages etc. ###
 ### 1. Define the GO/KEGG enrichment testing function. ###
@@ -24,11 +24,11 @@ library(tidyr)
 library(rentrez) # OMG direct retrieval of RIFs and gene summaries???
 
 # Set paths:
-inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296" # on server
 covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296"
 edaoutput <- paste0(outputdir, "/eda/")
 
 if (file.exists(outputdir) == FALSE){
