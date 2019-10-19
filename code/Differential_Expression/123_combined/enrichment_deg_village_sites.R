@@ -24,7 +24,7 @@ library(tidyr)
 library(rentrez) # OMG direct retrieval of RIFs and gene summaries???
 
 # Set paths:
-inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296" # on server
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296/" # on server
 covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
 
 # Set output directory and create it if it does not exist:

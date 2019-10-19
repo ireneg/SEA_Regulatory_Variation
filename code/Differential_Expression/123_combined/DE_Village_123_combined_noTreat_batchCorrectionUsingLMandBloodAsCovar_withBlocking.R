@@ -43,13 +43,13 @@ library(ggpubr)
 
 
 # Set paths
-inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296" # on server
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296/" # on server
 covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
 # inputdir <- "~/Desktop/indoRNA_temp/de_testing/"
 # covariatedir <- "~/Desktop/indoRNA_temp/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296"
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296/"
 edaoutput <- paste0(outputdir, "eda/")
 # outputdir <- "~/Desktop/indoRNA_temp/de_testing/"
 # edaoutput <- paste0(outputdir, "local_eda/")
