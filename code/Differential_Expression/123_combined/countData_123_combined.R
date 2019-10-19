@@ -1,8 +1,8 @@
 # Load in FeatureCounts data, set up covariate matrices, and get initial statistics from first and second batch of RNASeq Indonesian DE analysis
 # Code developed by Katalina Bobowik, 06.06.2018
 
-### Last edit: 2019.04.12
-### IGR clean up script and add headers.
+### Last edit: IGR 2019.10.19
+### Removed MPI-296 having discovered she is female. 
 
 ### 0. Set up everything ----------------------
 ### 1. BEGIN ANALYSIS -----------------------------------------------------------
@@ -30,7 +30,7 @@ batch.col=electronic_night(n=3)
 inputdir <- "/data/cephfs/punim0586/kbobowik/Sumba/" # on server 
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296"
 edaoutput <- paste0(outputdir, "eda/")
 
 if (file.exists(outputdir) == FALSE){
@@ -62,6 +62,9 @@ names(indoReads) <- c(names1st, names2nd, names3rd) #need to manually confirm or
 
 # rename MPI-336 to MPI-381 (mixup in naming when perfomring sequencing)
 colnames(indoReads) <- gsub("MPI-336_thirdBatch", "MPI-381_thirdBatch", colnames(indoReads)) 
+
+# Remove MPI-296, who is actually female and serves to confound things!
+indoReads <- indoReads[,colnames(indoReads) != "MPI-296_firstBatch"]
 
 # To avoid hardcoding while standardising, fix samplenames object first, then drop the suffixes:
 samplenames <- as.character(colnames(indoReads))
