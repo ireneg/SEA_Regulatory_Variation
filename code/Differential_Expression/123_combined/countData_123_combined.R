@@ -30,7 +30,7 @@ batch.col=electronic_night(n=3)
 inputdir <- "/data/cephfs/punim0586/kbobowik/Sumba/" # on server 
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296"
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/no_mpi296/"
 edaoutput <- paste0(outputdir, "eda/")
 
 if (file.exists(outputdir) == FALSE){
