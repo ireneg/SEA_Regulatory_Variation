@@ -42,17 +42,17 @@ library(ggpubr)
 #library(GenomicRanges)
 
 
-# Set paths:
-# inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
-# covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
-inputdir <- "~/Desktop/indoRNA_temp/de_testing/"
-covariatedir <- "~/Desktop/indoRNA_temp/"
+# Set paths
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/" # on server
+covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
+# inputdir <- "~/Desktop/indoRNA_temp/de_testing/"
+# covariatedir <- "~/Desktop/indoRNA_temp/"
 
-# # Set output directory and create it if it does not exist:
-# outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
-# edaoutput <- paste0(outputdir, "eda/")
-outputdir <- "~/Desktop/indoRNA_temp/de_testing/"
-edaoutput <- paste0(outputdir, "local_eda/")
+# Set output directory and create it if it does not exist:
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/de_testing/"
+edaoutput <- paste0(outputdir, "eda/")
+# outputdir <- "~/Desktop/indoRNA_temp/de_testing/"
+# edaoutput <- paste0(outputdir, "local_eda/")
 
 if (file.exists(edaoutput) == FALSE){
     dir.create(outputdir, recursive=T)
