@@ -40,17 +40,17 @@ files <- list.files(path=inputdir,
                     pattern="topTable.*\\.dup_corrected.*txt", full.names=TRUE, recursive=FALSE)
 
 mtwKor <- read.table(files[1], header=T, stringsAsFactors=F)
-smbKor <- read.table(files[3], header=T, stringsAsFactors=F)
-smbMtw <- read.table(files[5], header=T, stringsAsFactors=F)
+smbKor <- read.table(files[2], header=T, stringsAsFactors=F)
+smbMtw <- read.table(files[3], header=T, stringsAsFactors=F)
 
-ankKor <- read.table(files[6], header=T, stringsAsFactors=F)
-wngKor <- read.table(files[16], header=T, stringsAsFactors=F)
+ankKor <- read.table(files[4], header=T, stringsAsFactors=F)
+wngKor <- read.table(files[11], header=T, stringsAsFactors=F)
 smbVillageKor <- merge(ankKor, wngKor, by.x="genes", by.y="genes", suffixes=c(".ank", ".wng"))
 wngOnly <- smbVillageKor[smbVillageKor$adj.P.Val.wng <= 0.01 & smbVillageKor$adj.P.Val.ank > 0.01 & abs(smbVillageKor$logFC.wng) >= 0.5,]
 ankOnly <- smbVillageKor[smbVillageKor$adj.P.Val.ank <= 0.01 & smbVillageKor$adj.P.Val.wng > 0.01 & abs(smbVillageKor$logFC.ank) >= 0.5,]
 
-tllKor <- read.table(files[14], header=T, stringsAsFactors=F)
-mdbKor <- read.table(files[11], header=T, stringsAsFactors=F)
+tllKor <- read.table(files[10], header=T, stringsAsFactors=F)
+mdbKor <- read.table(files[8], header=T, stringsAsFactors=F)
 mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".tll", ".mdb"))
 mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & abs(mtwVillageKor$logFC.mdb) >= 0.5,]
 tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & abs(mtwVillageKor$logFC.tll) >= 0.5,]
