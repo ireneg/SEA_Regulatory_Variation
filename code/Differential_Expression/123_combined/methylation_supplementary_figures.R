@@ -39,11 +39,11 @@ library(hexbin)
 library(data.table)
 
 # Set paths:
-inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/dm_testing/" # on server
+inputdir <- "/data/cephfs/punim0586/igallego/indoRNA/dm_testing_nompi296/" # on server
 covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
 
 # Set output directory and create it if it does not exist:
-outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/dm_testing/"
+outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/dm_testing_nompi296/"
 edaoutput <- paste0(outputdir, "eda/")
 
 if (file.exists(outputdir) == FALSE){
@@ -62,7 +62,7 @@ mtw_kor <- "darkorchid4"
 
 # Load cleaned mvalues from Heini:
 # y methylation list object
-mval <- data.frame(fread(paste0(inputdir, "m_vals.tsv"))) # data.table makes strange life choices...
+mval <- data.frame(fread(paste0(inputdir, "m_vals_woutMPI296.tsv"))) # data.table makes strange life choices...
 rownames(mval) <- mval$V1
 mval <- mval[,-1] 
 head(mval)
@@ -491,7 +491,7 @@ names(decileLabels) <- seq(1,10,1)
 
 rm(mvalVillage) # clean up a bit
 
-beta <- data.frame(fread(paste0(inputdir, "beta_vals.tsv")))
+beta <- data.frame(fread(paste0(inputdir, "beta_vals_woutMPI296.tsv")))
 rownames(beta) <- beta$V1
 beta <- beta[,-1] 
 head(beta)
