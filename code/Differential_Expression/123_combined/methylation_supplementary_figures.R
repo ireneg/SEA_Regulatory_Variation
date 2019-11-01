@@ -46,7 +46,7 @@ covariatedir <- "/data/cephfs/punim0586/igallego/indoRNA/"
 outputdir <- "/data/cephfs/punim0586/igallego/indoRNA/dm_testing_nompi296/"
 edaoutput <- paste0(outputdir, "eda/")
 
-if (file.exists(outputdir) == FALSE){
+if (file.exists(edaoutput) == FALSE){
     dir.create(outputdir, recursive=T)
     dir.create(edaoutput, recursive=T)
 }
