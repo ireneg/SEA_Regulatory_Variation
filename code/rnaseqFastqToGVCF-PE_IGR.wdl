@@ -232,47 +232,6 @@ workflow rnaseqBamToGVCF {
     }
   }
 
-  call combineGVCFsTask.combineGVCFs_task {
-   Int combineRunMinutes
-   Int combineRunThreads
-   Int combineRunMem
-
-   input: GATK=gatkLocation,
-	RefFasta=refFasta,
-	RefIndex=refIndex,
-	RefDict=refDict,
-	GVCFs=HaplotypeCallerERC_task.GVCF,
-	sampleName="combinedGVCFs"	
-  }
-
-  call GenotypeGVCFsTask.GenotypeGVCFs_task {
-    Int genotypeRunMinutes
-    Int genotypeThreads
-    Int genotypeMem
-
-    input: GATK=gatkLocation, 
-      RefFasta=refFasta, 
-      RefIndex=refIndex, 
-      RefDict=refDict, 
-      sampleName="CEUtrio", 
-      combinedVCF=combineGVCFs_task.combinedOutput
-  }
-
-  call VariantFiltrationTask.VariantFiltration_task {
-	Int variantFilterRunMinutes
-	Int variantFilterThreads
-	Int variantFilterMem
-
-	input:
-		input_vcf = GenotypeGVCFs_task.rawVCF,
-		input_vcf_index = GenotypeGVCFs_task.rawVCFidx,
-		base_name = "CEUtrio",
-		ref_fasta = refFasta,
-		ref_fasta_index = refIndex,
-		ref_dict = refDict,
-		gatk_path=gatkLocation
-  }
-
   call copyOutputTask.copyOutput_task {
 	Int copyOutputRunThreads
         Int copyOutputRunMinutes

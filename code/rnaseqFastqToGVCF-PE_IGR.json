@@ -45,13 +45,8 @@
 
   "##_COMMENT_5": "Haplotype caller parameters",
   "rnaseqBamToGVCF.HaplotypeCallerERC_task.haplotypeCallerThreads": 6,
-  "rnaseqBamToGVCF.HaplotypeCallerERC_task.haplotypeCallerRunMinutes": 450,
+  "rnaseqBamToGVCF.HaplotypeCallerERC_task.haplotypeCallerRunMinutes": 600,
   "rnaseqBamToGVCF.HaplotypeCallerERC_task.haplotypeCallerMem": 40000,
-
-  "##_COMMENT_6": "GenotypeGVCFs merge raw vcf files",
-  "rnaseqBamToGVCF.GenotypeGVCFs_task.genotypeRunMinutes": 200,
-  "rnaseqBamToGVCF.GenotypeGVCFs_task.genotypeThreads": 6,
-  "rnaseqBamToGVCF.GenotypeGVCFs_task.genotypeMem": 40000,
 
   "##_COMMENT_7": "Misc run tie parameters",
   "rnaseqBamToGVCF.createPicardBamIndex_task.createPicardBamIndexRunMinutes": 100,
