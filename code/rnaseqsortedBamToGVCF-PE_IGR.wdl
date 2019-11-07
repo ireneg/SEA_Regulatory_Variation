@@ -9,10 +9,8 @@
 ## instructions to make are here: https://gatkforums.broadinstitute.org/wdl/discussion/6716/scatter-gather-parallelism
 ## and here: https://gatkforums.broadinstitute.org/wdl/discussion/7614/4-howto-use-scatter-gather-to-joint-call-genotypes
 
-
 ##Import tasks
 #possible to reuse but will do this later
-
 
 #import "./tasks/starAlignment.wdl" as starAlignmentTask
 #import "./tasks/combineGVCFs.wdl" as combineGVCFsTask
@@ -34,249 +32,257 @@ import "./tasks/printReads.wdl" as printReadsTask
 #import "./tasks/VariantFiltration.wdl" as VariantFiltrationTask
 #import "./tasks/copyOutput.wdl" as copyOutputTask
 
-# workflow rnaseqBamToGVCF {
+workflow rnaseqBamToGVCF {
 
-  File inputSamplesFile
-  Array[Array[File]] inputSamples = read_tsv(inputSamplesFile)
-  File refFasta
-  File refDict
-  File refIndex
-  String picardLocation
-  String gatkLocation
-  String genomeDir
-  String outputDir
-  File dbSnpVcf
-  File dbSnpVcfIndex
-  File knownVcfs
-  File knownVcfsIndices
+File inputSamplesFile
+Array[Array[File]] inputSamples = read_tsv(inputSamplesFile)
+File refFasta
+File refDict
+File refIndex
+String picardLocation
+String gatkLocation
+String genomeDir
+String outputDir
+File dbSnpVcf
+File dbSnpVcfIndex
+File knownVcfs
+File knownVcfsIndices
 
-#   scatter (sample in inputSamples) {
+  scatter (sample in inputSamples) {
 
-#         call starAlignmentTask.starAlignment_task {
-#          Int starAlignmentRunThreads
-#          Int starAlignmentRunMinutes
-#          Int starAlignmentRunMem
+    # call starAlignmentTask.starAlignment_task {
+      # Int starAlignmentRunThreads
+      # Int starAlignmentRunMinutes
+      # Int starAlignmentRunMem
+      # input:
+          # genomeDir=genomeDir,
+          # inputFastqRead1=sample[1],
+          # inputFastqRead2=sample[2],
+          # sampleName=sample[0]
+    # }
 
-#                 input:
-#                    genomeDir=genomeDir,
-#                    inputFastqRead1=sample[1],
-#                    inputFastqRead2=sample[2],
-#                    sampleName=sample[0]
-#         }
+    # call convertSamToBamTask.convertSamToBam_task {
+      # Int convertSamToBamRunThreads
+      # Int convertSamToBamRunMinutes
+      # Int convertSamToBamRunMem
+      # input:
+        # alignmentSam=starAlignment_task.outputSam,
+        # sampleName=sample[0]
+    # }
 
-#         call convertSamToBamTask.convertSamToBam_task {
-#   Int convertSamToBamRunThreads
-#         Int convertSamToBamRunMinutes
-#         Int convertSamToBamRunMem
+    # call picardTask.picard_task {
+      # String typeARRG
+      # String sortOrder
+      # String readGroupID
+      # String readGroupLibrary
+      # String readGroupPlatform
+      # String readGroupPlatformBarcode
+      # Int picardRunMinutes
+      # Int picardThreads
+    # input:
+        # picardLocation=picardLocation,
+        # picardInputBam=convertSamToBam_task.outputBam,
+        # sampleName=sample[0]
+    # }
 
-#                 input:
-#                    alignmentSam=starAlignment_task.outputSam,
-#                    sampleName=sample[0]
-#         }
+    # call picardMarkDuplicatesTask.picardMarkDuplicates_task {
+      # String typeMD
+      # String createIndex
+      # String validationStringency
+      # String outputMetrics
+      # String picardMarkDuplicatesRunMinutes
+      # String picardMarkDuplicatesThreads
 
-#     call picardTask.picard_task {
-#        String typeARRG
-#        String sortOrder
-#        String readGroupID
-#        String readGroupLibrary
-#        String readGroupPlatform
-#        String readGroupPlatformBarcode
-#        Int picardRunMinutes
-#        Int picardThreads
+      # input:
+        # picardLocation=picardLocation,
+        # picardMDInputBam=picard_task.picardOutputBam,
+        # sampleName=sample[0]
+    # }
 
-#        input:
-#            picardLocation=picardLocation,
-#            picardInputBam=convertSamToBam_task.outputBam,
-#            sampleName=sample[0]
-#     }
+    # call createPicardBamIndexTask.createPicardBamIndex_task {
+      # Int createPicardBamIndexRunMinutes
+      # Int createPicardBamIndexThreads
+      # Int createPicardBamIndexMem
 
-#     call picardMarkDuplicatesTask.picardMarkDuplicates_task {
-#            String typeMD
-#            String createIndex
-#            String validationStringency
-#            String outputMetrics
-#      String picardMarkDuplicatesRunMinutes
-#      String picardMarkDuplicatesThreads
+      # input:
+        # picardMDBamToBeIndexed=picardMarkDuplicates_task.picardDeduppedBam
+    # }
 
-#             input:
-#                 picardLocation=picardLocation,
-#                 picardMDInputBam=picard_task.picardOutputBam,
-#                 sampleName=sample[0]
-#     }
+    # call createRefIndexTask.createRefIndex_task{
+      # Int createRefIndexRunMinutes
+      # Int createRefIndexRunThreads
+      # Int createRefIndexMem
+      # input:
+        # refFasta=refFasta
+    # }
 
-#     call createPicardBamIndexTask.createPicardBamIndex_task {
-#       Int createPicardBamIndexRunMinutes
-#     Int createPicardBamIndexThreads
-#     Int createPicardBamIndexMem
+    # call splitNCigarReadsTask.splitNCigarReads_task{
+      # String splitCigars
+      # Int RF
+      # Int RMQF
+      # String RMQT
+      # String U
+      # Int splitNCigarReadsRunMinutes  
+      # Int splitNCigarReadsThreads
+      # Int splitNCigarReadsMem
 
-#             input:
-#                 picardMDBamToBeIndexed=picardMarkDuplicates_task.picardDeduppedBam
-#     }
+      # input:
+        # refFasta=refFasta,
+        # refFastaIndex=createRefIndex_task.refFastaIndex,
+        # refDictionary=refDict,
+        # sampleName=sample[0],
+        # gatkLocation=gatkLocation,
+        # splitCigarsInputBam=picardMarkDuplicates_task.picardDeduppedBam,
+        # splitCigarsInputBamIndex=createPicardBamIndex_task.mDBamIndex
+    # }
 
-#     call createRefIndexTask.createRefIndex_task{
-#     Int createRefIndexRunMinutes
-#     Int createRefIndexRunThreads
-#     Int createRefIndexMem
-#            input:
-#                 refFasta=refFasta
-#     }
+    # call createBamIndexTask.createBamIndex_task{
+      # Int createBamIndexRunMinutes
+      # Int createBamIndexThreads
+      # Int createBamIndexMem
 
-#     call splitNCigarReadsTask.splitNCigarReads_task{
-#             String splitCigars
-#             Int RF
-#             Int RMQF
-#             String RMQT
-#             String U
-#       Int splitNCigarReadsRunMinutes  
-#       Int splitNCigarReadsThreads
-#       Int splitNCigarReadsMem
-
-#             input:
-#                 refFasta=refFasta,
-#                 refFastaIndex=createRefIndex_task.refFastaIndex,
-#                 refDictionary=refDict,
-#                 sampleName=sample[0],
-#                 gatkLocation=gatkLocation,
-#                 splitCigarsInputBam=picardMarkDuplicates_task.picardDeduppedBam,
-#                 splitCigarsInputBamIndex=createPicardBamIndex_task.mDBamIndex
-#         }
-
-#     call createBamIndexTask.createBamIndex_task{
-#       Int createBamIndexRunMinutes
-#       Int createBamIndexThreads
-#       Int createBamIndexMem
-
-#             input:
-#                 bamToBeIndexed=splitNCigarReads_task.splitCigarsBamOutput
-#     }
+      # input:
+        # bamToBeIndexed=splitNCigarReads_task.splitCigarsBamOutput
+    # }
 
 
-#   call sortBamTask.sortBam_task {
-#                 input:
-#                         bam2sort=splitNCigarReads_task.splitCigarsBamOutput,
-#                         sampleName=sample[0]
-#         }
+    # call sortBamTask.sortBam_task {
+      # input:
+        # bam2sort=splitNCigarReads_task.splitCigarsBamOutput,
+        # sampleName=sample[0]
+    # }
 
+    call baseRecalibrator1Task.baseRecalibrator1_task {
+      input:
+        gatkLocation=gatkLocation,
+        sortedBam=sample[1],
+        dbsnp=dbSnpVcf,
+        goldStandard=knownVcfs,
+        sampleName=sample[0],
+        ref_fasta=refFasta,
+        ref_fasta_index=refIndex,
+        ref_dict=refDict,
+        outputSortedBamIndex=sample[2]
+    }
 
-  call baseRecalibrator1Task.baseRecalibrator1_task {
-    input:
-      gatkLocation=gatkLocation,
-      sortedBam=sample[1],
-      dbsnp=dbSnpVcf,
-      goldStandard=knownVcfs,
-      sampleName=sample[0],
-      ref_fasta=refFasta,
-      ref_fasta_index=refIndex,
-      ref_dict=refDict,
-      outputSortedBamIndex=sample[2]
-  }
+    call baseRecalibrator2Task.baseRecalibrator2_task {
+      input:
+        gatkLocation=gatkLocation,
+        sortedBam=sample[1],
+        dbsnp=dbSnpVcf,
+        goldStandard=knownVcfs,
+        sampleName=sample[0],
+        ref_fasta=refFasta,
+        ref_fasta_index=refIndex,
+        ref_dict=refDict,
+        outputSortedBamIndex=sample[2],
+        calibratedGrp=baseRecalibrator1_task.calibratedFile1
+    }
 
-  call baseRecalibrator2Task.baseRecalibrator2_task {
-    input:
-      gatkLocation=gatkLocation,
-      sortedBam=sample[1],
-      dbsnp=dbSnpVcf,
-      goldStandard=knownVcfs,
-      sampleName=sample[0],
-      ref_fasta=refFasta,
-      ref_fasta_index=refIndex,
-      ref_dict=refDict,
-      outputSortedBamIndex=sample[2],
-      calibratedGrp=baseRecalibrator1_task.calibratedFile1
-  }
+    call generatePlotsTask.generatePlots_task {
+      input:
+        gatkLocation=gatkLocation,
+        ref_fasta=refFasta,
+        ref_fasta_index=refIndex,
+        sampleName=sample[0],
+        ref_dict=refDict,
+        calibratedFile1=baseRecalibrator1_task.calibratedFile1,
+        calibratedFile2=baseRecalibrator2_task.calibratedFile2
+    }
 
-  call generatePlotsTask.generatePlots_task {
-    input:
-      gatkLocation=gatkLocation,
-      ref_fasta=refFasta,
-      ref_fasta_index=refIndex,
-      sampleName=sample[0],
-      ref_dict=refDict,
-      calibratedFile1=baseRecalibrator1_task.calibratedFile1,
-      calibratedFile2=baseRecalibrator2_task.calibratedFile2
-  }
+    call printReadsTask.printReads_task {
+      input:
+        gatkLocation=gatkLocation,
+        ref_fasta=refFasta,
+        ref_fasta_index=refIndex,
+        ref_dict=refDict,
+        sortedBam=sample[1],
+        calibratedFile1=baseRecalibrator1_task.calibratedFile1,
+        sortedBamIndex=sample[2],
+        sampleName=sample[0]
+    }
 
-  call printReadsTask.printReads_task {
-    input:
-      gatkLocation=gatkLocation,
-      ref_fasta=refFasta,
-      ref_fasta_index=refIndex,
-      ref_dict=refDict,
-      sortedBam=sample[1],
-      calibratedFile1=baseRecalibrator1_task.calibratedFile1,
-      sortedBamIndex=sample[2],
-      sampleName=sample[0]
-  }
+    call indexCalibratedBamTask.indexCalibratedBam_task {
+      input:
+        sampleName=sample[0],
+        refFasta=refFasta,
+        calBam=printReads_task.recalibratedReadsBam
+    }
 
-  call indexCalibratedBamTask.indexCalibratedBam_task {
-    input:
-      sampleName=sample[0],
-      refFasta=refFasta,
-      calBam=printReads_task.recalibratedReadsBam
-  }
+    call HaplotypeCallerERCTask.HaplotypeCallerERC_task {
+      Int haplotypeCallerRunMinutes
+      Int haplotypeCallerThreads
+      Int haplotypeCallerMem
 
-  call HaplotypeCallerERCTask.HaplotypeCallerERC_task {
-    Int haplotypeCallerRunMinutes
-    Int haplotypeCallerThreads
-    Int haplotypeCallerMem
-
-    input: GATK=gatkLocation, 
-      RefFasta=refFasta, 
-      RefIndex=refIndex,
-      RefDict=refDict, 
-      sampleName=sample[0],
-      bamFile=indexCalibratedBam_task.calibratedBam, 
-      bamIndex=indexCalibratedBam_task.calibratedBamIndex
+      input: GATK=gatkLocation, 
+        RefFasta=refFasta, 
+        RefIndex=refIndex,
+        RefDict=refDict, 
+        sampleName=sample[0],
+        bamFile=indexCalibratedBam_task.calibratedBam, 
+        bamIndex=indexCalibratedBam_task.calibratedBamIndex
     }
   }
 
-#  call combineGVCFsTask.combineGVCFs_task {
-#   Int combineRunMinutes
-#   Int combineRunThreads
-#   Int combineRunMem
-#
-#   input: GATK=gatkLocation,
-#  RefFasta=refFasta,
-#  RefIndex=refIndex,
-#  RefDict=refDict,
-#  GVCFs=HaplotypeCallerERC_task.GVCF,
-#  sampleName="combinedGVCFs"  
-#  }
-#
-#  call GenotypeGVCFsTask.GenotypeGVCFs_task {
-#    Int genotypeRunMinutes
-#    Int genotypeThreads
-#    Int genotypeMem
-#
-#    input: GATK=gatkLocation, 
-#      RefFasta=refFasta, 
-#      RefIndex=refIndex, 
-#      RefDict=refDict, 
-#      sampleName="CEUtrio", 
-#      combinedVCF=combineGVCFs_task.combinedOutput
-#  }
-#
-#  call VariantFiltrationTask.VariantFiltration_task {
-#  Int variantFilterRunMinutes
-#  Int variantFilterThreads
-#  Int variantFilterMem
-#
-#  input:
-#    input_vcf = GenotypeGVCFs_task.rawVCF,
-#    input_vcf_index = GenotypeGVCFs_task.rawVCFidx,
-#    base_name = "CEUtrio",
-#    ref_fasta = refFasta,
-#    ref_fasta_index = refIndex,
-#    ref_dict = refDict,
-#    gatk_path=gatkLocation
-#  }
-#
-#  call copyOutputTask.copyOutput_task {
-#  Int copyOutputRunThreads
-#        Int copyOutputRunMinutes
-#        Int copyOutputRunMem
-#
-#  input:outputDir=outputDir,variantFiles=VariantFiltration_task.output_vcf,variantFilesIndex=VariantFiltration_task.output_vcf_index,variantFilesArray=GenotypeGVCFs_task.variantFiles,variantFilesIndexArray=GenotypeGVCFs_task.variantFilesIndex,haplotypeFiles=HaplotypeCallerERC_task.GVCF,generatedPlots=generatePlots_task.calibratedPlots
-#  }
+  # End of scattered jobs, end of first pipeline.
+
+  # call combineGVCFsTask.combineGVCFs_task {
+    # Int combineRunMinutes
+    # Int combineRunThreads
+    # Int combineRunMem
+
+    # input: 
+      # GATK=gatkLocation,
+      # RefFasta=refFasta,
+      # RefIndex=refIndex,
+      # RefDict=refDict,
+      # GVCFs=HaplotypeCallerERC_task.GVCF,
+      # sampleName="combinedGVCFs"  
+  # }
+
+  # call GenotypeGVCFsTask.GenotypeGVCFs_task {
+    # Int genotypeRunMinutes
+    # Int genotypeThreads
+    # Int genotypeMem
+
+    # input: 
+      # GATK=gatkLocation, 
+      # RefFasta=refFasta, 
+      # RefIndex=refIndex, 
+      # RefDict=refDict, 
+      # sampleName="CEUtrio", 
+      # combinedVCF=combineGVCFs_task.combinedOutput
+  # }
+
+  # call VariantFiltrationTask.VariantFiltration_task {
+    # Int variantFilterRunMinutes
+    # Int variantFilterThreads
+    # Int variantFilterMem
+
+    # input:
+      # input_vcf = GenotypeGVCFs_task.rawVCF,
+      # input_vcf_index = GenotypeGVCFs_task.rawVCFidx,
+      # base_name = "CEUtrio",
+      # ref_fasta = refFasta,
+      # ref_fasta_index = refIndex,
+      # ref_dict = refDict,
+      # gatk_path=gatkLocation
+  # }
+
+  # call copyOutputTask.copyOutput_task {
+    # Int copyOutputRunThreads
+    # Int copyOutputRunMinutes
+    # Int copyOutputRunMem
+
+    # input:
+      # outputDir=outputDir,
+      # variantFiles=VariantFiltration_task.output_vcf,
+      # variantFilesIndex=VariantFiltration_task.output_vcf_index,
+      # variantFilesArray=GenotypeGVCFs_task.variantFiles,
+      # variantFilesIndexArray=GenotypeGVCFs_task.variantFilesIndex,
+      # haplotypeFiles=HaplotypeCallerERC_task.GVCF,
+      # generatedPlots=generatePlots_task.calibratedPlots
+  # }
+
 }
 #end workflow calls
