@@ -4,7 +4,7 @@
   "rnaseqBamToGVCF.refDict": "/data/cephfs/punim0639/databases/STAR/humanGC38/Homo_sapiens_assembly38.dict",
   "rnaseqBamToGVCF.gatkLocation": "/data/cephfs/punim0256/Kat/rnaseqgatk-master/GenomeAnalysisTK.jar",
   "rnaseqBamToGVCF.refFasta": "/data/cephfs/punim0639/databases/STAR/humanGC38/Homo_sapiens_assembly38.fasta",
-  "rnaseqBamToGVCF.inputSamplesFile": "/data/cephfs/punim0256/Kat/rnaseqgatk-master/fastq_samples_reruns.txt",
+  "rnaseqBamToGVCF.inputSamplesFile": "/data/cephfs/punim0256/Kat/rnaseqgatk-master/sortBams_samples_reruns.txt",
   "rnaseqBamToGVCF.picardLocation":"/data/cephfs/punim0639/databases/rnaseqgatk/picard.jar",
   "rnaseqBamToGVCF.dbSnpVcf": "/data/cephfs/punim0639/databases/STAR/humanGC38/Homo_sapiens_assembly38.dbsnp138.vcf",
   "rnaseqBamToGVCF.dbSnpVcfIndex": "/data/cephfs/punim0639/databases/STAR/humanGC38/Homo_sapiens_assembly38.dbsnp138.vcf.idx",
