@@ -15,10 +15,10 @@
 
 
 import "./tasks/starAlignment.wdl" as starAlignmentTask
-import "./tasks/combineGVCFs.wdl" as combineGVCFsTask
+#import "./tasks/combineGVCFs.wdl" as combineGVCFsTask
 import "./tasks/createBamIndex.wdl" as createBamIndexTask
 import "./tasks/createRefIndex.wdl" as createRefIndexTask
-import "./tasks/GenotypeGVCFs.wdl" as GenotypeGVCFsTask      
+#import "./tasks/GenotypeGVCFs.wdl" as GenotypeGVCFsTask      
 import "./tasks/indexCalibratedBam.wdl" as indexCalibratedBamTask   
 import "./tasks/picard.wdl" as picardTask      
 import "./tasks/sortBam.wdl" as sortBamTask          
@@ -31,8 +31,8 @@ import "./tasks/HaplotypeCallerERC.wdl" as HaplotypeCallerERCTask
 import "./tasks/picardMarkDuplicates.wdl" as picardMarkDuplicatesTask
 import "./tasks/printReads.wdl" as printReadsTask
 import "./tasks/splitNCigarReads.wdl" as splitNCigarReadsTask
-import "./tasks/VariantFiltration.wdl" as VariantFiltrationTask
-import "./tasks/copyOutput.wdl" as copyOutputTask
+#import "./tasks/VariantFiltration.wdl" as VariantFiltrationTask
+#import "./tasks/copyOutput.wdl" as copyOutputTask
 
 workflow rnaseqBamToGVCF {
 
@@ -65,7 +65,7 @@ workflow rnaseqBamToGVCF {
         }
 
         call convertSamToBamTask.convertSamToBam_task {
-	Int convertSamToBamRunThreads
+  Int convertSamToBamRunThreads
         Int convertSamToBamRunMinutes
         Int convertSamToBamRunMem
 
@@ -95,8 +95,8 @@ workflow rnaseqBamToGVCF {
            String createIndex
            String validationStringency
            String outputMetrics
- 	   String picardMarkDuplicatesRunMinutes
-	   String picardMarkDuplicatesThreads
+     String picardMarkDuplicatesRunMinutes
+     String picardMarkDuplicatesThreads
 
             input:
                 picardLocation=picardLocation,
@@ -105,18 +105,18 @@ workflow rnaseqBamToGVCF {
     }
 
     call createPicardBamIndexTask.createPicardBamIndex_task {
-   	  Int createPicardBamIndexRunMinutes
-	  Int createPicardBamIndexThreads
-	  Int createPicardBamIndexMem
+      Int createPicardBamIndexRunMinutes
+    Int createPicardBamIndexThreads
+    Int createPicardBamIndexMem
 
             input:
                 picardMDBamToBeIndexed=picardMarkDuplicates_task.picardDeduppedBam
     }
 
     call createRefIndexTask.createRefIndex_task{
-	  Int createRefIndexRunMinutes
-	  Int createRefIndexRunThreads
-	  Int createRefIndexMem
+    Int createRefIndexRunMinutes
+    Int createRefIndexRunThreads
+    Int createRefIndexMem
            input:
                 refFasta=refFasta
     }
@@ -127,9 +127,9 @@ workflow rnaseqBamToGVCF {
             Int RMQF
             String RMQT
             String U
-	    Int splitNCigarReadsRunMinutes	
-	    Int splitNCigarReadsThreads
-	    Int splitNCigarReadsMem
+      Int splitNCigarReadsRunMinutes  
+      Int splitNCigarReadsThreads
+      Int splitNCigarReadsMem
 
             input:
                 refFasta=refFasta,
@@ -142,23 +142,23 @@ workflow rnaseqBamToGVCF {
         }
 
     call createBamIndexTask.createBamIndex_task{
-	    Int createBamIndexRunMinutes
-	    Int createBamIndexThreads
-	    Int createBamIndexMem
+      Int createBamIndexRunMinutes
+      Int createBamIndexThreads
+      Int createBamIndexMem
 
             input:
                 bamToBeIndexed=splitNCigarReads_task.splitCigarsBamOutput
     }
 
 
-	call sortBamTask.sortBam_task {
+  call sortBamTask.sortBam_task {
                 input:
                         bam2sort=splitNCigarReads_task.splitCigarsBamOutput,
                         sampleName=sample[0]
         }
 
 
-	call baseRecalibrator1Task.baseRecalibrator1_task {
+  call baseRecalibrator1Task.baseRecalibrator1_task {
                 input:
                         gatkLocation=gatkLocation,
                         sortedBam=sortBam_task.sortedBam,
@@ -211,20 +211,20 @@ workflow rnaseqBamToGVCF {
         call indexCalibratedBamTask.indexCalibratedBam_task {
                 input:
                         sampleName=sample[0],
-			refFasta=refFasta,
+      refFasta=refFasta,
                         calBam=printReads_task.recalibratedReadsBam
 
 
-	}
+  }
 
     call HaplotypeCallerERCTask.HaplotypeCallerERC_task {
-	Int haplotypeCallerRunMinutes
-	Int haplotypeCallerThreads
-	Int haplotypeCallerMem
+  Int haplotypeCallerRunMinutes
+  Int haplotypeCallerThreads
+  Int haplotypeCallerMem
 
       input: GATK=gatkLocation, 
         RefFasta=refFasta, 
-	RefIndex=refIndex,
+  RefIndex=refIndex,
         RefDict=refDict, 
         sampleName=sample[0],
         bamFile=indexCalibratedBam_task.calibratedBam, 
@@ -232,12 +232,53 @@ workflow rnaseqBamToGVCF {
     }
   }
 
-  call copyOutputTask.copyOutput_task {
-	Int copyOutputRunThreads
-        Int copyOutputRunMinutes
-        Int copyOutputRunMem
-
-	input:outputDir=outputDir,variantFiles=VariantFiltration_task.output_vcf,variantFilesIndex=VariantFiltration_task.output_vcf_index,variantFilesArray=GenotypeGVCFs_task.variantFiles,variantFilesIndexArray=GenotypeGVCFs_task.variantFilesIndex,haplotypeFiles=HaplotypeCallerERC_task.GVCF,generatedPlots=generatePlots_task.calibratedPlots
-  }
+#  call combineGVCFsTask.combineGVCFs_task {
+#   Int combineRunMinutes
+#   Int combineRunThreads
+#   Int combineRunMem
+#
+#   input: GATK=gatkLocation,
+#  RefFasta=refFasta,
+#  RefIndex=refIndex,
+#  RefDict=refDict,
+#  GVCFs=HaplotypeCallerERC_task.GVCF,
+#  sampleName="combinedGVCFs"  
+#  }
+#
+#  call GenotypeGVCFsTask.GenotypeGVCFs_task {
+#    Int genotypeRunMinutes
+#    Int genotypeThreads
+#    Int genotypeMem
+#
+#    input: GATK=gatkLocation, 
+#      RefFasta=refFasta, 
+#      RefIndex=refIndex, 
+#      RefDict=refDict, 
+#      sampleName="CEUtrio", 
+#      combinedVCF=combineGVCFs_task.combinedOutput
+#  }
+#
+#  call VariantFiltrationTask.VariantFiltration_task {
+#  Int variantFilterRunMinutes
+#  Int variantFilterThreads
+#  Int variantFilterMem
+#
+#  input:
+#    input_vcf = GenotypeGVCFs_task.rawVCF,
+#    input_vcf_index = GenotypeGVCFs_task.rawVCFidx,
+#    base_name = "CEUtrio",
+#    ref_fasta = refFasta,
+#    ref_fasta_index = refIndex,
+#    ref_dict = refDict,
+#    gatk_path=gatkLocation
+#  }
+#
+#  call copyOutputTask.copyOutput_task {
+#  Int copyOutputRunThreads
+#        Int copyOutputRunMinutes
+#        Int copyOutputRunMem
+#
+#  input:outputDir=outputDir,variantFiles=VariantFiltration_task.output_vcf,variantFilesIndex=VariantFiltration_task.output_vcf_index,variantFilesArray=GenotypeGVCFs_task.variantFiles,variantFilesIndexArray=GenotypeGVCFs_task.variantFilesIndex,haplotypeFiles=HaplotypeCallerERC_task.GVCF,generatedPlots=generatePlots_task.calibratedPlots
+#  }
 }
 #end workflow calls
