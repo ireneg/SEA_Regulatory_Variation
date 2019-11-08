@@ -72,7 +72,7 @@ load(paste0(inputdir, "indoRNA.read_counts.TMM.filtered.Rda"))
 # First, remove samples that have less than ten individuals per village
 table(yFilt$samples$Sampling.Site)
     #    Anakalung    Bilarenge    Hupu Mada      Madobag        Mappi  Padira Tana 
-    #           20            1            5           17           21            3 
+    #           20            1            5           17           20            3 
     # Patiala Bawa        Rindi     Taileleu        Wunga   Wura Homba 
     #            1            5           32           17            1 
 
@@ -114,18 +114,18 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
     dupcorNone <- duplicateCorrelation(voomNoNorm, design, block=yVillage$samples$ind) # 19 non-convergences
     # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
     dupcorNone$consensus # sanity check
-    # [1] 0.6866513
+    # [1] 0.6847412
     median(voomNoNorm$weights) # another sanity check:
-    # [1] 23.6336
+    # [1] 23.39444
     save(voomNoNorm, file=paste0(outputdir, "voomNoNorm.tmm.filtered.indoRNA.village.all_villages.Rda"))
 
     # Second round:
-    voomNoNormDup <- voom(yVillage, design, plot=TRUE, block=yVillage$samples$ind, correlation=dupcorNone$consensus)
+    voomNoNormDup <- voom(yVillage, design, plot=F, block=yVillage$samples$ind, correlation=dupcorNone$consensus)
     dupcorNoneDup <- duplicateCorrelation(voomNoNormDup, design, block=yVillage$samples$ind) # 19 non convergences
     dupcorNoneDup$consensus # sanity check pt 2
-    # [1] 0.6870139
+    # [1] 0.6850491
     median(voomNoNormDup$weights) # another sanity check, pt 2 
-    # [1] 23.13211
+    # [1] 22.92187
 
     pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.densities.village.all_villages.pdf"))
         plotDensities(voomNoNormDup, group=yVillage$samples$batch)
@@ -270,7 +270,7 @@ yVillage10 <- yVillage[,-grep("Padira Tana|Rindi|Hupu Mada", yVillage$samples$Sa
 yVillage10$samples <- droplevels(yVillage10$samples) # drop unused levels
 table(yVillage10$samples$Sampling.Site)
 # Anakalung   Madobag     Mappi  Taileleu     Wunga 
-#        20        17        21        32        17 
+#        20        17        20        32        17 
 
 deTestingSubsets10 <- function(testingData) {
     # draw the sample
@@ -335,7 +335,7 @@ write.table(deGenesTables10, file=paste0(outputdir, "DE_subsampling_10_inds.txt"
 
 #And now... some t.tests:
 t.test(deGenesTables10$ANKvsMPI, deGenesTables10$WNGvsMPI)$p.value
-# [1] 1.290068e-191
+# [1] 7.450892e-196
 
 t.test(deGenesTables10$MDBvsMPI, deGenesTables10$TLLvsMPI)$p.value
-# [1] 1.727248e-212
+# [1] 4.719657e-216

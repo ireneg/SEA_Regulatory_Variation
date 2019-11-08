@@ -1,8 +1,8 @@
 # script created by KSB, 08.08.18
 # Perform DE analysing relationship between islands
 
-### Last edit: IGR 2019.10.19
-### Changed paths to deal with removal of MPI-296
+### Last edit: IGR 2019.10.20
+### Updated output numbers.
 
 ### 0. Load dependencies and functions and set input paths ###
 ### 1. Begin analyses and initial QC ###
@@ -85,7 +85,7 @@ yFilt$samples$Sampling.Site <- gsub("Mappi", "Korowai", yFilt$samples$Sampling.S
 # First, remove samples that have less than ten individuals per village
 table(yFilt$samples$Sampling.Site)
 # Anakalung    Bilarenge    Hupu Mada      Korowai      Madobag  Padira Tana Patiala Bawa        Rindi     Taileleu        Wunga   Wura Homba 
-#       20            1            5           21           17            3            1            5           32           17            1 
+#       20            1            5           20           17            3            1            5           32           17            1 
 
 # remove Bilarenge, Hupu Mada, Padira Tana, Patiala Bawa, Rindi, and Wura Homba
 yVillage <- yFilt[,-grep("Bilarenge|Hupu Mada|Padira Tana|Patiala Bawa|Rindi|Wura Homba", yFilt$samples$Sampling.Site)]
@@ -114,21 +114,21 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
 
 # No normalisation between samples beyond tmm and voom:
     voomNoNorm <- voom(yVillage, design, normalize.method="none", plot=F) 
-    dupcorNone <- duplicateCorrelation(voomNoNorm, design, block=yVillage$samples$ind) # 24 non-convergences
+    dupcorNone <- duplicateCorrelation(voomNoNorm, design, block=yVillage$samples$ind) # 20 non-convergences
     # The value dupcor$consensus estimates the average correlation within the blocks and should be positive
     dupcorNone$consensus # sanity check
-    # [1] 0.6835068
+    # [1] 0.6826423
     median(voomNoNorm$weights) # another sanity check:
-    # [1] 23.90951
+    # [1] 23.69464
     save(voomNoNorm, file=paste0(outputdir, "voomNoNorm.tmm.filtered.indoRNA.village.Rda"))
 
     # Second round:
-    voomNoNormDup <- voom(yVillage, design, plot=TRUE, block=yVillage$samples$ind, correlation=dupcorNone$consensus)
-    dupcorNoneDup <- duplicateCorrelation(voomNoNormDup, design, block=yVillage$samples$ind) # 25 non convergences
+    voomNoNormDup <- voom(yVillage, design, plot=F, block=yVillage$samples$ind, correlation=dupcorNone$consensus)
+    dupcorNoneDup <- duplicateCorrelation(voomNoNormDup, design, block=yVillage$samples$ind) # 24 non convergences
     dupcorNoneDup$consensus # sanity check pt 2
-    # [1] 0.6836133
+    # [1] 0.6827327
     median(voomNoNormDup$weights) # another sanity check, pt 2 
-    # [1] 23.35687
+    # [1] 23.14045
 
     pdf(file=paste0(edaoutput, "voomNoNorm.tmm.filtered.indoRNA.densities.villages.pdf"))
         plotDensities(voomNoNormDup, group=yVillage$samples$batch)
@@ -155,20 +155,21 @@ yVillage$samples$ind <- sapply(strsplit(as.character(yVillage$samples$samples), 
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01))
 #        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
-# Down         45     1078      407        1      405      137      482     2098     2039      647
-# NotSig    12852    10847    12106    12973    12026    12483    12034     8985     8907    11774
-# Up           78     1050      462        1      544      355      459     1892     2029      554
+# Down         40     1039      416        1      394      129      498     2024     1999      668
+# NotSig    12916    10976    12148    13029    12109    12551    12084     9168     9016    11804
+# Up           75     1016      467        1      528      351      449     1839     2016      559
 
 summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
-# Down         15      303       78        0      163        8      138      711      697      136
-# NotSig    12906    12112    12685    12974    12489    12924    12659    11818    11358    12606
-# Up           54      560      212        1      323       43      178      446      920      233
+#        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
+# Down         13      297       77        0      166        8      141      709      693      140
+# NotSig    12966    12188    12737    13030    12547    12976    12710    11888    11439    12656
+# Up           52      546      217        1      318       47      180      434      899      235
 
  summary(decideTests(voomNoNormDupEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
-# Down          4       47        9        0       52        2       17      121      125        8
-# NotSig    12947    12717    12911    12974    12800    12969    12906    12723    12546    12913
-# Up           24      211       55        1      123        4       52      131      304       54
+# Down          3       51        8        0       53        2       18      117      123        9
+# NotSig    13005    12778    12964    13030    12859    13025    12958    12790    12611    12965
+# Up           23      202       59        1      119        4       55      124      297       57
 
 for (i in 1:10){
     write.table(allDEresults[[i]], file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.dup_corrected.village.", colnames(contr.matrix)[i], ".txt"))
@@ -197,21 +198,21 @@ dev.off()
 
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01))
 #        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
-# Down         67     1441      483        1      517      133      564     2161     2340      792
-# NotSig    12801    10212    11959    12973    11849    12511    11844     8905     8413    11435
-# Up          107     1322      533        1      609      331      567     1909     2222      748
+# Down         64     1392      491        1      506      125      585     2106     2309      818
+# NotSig    12862    10360    12018    13029    11929    12591    11876     9031     8503    11461
+# Up          105     1279      522        1      596      315      570     1894     2219      752
  
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=0.5))
 #        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
-# Down         19      408       93        1      191       10      159      719      784      166
-# NotSig    12886    11911    12637    12973    12432    12924    12597    11789    11205    12494
-# Up           70      656      245        1      352       41      219      467      986      315
+# Down         19      398       90        1      192        9      162      713      783      169
+# NotSig    12943    12005    12698    13029    12498    12983    12644    11870    11274    12540
+# Up           69      628      243        1      341       39      225      448      974      322
 
 summary(decideTests(voomNoNormEfit, method="separate", adjust.method = "BH", p.value = 0.01, lfc=1))
 #        ANKvsMDB ANKvsKOR ANKvsTLL ANKvsWNG MDBvsKOR MDBvsTLL WNGvsMDB TLLvsKOR WNGvsKOR WNGvsTLL
-# Down          3       58        9        1       61        2       21      119      142       13
-# NotSig    12946    12674    12902    12973    12782    12969    12881    12727    12501    12891
-# Up           26      243       64        1      132        4       73      129      332       71
+# Down          3       60        9        1       65        2       22      116      143       13
+# NotSig    13002    12729    12958    13029    12842    13026    12933    12789    12564    12943
+# Up           26      242       64        1      124        3       76      126      324       75
 
 for (i in 1:10){
     write.table(allDEresultsNoDup[[i]], file=paste0(outputdir,"topTable.voomNoNorm.tmm.filtered.not_dup_corrected.village.", colnames(contr.matrix)[i], ".txt"))
@@ -224,25 +225,25 @@ for (i in 1:10){
 }
 
 # [1] "Spearman correlation between methods in ANKvsMDB:"
-# [1] 0.9723409
+# [1] 0.9722137
 # [1] "Spearman correlation between methods in ANKvsKOR:"
-# [1] 0.9721176
+# [1] 0.9724407
 # [1] "Spearman correlation between methods in ANKvsTLL:"
-# [1] 0.9588628
+# [1] 0.95888
 # [1] "Spearman correlation between methods in ANKvsWNG:"
-# [1] 0.9775763
+# [1] 0.9777967
 # [1] "Spearman correlation between methods in MDBvsKOR:"
-# [1] 0.9868406
+# [1] 0.9869912
 # [1] "Spearman correlation between methods in MDBvsTLL:"
-# [1] 0.9800908
+# [1] 0.9801756
 # [1] "Spearman correlation between methods in WNGvsMDB:"
-# [1] 0.9866404
+# [1] 0.9864559
 # [1] "Spearman correlation between methods in TLLvsKOR:"
-# [1] 0.984165
+# [1] 0.98446
 # [1] "Spearman correlation between methods in WNGvsKOR:"
-# [1] 0.9826641
+# [1] 0.9827017
 # [1] "Spearman correlation between methods in WNGvsTLL:"
-# [1] 0.9747141
+# [1] 0.9745855
 
 
 
@@ -473,15 +474,15 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
 
     cor(smbAllKor[,c(6,12,18)], method="spearman")
     #               adj.P.Val.ank adj.P.Val.wng adj.P.Val
-    # adj.P.Val.ank     1.0000000     0.7113743 0.8436221
-    # adj.P.Val.wng     0.7113743     1.0000000 0.9171904
-    # adj.P.Val         0.8436221     0.9171904 1.0000000
+    # adj.P.Val.ank     1.0000000     0.7079747 0.8367493
+    # adj.P.Val.wng     0.7079747     1.0000000 0.9137874
+    # adj.P.Val         0.8367493     0.9137874 1.0000000
 
     cor(mtwAllKor[,c(6,12,18)], method="spearman")
     #               adj.P.Val.tll adj.P.Val.mdb adj.P.Val
-    # adj.P.Val.tll     1.0000000     0.4735451 0.9053022
-    # adj.P.Val.mdb     0.4735451     1.0000000 0.6829288
-    # adj.P.Val         0.9053022     0.6829288 1.0000000
+    # adj.P.Val.tll     1.0000000     0.4774566 0.9034564
+    # adj.P.Val.mdb     0.4774566     1.0000000 0.6825733
+    # adj.P.Val         0.9034564     0.6825733 1.0000000
 
     # And now, by quintiles/deciles, determined on the island-wide p-value? mean expression?:
 
@@ -496,14 +497,14 @@ singleVillageGenes <- function(singleVillageDF, nGenes, comp1, comp2){
 
     cor(smbAllKor[,c(2,8,14)], method="spearman")
     #           logFC.ank logFC.wng     logFC
-    # logFC.ank 1.0000000 0.8805480 0.9392975
-    # logFC.wng 0.8805480 1.0000000 0.9701557
-    # logFC     0.9392975 0.9701557 1.0000000
+    # logFC.ank 1.0000000 0.8782726 0.9372761
+    # logFC.wng 0.8782726 1.0000000 0.9701223
+    # logFC     0.9372761 0.9701223 1.0000000
     cor(mtwAllKor[,c(2,8,14)], method="spearman")
     #           logFC.tll logFC.mdb     logFC
-    # logFC.tll 1.0000000 0.7821874 0.9671235
-    # logFC.mdb 0.7821874 1.0000000 0.8878783
-    # logFC     0.9671235 0.8878783 1.0000000
+    # logFC.tll 1.0000000 0.7801121 0.9655542
+    # logFC.mdb 0.7801121 1.0000000 0.8878635
+    # logFC     0.9655542 0.8878635 1.0000000
 
     by(mtwAllKor, mtwAllKor$quintile, function(x) cor(x[,c(2,8,14)], method="spearman")) # These are much improved
     by(smbAllKor, smbAllKor$quintile, function(x) cor(x[,c(2,8,14)], method="spearman")) # Yes indeed
@@ -585,7 +586,7 @@ allCPM <- voomNoNormDup$E
     wngKorCPM <- allCPM[wngOnly$genes[1:100],]
     wngKorCPM <- wngKorCPM[,grepl("MPI|SMB", colnames(wngKorCPM))]
 
-    ankKorCPM <- allCPM[ankOnly$genes[1:86],] # only 86 genes
+    ankKorCPM <- allCPM[ankOnly$genes[1:100],] # over 100 genes without MPI296
     ankKorCPM <- ankKorCPM[,grepl("MPI|SMB", colnames(ankKorCPM))]
 
     smbKorCPM <- allCPM[smbKorIslandDE$genes[1:100],] # This one isn't filtered, but it's ok because the figure is useless.
@@ -610,7 +611,7 @@ allCPM <- voomNoNormDup$E
 
     # Anakalung
     ankOnly <- merge(ankOnly, smbKorIslandDE, by.x="genes", by.y="genes", all=F, sort=F)
-    rowMetadataAnk <- data.frame(rownames(ankKorCPM), -log10(ankOnly$adj.P.Val.wng[1:86]), -log10(ankOnly$adj.P.Val.ank[1:86]), -log10(ankOnly$adj.P.Val[1:86]))
+    rowMetadataAnk <- data.frame(rownames(ankKorCPM), -log10(ankOnly$adj.P.Val.wng[1:100]), -log10(ankOnly$adj.P.Val.ank[1:100]), -log10(ankOnly$adj.P.Val[1:100]))
     names(rowMetadataAnk) <- c("genes", "wngKorpval", "ankKorpval", "smbKorpval")
     rowColsAnk <- HeatmapAnnotation(rowMetadataAnk[,2:4], col = 
         list(wngKorpval=colorRamp2(c(min(rowMetadataAnk[,2:4]), max(rowMetadataAnk[,2:4])), c("white", "black")), 
@@ -708,7 +709,7 @@ calcCoV <- function(x){
 
 # Can't use CoV with the log transformation, need to undo it: (wikipedia said so, and yes, the negative numbers were probably messing things up)
 normLCPM <- data.frame(t(voomNoNormDup$E))
-normCPM <- normLCPM^2
+normCPM <- 2^normLCPM
 
 perVillageCoV <- t(ddply(normCPM, .(yVillage$samples$Sampling.Site), function(x) apply(as.matrix(x), 2, function(x) calcCoV(x)))) # That's a lot of transposing, but I checked it manually.
 
@@ -750,12 +751,13 @@ for (i in 1:5){
 
 # They are different, as they were of course going to be, but not THAT different, surely, to explain the difference in power? Also from the plot the effect size does not go in the direction you would expect. The things that are different are not different 
 signif(tTestOut, digits=3)
-#           Anakalung  Madobag    Korowai Taileleu    Wunga
-# Anakalung         0 2.73e-08 1.26e-02 2.66e-01 4.36e-04
-# Madobag           0 0.00e+00 2.29e-16 9.70e-06 4.30e-02
-# Korowai             0 0.00e+00 0.00e+00 2.89e-04 1.07e-09
-# Taileleu          0 0.00e+00 0.00e+00 0.00e+00 1.66e-02
-# Wunga             0 0.00e+00 0.00e+00 0.00e+00 0.00e+00
+#           Anakalung Korowai   Madobag Taileleu     Wunga
+# Anakalung         0 3.8e-17  2.23e-41 8.54e-26  7.46e-38
+# Korowai           0 0.0e+00 2.65e-116 2.71e-88 1.02e-110
+# Madobag           0 0.0e+00  0.00e+00 8.64e-04  4.44e-01
+# Taileleu          0 0.0e+00  0.00e+00 0.00e+00  9.66e-03
+# Wunga             0 0.0e+00  0.00e+00 0.00e+00  0.00e+00
+
 
 # Similar plots of pairwise correlations within each village, to see if anything is as noisy as Korowai. But then how do you reconcile the CoV observations?
 
