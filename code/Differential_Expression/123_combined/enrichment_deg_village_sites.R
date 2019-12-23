@@ -55,7 +55,8 @@ mtwVillageKor <- merge(tllKor, mdbKor, by.x="genes", by.y="genes", suffixes=c(".
 mdbOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.mdb <= 0.01 & mtwVillageKor$adj.P.Val.tll > 0.01 & abs(mtwVillageKor$logFC.mdb) >= 0.5,]
 tllOnly <- mtwVillageKor[mtwVillageKor$adj.P.Val.tll <= 0.01 & mtwVillageKor$adj.P.Val.mdb > 0.01 & abs(mtwVillageKor$logFC.tll) >= 0.5,]
 
-methylMix <- read.table(paste0(inputdir, "methylmix_genename_ensemblid.csv"), sep=",", header=T)
+methylMix <- read.table(paste0(inputdir, "MethylMix_result_withoutMPI296_genename_ensemblid.csv"), sep=",", header=T)
+ancestryLM <- read.csv(paste0(inputdir, "lm_ancestry_exp_allGenes.csv"), header=T)
 
 ensembl <- useMart(biomart = "ENSEMBL_MART_ENSEMBL", dataset = "hsapiens_gene_ensembl", host = "http://www.ensembl.org/", verbose=T) # super slow if we use the default mirrors...
 
@@ -129,9 +130,9 @@ background <- ankKor # doesn't matter, just need all tested genes. But because a
     background$entrezgene_id <- as.character(background$entrezgene_id)
 
 # We'll need these later, so save the output, but first filter to genes with FDR < 0.01 and the logFC threshold
-mtwKorKEGG <- degEnrichment(mtwKor[mtwKor$adj.P.Val <= 0.01 & abs(mtwKor$logFC) >= 0.5,], "MTW_vs_KOR.") # 0 /  
-smbKorKEGG <- degEnrichment(smbKor[smbKor$adj.P.Val <= 0.01 & abs(smbKor$logFC) >= 0.5,], "SMB_vs_KOR.") # 0 /  
-smbMtwKEGG <- degEnrichment(smbMtw[smbMtw$adj.P.Val <= 0.01 & abs(smbMtw$logFC) >= 0.5,], "SMB_vs_MTW.") # 0 /  
+mtwKorKEGG <- degEnrichment(mtwKor[mtwKor$adj.P.Val <= 0.01 & abs(mtwKor$logFC) >= 0.5,], "MTW_vs_KOR.") # 
+smbKorKEGG <- degEnrichment(smbKor[smbKor$adj.P.Val <= 0.01 & abs(smbKor$logFC) >= 0.5,], "SMB_vs_KOR.") #   
+smbMtwKEGG <- degEnrichment(smbMtw[smbMtw$adj.P.Val <= 0.01 & abs(smbMtw$logFC) >= 0.5,], "SMB_vs_MTW.") #   
 
 # Village level:
 # Don't forget the p-value cutoff if you're going to run these!
@@ -156,15 +157,19 @@ dim(methylMix)
 
 methylMixKEGG <- degEnrichment(methylMix, "methylMix.all.") # 0 / 2 
 
+### One more test: the ancestry LM results. First rename the columns, then we'll go from there...
+names(ancestryLM)[c(1,2,4)] <- c("genes", "P.Value", "adj.P.Val")
+ancestryKEGG <- degEnrichment(ancestryLM[ancestryLM$adj.P.Val <= 0.01,], "ancestry_LM.") #   
+
 ### Now we gotta integrate DE with methylMix output, and rerun that enrichment, to see what's going there for realz, because much of the mismapping ribosomal protein signal will go away once that's fixed.
 
 smbKorMethyl <- inner_join(methylMix, smbKor[smbKor$adj.P.Val <= 0.01 & abs(smbKor$logFC) >= 0.5,], by=c("genes" = "genes"))
 mtwKorMethyl <- inner_join(methylMix, mtwKor[mtwKor$adj.P.Val <= 0.01 & abs(mtwKor$logFC) >= 0.5,], by=c("genes" = "genes"))
 smbMtwMethyl <- inner_join(methylMix, smbMtw[smbMtw$adj.P.Val <= 0.01 & abs(smbMtw$logFC) >= 0.5,], by=c("genes" = "genes"))
 
-smbKorMethylKEGG <- degEnrichment(smbKorMethyl, "smbKorDE.methylMix.")
-mtwKorMethylKEGG <- degEnrichment(mtwKorMethyl, "mtwKorDE.methylMix.")
-smbMtwMethylKEGG <- degEnrichment(smbMtwMethyl, "smbMtwDE.methylMix.")
+smbKorMethylKEGG <- degEnrichment(smbKorMethyl, "smbKorDE.methylMix.") # 1
+mtwKorMethylKEGG <- degEnrichment(mtwKorMethyl, "mtwKorDE.methylMix.") # 0
+smbMtwMethylKEGG <- degEnrichment(smbMtwMethyl, "smbMtwDE.methylMix.") # 0
 
 # What's in these gene sets? Quick manual annotation...
 smbKorMethylAnnot <- getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'mim_morbid_description'), filters = 'ensembl_gene_id', values = smbKorMethyl$genes, mart = ensembl)
@@ -186,7 +191,7 @@ smbMtwMethylSummary <- sapply(as.list(extract_from_esummary(smbMtwMethylNCBI, "s
 ###############################################
 
 # First, testing of the 51 genes that are DE between TLL and MDB:
-mdbTll <- read.table(files[13], header=T, stringsAsFactors=F)
+mdbTll <- read.table(files[9], header=T, stringsAsFactors=F)
 mdbTllKEGG <- degEnrichment(mdbTll[mdbTll$adj.P.Val <= 0.01 & abs(mdbTll$logFC) >= 0.5,], "MDB_vs_TLL.") # 0 /  
 mdbTllAnnot <- getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'mim_morbid_description'), filters = 'ensembl_gene_id', values = mdbTll[mdbTll$adj.P.Val <= 0.01 & abs(mdbTll$logFC) >= 0.5,]$genes, mart = ensembl)
 mdbTllNCBI <- entrez_summary(db="gene", id=mdbTllAnnot[,2])
@@ -241,7 +246,7 @@ denisovanAnnot <- function(DEG_pop, DEG_name) {
 
     Type_ensembl <- "ensembl_gene_id"
     Values <- DEG_pop$genes
-    attribute_Names = c('ensembl_gene_id', 'entrezgene', 'external_gene_name', 'description', 'gene_biotype', 'chromosome_name', 'start_position', 'end_position', 'strand')
+    attribute_Names = c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', 'description', 'gene_biotype', 'chromosome_name', 'start_position', 'end_position', 'strand')
 
     annot_DEG_pop <- getBM(attributes = attribute_Names, filters = Type_ensembl, values = Values, mart = ensembl)
     tab_DEG_pop <- left_join(DEG_pop, annot_DEG_pop, by = c("genes"="ensembl_gene_id")) %>% distinct(genes, .keep_all = TRUE)
@@ -263,32 +268,32 @@ smbMtwAnnot <- denisovanAnnot(smbMtw, "Smb-Mtw.")
 
 # Two tailed or one-tailed?
 t.test(smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG) # two tailed, we think they're equal #NB that it wouldn't be significant even if it was one tailed. 
-# data:  smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
-# t = -0.06737, df = 1432.7, p-value = 0.9463
-# alternative hypothesis: true difference in means is not equal to 0
-# 95 percent confidence interval:
-#  -0.00971487  0.00906973
-# sample estimates:
-#  mean of x  mean of y 
-# 0.07547917 0.07580174 
+    # data:  smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
+    # t = -0.12338, df = 1358.5, p-value = 0.9018
+    # alternative hypothesis: true difference in means is not equal to 0
+    # 95 percent confidence interval:
+    #  -0.010314765  0.009094039
+    # sample estimates:
+    #  mean of x  mean of y 
+    # 0.07507552 0.07568589 
 
 t.test(smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, alternative="g") # greater, we think kor should contribute
-# data:  smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
-# t = 1.8188, df = 618.62, p-value = 0.03471
-# alternative hypothesis: true difference in means is greater than 0
-# 95 percent confidence interval:
-#  0.0009350708          Inf
-# sample estimates:
-#  mean of x  mean of y 
-# 0.07547917 0.06556098 
+    # data:  smbKorAnnot[smbKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
+    # t = 1.8553, df = 599.32, p-value = 0.03202
+    # alternative hypothesis: true difference in means is greater than 0
+    # 95 percent confidence interval:
+    #  0.001177272         Inf
+    # sample estimates:
+    #  mean of x  mean of y 
+    # 0.07507552 0.06457040 
 
 t.test(mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01,]$PROPORTION_NG, alternative="g") # and here too. 
-# data:  mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
-# t = 1.8244, df = 659.83, p-value = 0.03427
-# alternative hypothesis: true difference in means is greater than 0
-# 95 percent confidence interval:
-#  0.0009948329          Inf
-# sample estimates:
-#  mean of x  mean of y 
-# 0.07580174 0.06556098 
+    # data:  mtwKorAnnot[mtwKorAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG and smbMtwAnnot[smbMtwAnnot$adj.P.Val <= 0.01, ]$PROPORTION_NG
+    # t = 1.9204, df = 628.96, p-value = 0.02763
+    # alternative hypothesis: true difference in means is greater than 0
+    # 95 percent confidence interval:
+    #  0.001580992         Inf
+    # sample estimates:
+    #  mean of x  mean of y 
+    # 0.07568589 0.06457040 
 
